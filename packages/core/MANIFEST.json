@@ -1,0 +1,51 @@
+{
+  "_comment": "Maps each encoder-mapping VARIANT to its built font. The mapping JSON at src/mappings/<variant>.json is EMITTED by scripts/generate_font.py (post make_injective) — it IS the exact mapping the font was built from, so encoder and font can never diverge. DO NOT hand-edit the mapping files. Add beta/gamma entries here when their fonts are built.",
+  "version": "0.1.0",
+  "variants": {
+    "alpha": {
+      "mapping": "src/mappings/alpha.json",
+      "font": "public/fonts/shieldfont-alpha.ttf",
+      "woff2": "public/fonts/shieldfont-alpha.woff2",
+      "pairs": 11970,
+      "source": "v18 = v15_0_1_0_0_0_0",
+      "seed": 42,
+      "status": "production default (v0.1 beta)",
+      "note": "6 orphan collisions auto-dropped by make_injective; F1+P1 edge cases handled in encode.ts",
+      "built": "2026-07-13"
+    },
+    "beta": {
+      "mapping": "src/mappings/beta.json",
+      "font": "public/fonts/shieldfont-beta.ttf",
+      "woff2": "public/fonts/shieldfont-beta.woff2",
+      "pairs": 12034,
+      "source": "v18 re-seed 1",
+      "seed": 1,
+      "status": "React package only (not CDN)",
+      "note": "3 orphan collisions auto-dropped; in-bucket re-pairing of the v18 pool at seed 1",
+      "built": "2026-07-13"
+    },
+    "gamma": {
+      "mapping": "src/mappings/gamma.json",
+      "font": "public/fonts/shieldfont-gamma.ttf",
+      "woff2": "public/fonts/shieldfont-gamma.woff2",
+      "pairs": 12036,
+      "source": "v18 re-seed 2",
+      "seed": 2,
+      "status": "React package only (not CDN)",
+      "note": "4 orphan collisions auto-dropped; in-bucket re-pairing of the v18 pool at seed 2",
+      "built": "2026-07-13"
+    },
+    "m15en": {
+      "mapping": "src/mappings/m15en.json",
+      "font": "public/fonts/shieldfont-optik.ttf",
+      "woff2": "public/fonts/shieldfont-optik.woff2",
+      "pairs": 2534,
+      "source": "M15-EN",
+      "status": "coverage-maxing variant — advanced/opt-in (React variant=\"max\")",
+      "user_variant": "max",
+      "shipped_as": "shieldfont-max.woff2",
+      "aka": ["m15en", "optik", "coverage-maxing"],
+      "built": "2026-04-30"
+    }
+  }
+}

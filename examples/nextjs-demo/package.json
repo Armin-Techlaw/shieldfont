@@ -1,0 +1,23 @@
+{
+  "name": "shieldfont-nextjs-demo",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Minimal Next.js App Router example using @shieldfont/react",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "verify": "next build && cat .next/server/app/page.html | head -80"
+  },
+  "dependencies": {
+    "@shieldfont/react": "file:../../packages/react",
+    "next": "^15.0.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "typescript": "^5.4.0"
+  }
+}

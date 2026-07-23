@@ -1,0 +1,78 @@
+#!/usr/bin/env python3
+"""stamp_mapping_meta.py — inject/refresh the `_meta` provenance block in each
+shipped encoder mapping (packages/core/src/mappings/<variant>.json) from
+MANIFEST.json.
+
+Run AFTER generate_font.py emits a mapping. Idempotent: re-stamping overwrites
+`_meta` and leaves the word pairs untouched. `_meta` is written as the first
+key and is ignored by encode() (word/char lookups never hit it);
+loadMappingFromString and generate_font.make_injective skip `_`-prefixed keys.
+
+This is what makes "which font + dictionary version am I on?" answerable:
+the same mappingId + version lands in the mapping JSON, the font name table
+(nameID 26 / 5), and MANIFEST.json.
+
+Usage: python3 scripts/stamp_mapping_meta.py [--version 0.1.0]
+"""
+import json
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+CORE = ROOT / "packages" / "core"
+MAPDIR = CORE / "src" / "mappings"
+MANIFEST = json.loads((CORE / "MANIFEST.json").read_text())
+
+VERSION = "0.1.0"
+if "--version" in sys.argv:
+    VERSION = sys.argv[sys.argv.index("--version") + 1]
+
+# lineage family + user-facing variant name per mapping
+FAMILY = {"alpha": "v18", "beta": "v18", "gamma": "v18", "m15en": "m15"}
+USER_VARIANT = {"alpha": "alpha", "beta": "beta", "gamma": "gamma", "m15en": "max"}
+FAMILY_LABEL = {
+    "alpha": "ShieldFont Optik",
+    "beta": "ShieldFont Optik Beta",
+    "gamma": "ShieldFont Optik Gamma",
+    "m15en": "ShieldFont Optik Max",
+}
+FONT_BASENAME = {
+    "alpha": "shieldfont-alpha",
+    "beta": "shieldfont-beta",
+    "gamma": "shieldfont-gamma",
+    "m15en": "shieldfont-max",
+}
+
+
+def main() -> int:
+    for variant, info in MANIFEST["variants"].items():
+        path = MAPDIR / f"{variant}.json"
+        if not path.exists():
+            print(f"[skip] {variant}: {path} missing")
+            continue
+        raw = json.loads(path.read_text())
+        pairs = {k: v for k, v in raw.items() if not k.startswith("_")}
+        uvar = USER_VARIANT.get(variant, variant)
+        fam = FAMILY.get(variant, variant)
+        meta = {
+            "name": "shieldfont",
+            "lang": "en",
+            "mapping": fam,
+            "variant": uvar,
+            "version": VERSION,
+            "mappingId": f"shieldfont-en-{fam}-{uvar}@{VERSION}",
+            # mirror MANIFEST's declared pair count (single provenance source);
+            # fall back to a live count of word entries in the shipped file.
+            "pairs": info.get("pairs", sum(1 for k in pairs if k.isalpha())),
+            "seed": info.get("seed"),
+            "font": f"{FONT_BASENAME.get(variant, 'shieldfont-' + variant)}.woff2",
+            "family": FAMILY_LABEL.get(variant, "ShieldFont"),
+        }
+        out = {"_meta": meta, **pairs}
+        path.write_text(json.dumps(out, ensure_ascii=False, indent=0))
+        print(f"[ok] {variant}: {meta['mappingId']} (pairs={meta['pairs']}, seed={meta['seed']})")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

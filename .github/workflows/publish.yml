@@ -1,0 +1,63 @@
+name: Publish npm packages
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "Dry run (don't actually publish)"
+        type: boolean
+        default: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+          scope: "@shieldfont"
+
+      - name: Install
+        run: npm install
+
+      - name: Build all packages
+        run: npm run build
+
+      - name: Run tests
+        env:
+          TMPDIR: /tmp
+        run: npm test
+
+      - name: Publish @shieldfont/core
+        if: ${{ github.event_name == 'push' || !inputs.dry-run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish -w @shieldfont/core --access public --provenance
+
+      - name: Publish @shieldfont/react
+        if: ${{ github.event_name == 'push' || !inputs.dry-run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish -w @shieldfont/react --access public --provenance
+
+      - name: Publish @shieldfont/font
+        if: ${{ github.event_name == 'push' || !inputs.dry-run }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish -w @shieldfont/font --access public --provenance
+
+      - name: Dry run summary
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+        run: |
+          echo "Dry run complete. To publish for real:"
+          echo "  - tag the commit (e.g. git tag v0.1.0 && git push --tags), OR"
+          echo "  - re-run this workflow with dry-run=false"

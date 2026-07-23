@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/isaqueseneda/shieldfont/security/advisories/new
+    about: Please report vulnerabilities privately via a security advisory, not a public issue. See SECURITY.md.
+  - name: Question or discussion
+    url: https://github.com/isaqueseneda/shieldfont/discussions
+    about: For open-ended questions, ideas, or conversations, use Discussions.
