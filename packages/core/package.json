@@ -1,7 +1,7 @@
 {
   "name": "@shieldfont/core",
   "version": "0.1.1",
-  "description": "Core encoding/decoding logic for ShieldFont — the AI-scraping-resistant web font",
+  "description": "Core encoding/decoding logic for ShieldFont, the AI-scraping-resistant web font",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -33,13 +33,25 @@
     },
     "./package.json": "./package.json"
   },
-  "files": ["dist", "src/mappings", "MANIFEST.json", "AGENTS.md", "LICENSE", "LICENSE-FONTS", "NOTICE"],
+  "files": [
+    "dist",
+    "src/mappings",
+    "MANIFEST.json",
+    "AGENTS.md",
+    "LICENSE",
+    "LICENSE-FONTS",
+    "NOTICE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json && node ../../scripts/copy-mappings.mjs",
     "test": "vitest run",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["shieldfont", "encoding", "anti-scraping"],
+  "keywords": [
+    "shieldfont",
+    "encoding",
+    "anti-scraping"
+  ],
   "license": "AGPL-3.0-or-later",
   "author": "Isaque Seneda and Gabriel Abrucio",
   "repository": {
@@ -47,7 +59,9 @@
     "url": "https://github.com/isaqueseneda/shieldfont.git",
     "directory": "packages/core"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "devDependencies": {
     "typescript": "^5.4.0",
     "vitest": "^1.6.0",

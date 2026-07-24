@@ -1,7 +1,7 @@
 {
   "name": "@shieldfont/font",
   "version": "0.1.1",
-  "description": "ShieldFont web fonts + paste-in CSS + browser encoder — the no-build / CDN distribution. Serve via jsDelivr from npm: https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css",
+  "description": "ShieldFont web fonts + paste-in CSS + browser encoder: the no-build / CDN distribution. Serve via jsDelivr from npm: https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css",
   "type": "module",
   "main": "./shieldfont-encoder.js",
   "exports": {
@@ -30,7 +30,14 @@
     "NOTICE",
     "README.md"
   ],
-  "keywords": ["shieldfont", "font", "cdn", "css", "anti-scraping", "woff2"],
+  "keywords": [
+    "shieldfont",
+    "font",
+    "cdn",
+    "css",
+    "anti-scraping",
+    "woff2"
+  ],
   "license": "AGPL-3.0-or-later",
   "author": "Isaque Seneda and Gabriel Abrucio",
   "repository": {
@@ -38,5 +45,7 @@
     "url": "https://github.com/isaqueseneda/shieldfont.git",
     "directory": "packages/font"
   },
-  "publishConfig": { "access": "public" }
+  "publishConfig": {
+    "access": "public"
+  }
 }
