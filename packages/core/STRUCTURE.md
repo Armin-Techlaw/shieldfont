@@ -12,7 +12,7 @@ for the live one.
 | `src/mappings/<variant>.json` | word/digit mapping per variant | ❌ **emitted by `scripts/generate_font.py`** |
 | `MANIFEST.json` | variant → its built font + provenance | ✅ (when a font is built) |
 | `dist/**` | compiled package | ❌ `npm run build` |
-| `../../dist/shieldfont-encoder.js` | CDN bundle | ❌ `scripts/build-encoder-cdn.sh` |
+| `../font/shieldfont-encoder.js` | CDN bundle (published as `@shieldfont/font`) | ❌ `scripts/build-encoder-cdn.sh` |
 | `../../site/public/shieldfont-encoder.js` | site copy | ❌ generated — do not hand-maintain |
 | `../../scripts/encode_site.py` | Python HTML-encoder mirror | ✅ but keep in parity with `encode.ts` |
 

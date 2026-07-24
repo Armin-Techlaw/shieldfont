@@ -1,14 +1,16 @@
 ShieldFont
 Copyright (c) 2026 Isaque Seneda and Gabriel Abrucio
 
-This product is licensed under the GNU Affero General Public License v3.0
-(see LICENSE). Font files you generate from an OFL base font (Inter, Syne
-Mono, Young Serif) are licensed under the SIL Open Font License, Version 1.1
-(see LICENSE-FONTS). The default variants shipped by this project are built
-on Optik and are licensed separately — see "Shieldfont Optik" below.
+This product's CODE is licensed under the GNU Affero General Public License
+v3.0 (see LICENSE). The default font variants shipped by this project are
+built on Optik, a proprietary typeface © Playtype, used in ShieldFont's
+shielded (word-substitution) form with Playtype's permission (see "Optik"
+below). They are NOT open-source and NOT under the SIL Open Font License.
+Font files you generate yourself from an OFL base font (e.g. Inter) are under
+the SIL Open Font License, Version 1.1 (see LICENSE-FONTS).
 
 --------------------------------------------------------------------------
-Base fonts used by the ShieldFont generator
+Base fonts used by the ShieldFont generator (for fonts you build yourself)
 --------------------------------------------------------------------------
 
 - Inter (https://rsms.me/inter) — SIL Open Font License 1.1
@@ -26,29 +28,30 @@ Base fonts used by the ShieldFont generator
 - Datatype — bundled for experimentation. Licensing per upstream;
   contributors should verify before redistribution.
 
-ShieldFont is a derivative work that does not use the Reserved Font
-Names of any base font. Rendering is modified via injected OpenType
-GSUB ligature rules; glyph outlines from each base font remain intact.
+A ShieldFont built from these OFL base fonts is a derivative work that does
+not use their Reserved Font Names. Rendering is modified via injected
+OpenType GSUB ligature rules; glyph outlines from each base font remain
+intact.
 
 --------------------------------------------------------------------------
-Shieldfont Optik — the shipped default variants (alpha, beta, gamma, max)
+Optik — the typeface behind the shipped default variants
 --------------------------------------------------------------------------
 
-The default font variants this project ships (shieldfont-alpha / -beta /
--gamma / -max) are built on Optik, a commercial typeface by Playtype
-<https://playtype.com>, and are distributed with Playtype's permission for
-use as part of ShieldFont.
+The default variants this project ships (the shieldfont-alpha / -beta /
+-gamma / -maxhide downloads and the CDN/React optik-* builds) are built on
+Optik, a proprietary typeface © Playtype <https://playtype.com>. Optik is
+NOT open-source and NOT under the SIL Open Font License.
 
-These font files contain Optik's letterforms and render them as any font
-would. The permission covers using them to run ShieldFont's word-substitution
-rendering — NOT use of Optik as a general-purpose typeface. You may not
-extract, re-package, or use the underlying Optik typeface on its own; that
-falls outside this permission and remains subject to Playtype's own license.
-To use Optik as a typeface, obtain it from Playtype <https://playtype.com>.
+  Playtype permits ShieldFont to ship Optik in this shielded,
+  word-substitution form. The glyph outlines are the original Optik; only the
+  decoy glyph names and the font's own metadata (family/version) are altered.
+  This permission covers the Optik-derived variants distributed with
+  ShieldFont. Optik itself remains © Playtype and is not offered under an
+  open-source license — do not extract or redistribute the Optik outlines
+  outside ShieldFont.
 
-The Optik-based variants are NOT covered by the SIL Open Font License or
-LICENSE-FONTS. Those OFL terms apply only to variants you build from the OFL
-base fonts (Inter, Syne Mono, Young Serif) via scripts/generate_font.py.
+The SIL Open Font License (LICENSE-FONTS) applies only to variants you build
+yourself from an OFL base font (e.g. Inter) via scripts/generate_font.py.
 
 --------------------------------------------------------------------------
 Supporters

@@ -37,10 +37,12 @@ Usage:
 
 import json
 import os
+import re
 import sys
 import argparse
 import zipfile
 import io
+import hashlib
 import requests
 from pathlib import Path
 
@@ -826,15 +828,93 @@ def build_gsub_ligatures_merged(font, ligature_map):
         print(f"[OK] Built new GSUB with {len(ligature_map)} ligature rules")
 
 
+def derive_family(font):
+    """Read the BASE font's own family name from its name table.
+
+    Tries the typographic family (nameID 16) first, then the legacy family
+    (nameID 1); prefers the Windows/Unicode record, falls back to the Mac
+    record. Returns the trimmed name, or None if the name table has neither.
+
+    This is what makes "turn any font into a shieldfont" literal: with no
+    --name, the OUTPUT family carries the INPUT font's own name (that's why the
+    flagship reads 'Optik' — it's the base's name, not a hardcoded string).
+    MUST be read BEFORE the rename block overwrites these records.
+    """
+    if "name" not in font:
+        return None
+    name = font["name"]
+    for nid in (16, 1):  # typographic family, then legacy family
+        rec = name.getName(nid, 3, 1, 0x409) or name.getName(nid, 1, 0, 0)
+        if rec is None:
+            continue
+        try:
+            text = rec.toUnicode()
+        except Exception:
+            text = str(rec)
+        text = (text or "").strip()
+        if text:
+            return text
+    return None
+
+
+def slugify(name):
+    """Turn a family name into a filesystem/URL-safe output prefix.
+
+    'Optik' -> 'optik', 'Young Serif' -> 'young-serif'. Falls back to
+    'shieldfont' if the name has no alphanumerics.
+    """
+    slug = re.sub(r"[^a-z0-9]+", "-", (name or "").lower()).strip("-")
+    return slug or "shieldfont"
+
+
+def warn_if_ofl_rfn(font, family_name):
+    """Warn (do NOT block) when building on an OFL base under its own name.
+
+    Many OFL fonts (Inter included) declare a Reserved Font Name; shipping a
+    modified font under the base's exact family name violates OFL §1. Detection
+    is cheap and imperfect — we scan the license description / URL nameIDs.
+    Only called when --name was auto-derived (an explicit --name is the user's
+    deliberate choice and needs no warning).
+    """
+    if "name" not in font:
+        return
+    name = font["name"]
+    license_text = ""
+    for nid in (13, 14):  # License Description, License URL
+        rec = name.getName(nid, 3, 1, 0x409) or name.getName(nid, 1, 0, 0)
+        if rec is None:
+            continue
+        try:
+            license_text += " " + rec.toUnicode()
+        except Exception:
+            license_text += " " + str(rec)
+    lt = license_text.lower()
+    if "open font license" in lt or "scripts.sil.org/ofl" in lt or "openfontlicense" in lt:
+        print(
+            f"[WARN] Base font looks OFL-licensed and you did not pass --name: its family "
+            f"name '{family_name}' may be a Reserved Font Name. Shipping a modified font "
+            f"under it can violate OFL §1 — rerun with --name \"{family_name} Shielded\" "
+            f"(or another distinct name) to be safe."
+        )
+
+
 def main():
     parser = argparse.ArgumentParser(description="Generate ShieldFont variant")
     parser.add_argument("--base-url", help="Google Fonts download URL (or use --base-path)")
     parser.add_argument("--base-path", help="Path to a local TTF/OTF file (alternative to --base-url)")
     parser.add_argument("--cache-name", help="Filename for cached base font (required with --base-url)")
-    parser.add_argument("--name", required=True, help="Font family name (e.g. 'ShieldFont Datatype')")
-    parser.add_argument("--prefix", required=True, help="Output file prefix (e.g. 'shieldfont-datatype')")
+    parser.add_argument("--name", help="Font family name written into the output "
+                        "(e.g. 'ShieldFont Datatype'). OPTIONAL — when omitted, the "
+                        "family name is derived from the BASE font's own name table "
+                        "(nameID 16, then 1), so the input font's name carries through.")
+    parser.add_argument("--prefix", help="Output file prefix → public/fonts/<prefix>.{ttf,woff2,css}. "
+                        "OPTIONAL — when omitted, it is a slug of the (derived or given) family name.")
     parser.add_argument("--copyright", default="Modified as ShieldFont.", help="Copyright notice")
     parser.add_argument("--mapping-path", help="Path to a custom word mapping JSON (default: scripts/word_mapping.json)")
+    parser.add_argument("--mapping-out", help="Stem for the emitted encoder mapping JSON under "
+                        "packages/core/src/mappings/ (default: prefix minus 'shieldfont-'). Use to "
+                        "decouple the encoder mapping filename from the font basename, e.g. build "
+                        "shieldfont-maxhide.* while emitting the mapping to m15en.json.")
     args = parser.parse_args()
     if not args.base_url and not args.base_path:
         parser.error("Must provide either --base-url or --base-path")
@@ -843,7 +923,7 @@ def main():
         MAPPING_PATH = Path(args.mapping_path)
 
     print("=" * 60)
-    print(f"ShieldFont Variant Generator: {args.name}")
+    print(f"ShieldFont Variant Generator: {args.name or '(name auto-derived from base font)'}")
     print("=" * 60)
 
     # Download base font (or use local path)
@@ -856,6 +936,26 @@ def main():
     else:
         font_path = download_font(args.base_url, args.cache_name)
 
+    # Load the base font first — we read its own name table to derive the output
+    # family name (and prefix) when the user didn't pass --name/--prefix.
+    print(f"[..] Loading font from {font_path}")
+    font = TTFont(str(font_path))
+
+    # Derive --name / --prefix from the base font when not given explicitly.
+    # Read the base name table NOW, before the rename block far below overwrites
+    # those records. An explicit --name / --prefix always wins.
+    name_was_explicit = args.name is not None
+    if not args.name:
+        args.name = derive_family(font) or font_path.stem
+        print(f"[OK] Derived family name from base font: '{args.name}'")
+    if not args.prefix:
+        args.prefix = slugify(args.name)
+        print(f"[OK] Derived output prefix from family name: '{args.prefix}'")
+    if not name_was_explicit:
+        # OFL Reserved-Font-Name landmine: warn (never block) before shipping a
+        # modified font under an OFL base's own name.
+        warn_if_ofl_rfn(font, args.name)
+
     # Load mapping
     mapping = load_mapping()
 
@@ -863,23 +963,34 @@ def main():
     # different real word (see make_injective). Keeps the font unambiguous.
     mapping = make_injective(mapping)
 
-    # Emit the injective mapping for the encoder — SINGLE SOURCE OF TRUTH. The
-    # encoder consumes exactly what the font was built from, so the two can never
-    # diverge (this closes the "make_injective not run at encoder build" gap).
+    # Emit the injective mapping for the encoder — SINGLE SOURCE OF TRUTH.
+    # make_injective may have DROPPED colliding pairs, so the encoder MUST use
+    # EXACTLY what the font was built from; encoding with the original input JSON
+    # would render every dropped word as the WRONG real word. ALWAYS write
+    # <prefix>.map.json next to the font output — this is the file a
+    # Bring-Your-Own-Font user (outside this monorepo) must encode with,
+    # independent of the packages/core path below.
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    map_out_path = OUTPUT_DIR / f"{args.prefix}.map.json"
     try:
-        variant = args.prefix.replace("shieldfont-", "") or args.prefix
+        map_out_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=0))
+        print(f"[OK] Emitted encoder mapping (SINGLE SOURCE OF TRUTH — encode ONLY "
+              f"with this file): {map_out_path} ({len(mapping)} entries)")
+    except Exception as e:
+        print(f"[WARN] Could not emit encoder mapping to {map_out_path}: {e}")
+
+    # In the monorepo, ALSO refresh the bundled encoder mapping so
+    # @shieldfont/core stays in sync with the font we just built.
+    try:
+        variant = (args.mapping_out or args.prefix.replace("shieldfont-", "")) or args.prefix
         enc_dir = PROJECT_DIR / "packages" / "core" / "src" / "mappings"
         if enc_dir.exists():
             enc_path = enc_dir / f"{variant}.json"
             enc_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=0))
-            print(f"[OK] Emitted encoder mapping (single source of truth): "
+            print(f"[OK] Emitted encoder mapping (monorepo bundled encoder): "
                   f"{enc_path} ({len(mapping)} entries)")
     except Exception as e:
-        print(f"[WARN] Could not emit encoder mapping: {e}")
-
-    # Load font
-    print(f"[..] Loading font from {font_path}")
-    font = TTFont(str(font_path))
+        print(f"[WARN] Could not emit monorepo encoder mapping: {e}")
 
     # Handle variable fonts
     if "fvar" in font:
@@ -974,7 +1085,14 @@ def main():
         print(f"[OK] Single-char substitutions ready: {len(single_subst_map)} pairs (e.g., digits)")
 
     for original_word, encoded_word in multichar_mapping.items():
-        safe_name = "word." + "".join(c if c.isalnum() else "_" for c in original_word)
+        # SECURITY: never put the plaintext original word in the glyph name. The
+        # glyph-name table ships inside the font, so a readable name hands over the
+        # whole codebook with zero GSUB parsing (RED-TEAM-FINDINGS.md §2 — full
+        # dictionary recovered in <1 min). Use an opaque, deterministic hash;
+        # audit_font.py.expected_glyph() mirrors this exact formula. NOTE: this only
+        # raises the bar — the composite outlines still equal the original word and
+        # remain OCR/GSUB-recoverable. It is not "protection," just friction.
+        safe_name = "word." + hashlib.sha1(original_word.encode("utf-8")).hexdigest()[:16]
         if safe_name in font.getGlyphOrder():
             safe_name = safe_name + ".lig"
 
@@ -1096,7 +1214,7 @@ def main():
        url('{args.prefix}.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
-  font-display: swap;
+  font-display: block;
 }}
 """)
     print(f"[OK] Saved CSS: {css_path}")
@@ -1104,8 +1222,9 @@ def main():
     print()
     print("=" * 60)
     print(f"DONE! {args.name}")
-    print(f"  Files: {ttf_path.name}, {woff2_path.name}, {css_path.name}")
+    print(f"  Files: {ttf_path.name}, {woff2_path.name}, {css_path.name}, {map_out_path.name}")
     print(f"  Ligatures: {success_count}")
+    print(f"  Encode ONLY with: {map_out_path}")
     print("=" * 60)
 
 

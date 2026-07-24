@@ -13,8 +13,7 @@ export type Mapping = Record<string, string>;
 
 /**
  * Identifies a specific mapping at a specific version. Used in font name
- * tables (nameID 26) and in CDN URLs, and to verify encoder/font
- * compatibility.
+ * tables (nameID 26), in CDN URLs, and to verify encoder/font compatibility.
  */
 export interface MappingId {
   /** ISO 639-1 language code, e.g. "en", "pt", "es". */

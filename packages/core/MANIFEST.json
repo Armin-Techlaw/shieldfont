@@ -37,15 +37,15 @@
     },
     "m15en": {
       "mapping": "src/mappings/m15en.json",
-      "font": "public/fonts/shieldfont-optik.ttf",
-      "woff2": "public/fonts/shieldfont-optik.woff2",
+      "font": "public/fonts/shieldfont-maxhide.ttf",
+      "woff2": "public/fonts/shieldfont-maxhide.woff2",
       "pairs": 2534,
       "source": "M15-EN",
-      "status": "coverage-maxing variant — advanced/opt-in (React variant=\"max\")",
-      "user_variant": "max",
-      "shipped_as": "shieldfont-max.woff2",
-      "aka": ["m15en", "optik", "coverage-maxing"],
-      "built": "2026-04-30"
+      "status": "coverage-maxing variant — advanced/opt-in (React variant=\"maxhide\"), kept low-key in docs",
+      "user_variant": "maxhide",
+      "shipped_as": "shieldfont-maxhide.woff2",
+      "aka": ["m15en", "maxhide", "coverage-maxing"],
+      "built": "2026-07-24"
     }
   }
 }

@@ -91,3 +91,9 @@ site/out/
 
 # Root-level Next.js build cache (only site/ should hold Next state)
 /.next/
+
+# Retail Optik masters — Playtype proprietary; never commit to a public repo (kept on disk for local render/deploy only)
+site/public/fonts/optik/
+
+# Local-only working files (never commit) — e.g. RECONCILE-MANIFEST.local.md, TODO-BEFORE-RELEASE.local.md
+*.local.md

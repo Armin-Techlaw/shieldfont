@@ -4,7 +4,7 @@
  * https://github.com/isaqueseneda/shieldfont   License: AGPL-3.0
  *
  * Usage (ESM):
- *   import { encode, decode, alpha } from ".../dist/shieldfont-encoder.js";
+ *   import { encode, decode, alpha } from "https://cdn.jsdelivr.net/npm/@shieldfont/font/shieldfont-encoder.js";
  *   const encoded = encode("Take 3 tablets", alpha);   // render with the alpha font
  *
  * Handles accented words (P1) and letter-flanked digits (F1) — see encode.ts.

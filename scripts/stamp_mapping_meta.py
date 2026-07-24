@@ -36,11 +36,14 @@ FAMILY_LABEL = {
     "gamma": "ShieldFont Optik Gamma",
     "m15en": "ShieldFont Optik Max",
 }
+# Neutral cdn/react-tier woff2 basenames — what @shieldfont/react + @shieldfont/font
+# actually ship, so the deployed @font-face src URL carries no "shieldfont" tell.
+# (The download tier keeps branded shieldfont-*.woff2/.ttf names, separately.)
 FONT_BASENAME = {
-    "alpha": "shieldfont-alpha",
-    "beta": "shieldfont-beta",
-    "gamma": "shieldfont-gamma",
-    "m15en": "shieldfont-max",
+    "alpha": "optik-a",
+    "beta": "optik-b",
+    "gamma": "optik-c",
+    "m15en": "optik-m",
 }
 
 
@@ -65,7 +68,7 @@ def main() -> int:
             # fall back to a live count of word entries in the shipped file.
             "pairs": info.get("pairs", sum(1 for k in pairs if k.isalpha())),
             "seed": info.get("seed"),
-            "font": f"{FONT_BASENAME.get(variant, 'shieldfont-' + variant)}.woff2",
+            "font": f"{FONT_BASENAME.get(variant, 'optik-' + variant)}.woff2",
             "family": FAMILY_LABEL.get(variant, "ShieldFont"),
         }
         out = {"_meta": meta, **pairs}

@@ -23,14 +23,16 @@ URL is pinned to whatever it pasted.
 
 ## Three steps
 
-1. **Encode** your text — the page source must hold the decoy words. Use
-   <https://shieldfont.org/encoder> or `@shieldfont/core`'s `encode()` at build time.
+1. **Encode** your text — the page source must hold the decoy words. Use the web
+   encoder at <https://shieldfont.org/encoder>, or `encode()` from
+   [`@shieldfont/core`](https://www.npmjs.com/package/@shieldfont/core) in a build step.
 2. **Add** the CSS above.
-3. **Wrap** the encoded text: `<p class="shield">…encoded…</p>`.
+3. **Wrap** the encoded text: `<p class="tk9">…encoded…</p>`.
 
-`.shield` renders the default **alpha** variant (what the web encoder emits).
-`.shield-beta` / `.shield-gamma` / `.shield-max` pin the other variants if you
-encoded with one of them.
+`.tk9` renders the default **alpha** variant (what the web encoder emits).
+`.tk9-b` / `.tk9-c` / `.tk9-m` pin the other variants (beta / gamma / maxhide) if you
+encoded with one of them. The class is a neutral token — rename it in your own CSS if
+you like.
 
 ## In-browser encoder (optional)
 
@@ -63,8 +65,7 @@ share the same `0.1.0`.
 
 ## License
 
-Code: **AGPL-3.0-or-later** (`LICENSE`). The bundled default fonts are built on
-Optik, a commercial Playtype typeface distributed with permission for use as
-part of ShieldFont — **not** under OFL, and not for standalone use as a
-typeface. The **SIL OFL 1.1** (`LICENSE-FONTS`) applies only to fonts you build
-yourself from the OFL base fonts (Inter, Syne Mono, Young Serif). See `NOTICE`.
+Code: **AGPL-3.0-or-later** (`LICENSE`). Fonts: **Optik — © Playtype, used under
+the ShieldFont–Playtype partnership** — the bundled default variants are **not**
+under OFL (see `NOTICE`). SIL OFL 1.1 (`LICENSE-FONTS`) applies only to fonts you
+build yourself from the OFL base fonts.

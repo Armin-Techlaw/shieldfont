@@ -105,7 +105,7 @@ encode("hello world", mine);
 
 ⚠️ **A custom mapping needs a *matching* font.** The font renders each decoy back
 by the pairing baked in at font-build time, so the shipped `alpha`/`beta`/`gamma`/
-`max` fonts render only their own pairs. To mint a private mapping + font, run
+`maxhide` fonts render only their own pairs. To mint a private mapping + font, run
 `scripts/reseed_mapping.py --seed <n>` (re-pairs the v18 pool at your seed), then
 build the matching font with `generate_font.py`. See `docs/custom-mappings.md`.
 
@@ -119,8 +119,9 @@ design (a short sentence may change only ~2 of ~11 words).
 
 ## License
 
-AGPL-3.0-or-later. Fonts you generate from the OFL base fonts (Inter, Syne
-Mono, Young Serif) ship under the SIL Open Font License 1.1. The project's
-shipped default variants are built on Optik, a commercial Playtype typeface
-distributed with permission for use as part of ShieldFont — not under OFL, and
-not for standalone use as a typeface. See [NOTICE](./NOTICE).
+AGPL-3.0-or-later. The project's shipped default variants are built on
+**Optik**, a proprietary typeface © Playtype, used in ShieldFont's shielded
+(word-substitution) form with Playtype's permission — **not** under OFL, and
+not for standalone use as a typeface. Fonts you generate yourself from the OFL
+base fonts (Inter, Syne Mono, Young Serif) ship under the SIL Open Font
+License 1.1. See [NOTICE](./NOTICE).

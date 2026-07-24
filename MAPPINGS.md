@@ -23,17 +23,17 @@ details, charts, and reproducible numbers see the [V4 white paper](https://s-a.w
 > | **`alpha`** *(default)* | v18 | **11,970** | 42 | CDN, `@shieldfont/core`, `@shieldfont/react` default |
 > | **`beta`** | v18 re-seed | 12,034 | 1 | React auto-rotation pool |
 > | **`gamma`** | v18 re-seed | 12,036 | 2 | React auto-rotation pool |
-> | **`max`** | **M15-EN** | 1,267 | — | opt-in only (React `variant="max"`) |
+> | **`maxhide`** | **M15-EN** | 1,267 | — | opt-in only (React `variant="maxhide"`) |
 >
-> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; pair counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `max` variant** — it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
+> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; pair counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `maxhide` variant** — it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
 >
-> **Everything below is the M0 → M15 research journey that produced M15-EN (now `max`).** It is kept as history — v18 `alpha` descends from this line. When this document and a shipped mapping's `_meta` / `MANIFEST.json` disagree, the shipped artifacts win.
+> **Everything below is the M0 → M15 research journey that produced M15-EN (now `maxhide`).** It is kept as history — v18 `alpha` descends from this line. When this document and a shipped mapping's `_meta` / `MANIFEST.json` disagree, the shipped artifacts win.
 
 ---
 
-## The M15-EN mapping — now the opt-in `max` variant
+## The M15-EN mapping — now the opt-in `maxhide` variant
 
-*(Historical: M15-EN was the V3 production champion. It now ships as the `max` variant; the production default is v18 `alpha` — see the note above.)*
+*(Historical: M15-EN was the V3 production champion. It now ships as the `maxhide` variant; the production default is v18 `alpha` — see the note above.)*
 
 | File | Pairs | Coverage on real Wikipedia text | KenLM-Wiki PPL | H2 damage |
 |---|---|---|---|---|
@@ -117,9 +117,9 @@ repository and is **not** included in this lean release.
 
 | File | What it is |
 |---|---|
-| `packages/core/src/mappings/{alpha,beta,gamma,m15en}.json` | **The shipped mappings**, each with a `_meta` provenance block. `alpha` (v18, 11,970 pairs, seed 42) is the production default; `beta`/`gamma` are its re-seeds; `m15en` is the `max` variant. |
+| `packages/core/src/mappings/{alpha,beta,gamma,m15en}.json` | **The shipped mappings**, each with a `_meta` provenance block. `alpha` (v18, 11,970 pairs, seed 42) is the production default; `beta`/`gamma` are its re-seeds; `m15en` is the `maxhide` variant. |
 | `scripts/v18{alpha,beta,gamma}_for_font.json` | Font-build inputs for the v18 α/β/γ variants (what `generate_font.py` consumes to emit the shipped fonts). |
-| `scripts/m15en_for_font.json` | The **M15-EN** dictionary — full M15-EN with shorts + digits (1,267 pairs). Now shipped as the opt-in **`max`** variant (React `variant="max"`); no longer the default (see the note at the top). |
+| `scripts/m15en_for_font.json` | The **M15-EN** dictionary — full M15-EN with shorts + digits (1,267 pairs). Now shipped as the opt-in **`maxhide`** variant (React `variant="maxhide"`); no longer the default (see the note at the top). |
 | `legacy/scripts/m15en_safe.json` *(dev repo)* | Historical: M15-EN filtered to ≥4-char pairs (1,138 pairs). Was the v2.0.0 production mapping; kept for forensic reproducibility. |
 | `legacy/scripts/m0_word_mapping.json` *(dev repo)* | Original 400-pair M0 mapping. Kept for reproducibility of pre-V3 builds. |
 | `benchmarks/v3/mappings/m*.json` *(dev repo)* | All 16 mappings (M0..M15) used in the benchmark. The full study data. |

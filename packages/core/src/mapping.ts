@@ -24,7 +24,7 @@ export function loadMappingFromString(json: string): Mapping {
 /**
  * Best-effort identity parser. Reads `_meta` if present in the JSON,
  * else returns null. Use it to compare the encoder's mapping against a
- * font's nameID 26 metadata (encoder/font compatibility check).
+ * font's nameID 26 metadata (encoder/font pairing check).
  */
 export function parseMappingId(json: string): MappingId | null {
   try {

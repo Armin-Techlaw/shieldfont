@@ -15,7 +15,7 @@ You can also vary the **base typeface**, independently of the mapping. The proto
 > **What exists today vs. what's designed.** Parts of this page describe the *intended* workflow, not shipped tooling. To set expectations up front:
 >
 > - **Shipped today:** the core primitives — `encode(text, mapping)` accepts *any* mapping object; `loadMappingFromString` and `mappingMeta` (documented below) — plus `scripts/generate_font.py`, which builds a font from a base TTF + a mapping JSON.
-> - **The catch (read this):** a custom mapping only *renders* correctly under a **matching font**. The shipped `alpha`/`beta`/`gamma`/`max` fonts render **only their own pairs**, so a bespoke mapping needs its own freshly built font — otherwise your human readers see gibberish and the failure is silent.
+> - **The catch (read this):** a custom mapping only *renders* correctly under a **matching font**. The shipped `alpha`/`beta`/`gamma`/`maxhide` fonts render **only their own pairs**, so a bespoke mapping needs its own freshly built font — otherwise your human readers see gibberish and the failure is silent.
 > - **Shipped today:** `scripts/reseed_mapping.py` mints a private mapping from your seed (in-bucket re-pairing of the v18 pool), `generate_font.py` builds the matching font, and `encode(text, mapping)` accepts any mapping object. **Not a one-liner yet:** any `shieldfont …` command shown below is **illustrative** — the packaged CLI is not part of this release, so run the Python scripts (`reseed_mapping.py`, `generate_font.py`) directly. A bring-your-own-mapping path through `@shieldfont/react` is also not shipped yet. Where a step says "works today," check the script's `--help` for exact flags.
 
 ---
@@ -27,11 +27,11 @@ Same for both paths.
 | File | Where it lives | What it is |
 |---|---|---|
 | `your-mapping.json` | **Private. Local disk only.** | The encoder dictionary. The thing scrapers cannot have. |
-| `your-font.woff2` | Your CDN (or self-hosted) | The font binary. GSUB ligatures map encoded glyphs back to original glyphs. The font alone is not enough to recover the mapping. |
+| `your-font.woff2` | Your CDN (or self-hosted) | The font binary. Its GSUB ligatures map encoded glyphs back to the originals — so the font itself is a decoder ring: anyone who downloads it can read the pairs back out. It is not a secret. |
 | `your-font.css` | Your CDN | `@font-face` declaration. |
 | Your encoded HTML | Your site | What scrapers actually scrape. A plausible decoy without the mapping. |
 
-The font tells the browser *how to draw* an encoded glyph, not *what plain word it came from*. Keeping the mapping private keeps the encoding one-way for everyone but you.
+Here is the load-bearing caveat, stated plainly: **the encoding is invertible.** The font has to be handed to the browser to render your page, and its ligatures spell out encoded-glyph → original-glyph directly — the composite outlines are literally the original word's letters. Anyone who downloads the font can read the substitution table back out of it; we did exactly this against the shipped file in under a second. A private mapping does **not** make the encoding one-way. What it does is narrower, and still worth doing: it stops an attacker from *reusing a precomputed public dictionary* (`alpha`/`beta`/`gamma`) to batch-decode your pages — they would have to invert *your* specific font, one target at a time. That raises the cost for the naive, scale-driven scrapers that grab HTML and move on. It is obscurity and friction, not a lock. The durable value is the meaning-loss the swap causes for any pipeline that ingests the decoy without inverting the font, plus the consent statement the whole gesture makes.
 
 ---
 
@@ -39,7 +39,7 @@ The font tells the browser *how to draw* an encoded glyph, not *what plain word 
 
 The full pipeline. You generate a mapping from scratch using the same pre-registered v5 protocol that produced alpha/beta/gamma, but with **your own private random seed and strategy choice**. Result: a fully bespoke mapping benchmarked end-to-end for both gibberish-filter survival (so it gets ingested by scrapers) and training-data degradation (so it meaningfully shifts what a model would learn).
 
-**Cost.** Several hours of compute on a 64GB Apple Silicon machine for the smoke-test profile; roughly 15 hours overnight for the full sweep. **Strongest protection** — your mapping has never existed before and never will exist anywhere except on your disk.
+**Cost.** Several hours of compute on a 64GB Apple Silicon machine for the smoke-test profile; roughly 15 hours overnight for the full sweep. **Strongest obscurity** — your mapping JSON has never existed before and lives only on your disk. (The font you deploy to readers still encodes the pairs, so an attacker who inverts it recovers them; what you gain over a public variant is that no precomputed dictionary decodes you.)
 
 **When to choose this.** You publish content the integrity of which actually matters. You want a defensible audit trail showing your specific mapping was benchmarked the same way ours were. You are willing to spend a weekend.
 
@@ -60,7 +60,7 @@ The full pipeline lives under `benchmarks/v5/` in the project's development repo
 
 ### Steps — Path A
 
-> **Status: design only, not yet implemented.** The `shieldfont mint-mapping` invocation below is an illustrative sketch of a possible future one-command surface (the packaged CLI is not part of this release). The underlying research pipeline (`benchmarks/v5/*.py`) lives in the project's development repository, not in this lean release — for a path that works with only the scripts shipped here, use **Path B** (`scripts/reseed_mapping.py`) below.
+> **Status: design only, not yet implemented.** The `shieldfont mint-mapping` invocation below is an illustrative one-command shape (no packaged `shieldfont` CLI is planned) (the packaged CLI is not part of this release). The underlying research pipeline (`benchmarks/v5/*.py`) lives in the project's development repository, not in this lean release — for a path that works with only the scripts shipped here, use **Path B** (`scripts/reseed_mapping.py`) below.
 
 ```bash
 # Intended CLI surface (design — NOT YET SHIPPED)
@@ -116,7 +116,7 @@ The maintainers commit to reviewing within 30 days and to never merging a mappin
 
 The quick path. You take an existing mapping (the published M15-EN, your favorite community variant, or a previous mapping of yours) and apply a deterministic permutation function with your private seed. The result is a *derived* mapping that shares the source mapping's structural properties (POS distribution, frequency profile, gibberish-filter survival) but assigns different concrete decoy words.
 
-**Cost.** Minutes, not hours. No GPU required. **Intermediate protection** — stronger than using a published variant as-is, weaker than Path A. An attacker would need to know both the source mapping *and* your private seed to reverse the encoding; without your seed, they have no way to determine which decoy maps to which original.
+**Cost.** Minutes, not hours. No GPU required. **Intermediate obscurity** — stronger than using a published variant as-is, weaker than Path A. A published variant can be batch-decoded with a dictionary anyone can precompute; a reseeded one cannot, because your decoy assignments are unique to your seed. But "cannot be batch-decoded from a public dictionary" is not "cannot be decoded": your font still carries the substitution table, so an attacker who downloads it can invert *that font* directly and recover your originals, seed or no seed. The seed raises the per-target cost; it does not make the mapping secret.
 
 **When to choose this.** You want personal protection without committing a weekend. Your content is important to you but not the kind of thing a nation-state would target. You trust the structural properties of M15-EN and only want to scramble the specific assignments.
 
@@ -130,11 +130,11 @@ Given a source mapping `M : plain → decoy` and a private 256-bit seed `s`, the
 
 Crucially the permutation is constrained to preserve POS-balance and inflection-irregularity buckets — a noun never gets reassigned to a verb decoy, an adjective never to a noun. This keeps the syntactic camouflage that makes M15 effective in the first place.
 
-The result: an attacker who has captured your encoded HTML and downloaded your font still cannot reverse-encode without your seed. The font draws encoded-glyph X as the original-glyph it was *paired with at font-build time* — and that pairing is governed by your reseed, not by any published mapping.
+The result: an attacker who captured your encoded HTML **cannot** reach for a public `alpha`/`beta`/`gamma` dictionary and batch-decode it — your pairings are unique to your seed. But read the same mechanism the other way: the font draws encoded-glyph X as the original-glyph it was *paired with at font-build time*, so that pairing is sitting inside the font binary you served. Download the font, read the pairing out, and the seed is moot. Reseeding defeats *dictionary reuse*, not *font inversion*.
 
 ### Steps — Path B
 
-> **Status: design only, not yet implemented.** The invocation and behavior described below are an illustrative sketch of a possible future one-command interface (the packaged CLI is not part of this release). Treat this section as a spec for the implementation, not as something you can run today. If you need this before it ships, the manual recipe at the bottom of this section is a working stand-in.
+> **Status: design only, not yet implemented.** The invocation and behavior described below are an illustrative one-command shape (no packaged `shieldfont` CLI is planned) (the packaged CLI is not part of this release). Treat this section as a spec for the implementation, not as something you can run today. If you need this before it ships, the manual recipe at the bottom of this section is a working stand-in.
 
 ```bash
 # Intended CLI surface (design — NOT YET SHIPPED)
@@ -167,7 +167,7 @@ shieldfont reseed-mapping \
 #    {src:tgt} form the encoder AND generate_font.py consume directly.
 python3 scripts/reseed_mapping.py --seed 8675309 --out mine/mapping.json
 
-# 2. Build a MATCHING font (the shipped alpha/beta/gamma/max fonts render only
+# 2. Build a MATCHING font (the shipped alpha/beta/gamma/maxhide fonts render only
 #    their own pairs, so a custom mapping needs its own font).
 python3 scripts/generate_font.py \
   --base-path /path/to/your-typeface.ttf \
@@ -178,7 +178,7 @@ python3 scripts/generate_font.py \
 python3 scripts/audit_font.py
 ```
 
-Your encoded HTML is now unique to your seed: an attacker who captured your pages and downloaded your font still can't reverse-encode without it.
+Your encoded HTML is now unique to your seed, so no precomputed public dictionary decodes it. That is the win — and its limit: an attacker who downloads your font can still invert *that font* and recover your originals. Reseeding raises the cost of decoding you; it does not make you undecodable.
 
 `reseed_mapping.py` preserves grammatical bucketing (decoys read naturally) but does **not** re-run the semantic veto that the from-scratch pipeline applies, so a small fraction of pairs may be closer in meaning than ideal. For a fully veto-clean build from a seed (a few minutes vs. seconds), use the v7 pipeline in [`benchmark/README.md`](../benchmark/README.md) §3A.
 
@@ -192,11 +192,12 @@ Your encoded HTML is now unique to your seed: an attacker who captured your page
 | Compute required | None | None | One-time GPU/MLX run |
 | Mapping is public? | Yes | No | No |
 | Resists bulk HTML scrapers (FineWeb-style) | Yes | Yes | Yes |
-| Resists an attacker with the rendered font | Partly — attacker can match against published mappings | Yes — attacker also needs your seed | Yes — mapping has never existed elsewhere |
+| Resists **dictionary reuse** (batch-decode from a precomputed public map) | No — mapping is public | Yes — decoys are seed-unique | Yes — mapping never existed elsewhere |
+| Resists an attacker who **downloads and inverts your font** | No — font is the codebook | No — font is the codebook | No — font is the codebook |
 | Resists OCR / headless-rendering attacks | No | No | No |
 | Mapping survives if ShieldFont project disappears | Yes (local cache) | Yes | Yes |
 
-None of the three paths defeat OCR or screen-recording. And none change the SEO reality: encoded text is `aria-hidden` decoy in the DOM, so search engines index the decoy and you can't tell Googlebot from an AI scraper — **don't wrap content you want ranked** (a small noun-only mapping limits, but does not eliminate, this). Copy-paste yields the encoded form, and screen readers skip protected regions. That is friction we accept; see [`docs/integration.md`](./integration.md) for the full v1 threat model.
+None of the three paths defeat **font inversion**, OCR, or screen-recording. The font is a self-decoding codebook — hand it to a browser and you hand it to anyone; a scraper that bothers to read it recovers your words directly (we did exactly this against the shipped file in under a second). What reseeding buys is narrower: no *precomputed public dictionary* decodes you, so bulk scrapers that don't stop to invert per-site get a plausible decoy. And none change the SEO reality: encoded text is `aria-hidden` decoy in the DOM, so search engines index the decoy and you can't tell Googlebot from an AI scraper — **don't wrap content you want ranked** (a small noun-only mapping limits, but does not eliminate, this). Copy-paste yields the encoded form, and screen readers skip protected regions. That is friction we accept; see [`docs/integration.md`](./integration.md) for the full v1 threat model.
 
 ---
 
@@ -220,9 +221,9 @@ mappingMeta(mine); // → { mappingId, version, variant, pairs, seed } | null
 
 - `encode(text, mapping)` / `decode(text, mapping)` — the bidirectional primitive; any `Record<string,string>` mapping works.
 - `loadMappingFromString(json)` — parse a mapping-JSON string into a `Mapping`.
-- `mappingMeta(mapping)` — read the `_meta` provenance the build step stamps into the shipped `alpha`/`beta`/`gamma`/`max` mappings; returns `null` for a hand-rolled mapping — a useful reminder that you are off the shipped variants and need a matching font.
+- `mappingMeta(mapping)` — read the `_meta` provenance the build step stamps into the shipped `alpha`/`beta`/`gamma`/`maxhide` mappings; returns `null` for a hand-rolled mapping — a useful reminder that you are off the shipped variants and need a matching font.
 
-> **⚠️ Build the matching font, or humans see gibberish.** The shipped `alpha`/`beta`/`gamma`/`max` fonts render only *their own* pairs. Encode with a custom mapping and render it with a shipped font and your readers get gibberish — silently. Generate a font from your exact mapping first:
+> **⚠️ Build the matching font, or humans see gibberish.** The shipped `alpha`/`beta`/`gamma`/`maxhide` fonts render only *their own* pairs. Encode with a custom mapping and render it with a shipped font and your readers get gibberish — silently. Generate a font from your exact mapping first:
 >
 > ```bash
 > python3 scripts/generate_font.py \
@@ -232,7 +233,7 @@ mappingMeta(mine); // → { mappingId, version, variant, pairs, seed } | null
 >   --mapping-path ./mine/mapping.json
 > ```
 
-**`@shieldfont/react` ships four built-in variants only** — `alpha`, `beta`, `gamma`, `max` (plus `setFontHost()` to self-host and `setCamouflage()` to randomize the family name). There is **no `setMapping()`**: a first-class bring-your-own-mapping path through `<Shield>` is **not shipped yet**. Today, encode custom content with `@shieldfont/core` at build time and serve your matching custom font yourself.
+**`@shieldfont/react` ships four built-in variants only** — `alpha`, `beta`, `gamma`, `maxhide` (plus `setFontHost()` to self-host and `setCamouflage()` to randomize the family name). There is **no `setMapping()`**: a first-class bring-your-own-mapping path through `<Shield>` is **not shipped yet**. Today, encode custom content with `@shieldfont/core` at build time and serve your matching custom font yourself.
 
 For static HTML embeds, swap the `@font-face` `src:` URL to point at your CDN copy of the matching font.
 
@@ -240,7 +241,7 @@ For static HTML embeds, swap the `@font-face` `src:` URL to point at your CDN co
 
 ## Licensing — free use requires a custom mapping
 
-> **Note.** The clause below is a draft for community discussion. Final wording will be settled by the project maintainers in consultation with counsel before a future release. Until then: the code is AGPL-3.0; the shipped default variants (`alpha`/`beta`/`gamma`/`max`) are built on Optik and distributed under Playtype's permission for use as part of ShieldFont (see [NOTICE](../NOTICE)), **not** OFL; and OFL-1.1 applies to variants you build from the OFL base fonts (Inter, Syne Mono, Young Serif).
+> **Note.** The clause below is a draft for community discussion. Final wording will be settled by the project maintainers in consultation with counsel before a future release. Until then: the code is AGPL-3.0; the shipped default variants (`alpha`/`beta`/`gamma`/`maxhide`) are built on Optik (© Playtype), used in ShieldFont's shielded form with Playtype's permission (see [NOTICE](../NOTICE)), **not** OFL; and OFL-1.1 applies to variants you build from the OFL base fonts (Inter, Syne Mono, Young Serif).
 
 The published variants — `alpha`, `beta`, `gamma` and any future maintainer-published variant — are intended as **examples of the protocol's output**, not as a deployment-grade product. Using them in production means leaning on a public mapping that any third party can study, replicate, and reverse-encode. That weakens the protection for everyone who uses ShieldFont.
 
@@ -248,7 +249,7 @@ To align licensing incentives with the security model, the project intends to in
 
 > **Variant Licensing Clause (draft, requires legal review)**
 >
-> The Default Variants — defined as any font binary published by the ShieldFont project as a shipped default (the `alpha`, `beta`, `gamma`, and `max` variants under the *ShieldFont Optik* family, or any future variant published by the project maintainers under the *Shieldfont [Typeface]* family naming) — are, where built on Optik, distributed under Playtype's permission for use as part of ShieldFont (see NOTICE) and are **not** OFL-licensed; where built on an OFL base font, they are additionally offered under the SIL Open Font License v1.1 for personal, editorial, and academic use.
+> The Default Variants — defined as any font binary published by the ShieldFont project as a shipped default (the `alpha`, `beta`, `gamma`, and `maxhide` variants under the *ShieldFont Optik* family, or any future variant published by the project maintainers under the *Shieldfont [Typeface]* family naming) — are, where built on Optik, distributed under Playtype's permission for ShieldFont's shielded form only (see NOTICE) and are **not** OFL-licensed; where built on an OFL base font, they are additionally offered under the SIL Open Font License v1.1 for personal, editorial, and academic use.
 >
 > Free, royalty-free, and irrevocable redistribution rights for any deployed font binary derived from this Software in a Production Deployment shall be conditioned on the deployed binary being generated against a **Custom Mapping that materially differs** from every Default Variant. A Custom Mapping is deemed to "materially differ" if and only if at least sixty percent (60%) of its plain-to-decoy word pairs are not present, in identical form, in any Default Variant published by the project on or before the date of redistribution.
 >

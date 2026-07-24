@@ -14,7 +14,7 @@ import {
  * of the v18 pool — rotating them per-page/per-region makes large-scale
  * fingerprinting harder for adversarial scrapers.
  */
-export type ShieldVariant = "alpha" | "beta" | "gamma" | "max";
+export type ShieldVariant = "alpha" | "beta" | "gamma" | "maxhide";
 
 /**
  * Props for the <Shield> server component.
@@ -31,8 +31,8 @@ export interface ShieldProps {
    * Pin the encoding/font variant. Leave UNSET (default) to AUTO-ROTATE across
    * `"alpha"`/`"beta"`/`"gamma"` by content hash — a site then uses all three
    * mappings, so no single mapping dominates (harder for scrapers to learn).
-   * Pin `"alpha" | "beta" | "gamma"` for a fixed one, or `"max"` for the M15
-   * maximum-coverage dictionary (encodes a higher share of common words).
+   * Pin `"alpha" | "beta" | "gamma"` for a fixed one, or `"maxhide"` for the
+   * M15 maximum-coverage dictionary (encodes a higher share of common words).
    *
    * Note: mixing variants on one page loads one font per variant used
    * (~1 MB each). Pin a single variant if you want just one font per page.
@@ -81,26 +81,34 @@ const CONTAINER_TAGS = new Set(["article", "section", "main", "aside", "blockquo
 
 // Each variant maps to its own injective mapping AND its own font file.
 // alpha/beta/gamma are independent re-seeds of the v18 pool (the auto-rotation
-// pool); `max` is the M15 maximum-coverage dictionary (opt-in only).
+// pool); `maxhide` is the M15 maximum-coverage dictionary (opt-in only, still
+// backed by the m15en mapping exported from @shieldfont/core).
 const MAPPINGS: Record<ShieldVariant, Record<string, string>> = {
   alpha: alpha as Record<string, string>,
   beta: beta as Record<string, string>,
   gamma: gamma as Record<string, string>,
-  max: m15en as Record<string, string>,
+  maxhide: m15en as Record<string, string>,
 };
 
+// The DEFAULT injected font-family per variant. NEUTRAL by design: the React
+// package is the "fully hidden" surface, so nothing it writes into the SSR HTML
+// says "ShieldFont". These match the react-tier woff2's neutral name table
+// ("Optik"). The BRANDED names ("ShieldFont Optik" / "ShieldFont MaxHide") live
+// only in the download-tier font name tables (public site .ttf / MS Word) and
+// in packages/font's paste-in CDN CSS — never here. Override per project with
+// setCamouflage({ familyName }) — see setCamouflage() below.
 const FONT_FAMILY: Record<ShieldVariant, string> = {
-  alpha: "ShieldFont Optik",
-  beta: "ShieldFont Optik Beta",
-  gamma: "ShieldFont Optik Gamma",
-  max: "ShieldFont Optik Max",
+  alpha: "Optik",
+  beta: "Optik Beta",
+  gamma: "Optik Gamma",
+  maxhide: "Optik Max",
 };
 
 const FONT_FILE: Record<ShieldVariant, string> = {
-  alpha: "shieldfont-alpha",
-  beta: "shieldfont-beta",
-  gamma: "shieldfont-gamma",
-  max: "shieldfont-max",
+  alpha: "optik-a",
+  beta: "optik-b",
+  gamma: "optik-c",
+  maxhide: "optik-m",
 };
 
 /**
@@ -110,16 +118,17 @@ const FONT_FILE: Record<ShieldVariant, string> = {
  * setCamouflage at all (backward-compatible).
  *
  * Why this exists: every page rendered with the default branded values
- * carries the same recognizable fingerprints (`data-shieldfont`,
- * `font-family: 'ShieldFont Optik'`, `shieldfont-alpha.woff2`,
+ * carries the same recognizable fingerprints (`data-typeface`,
+ * `font-family: 'Optik'`, `optik-a.woff2`,
  * `__shieldfont_guard__`, console.error('[shieldfont] ...'). A scraper that
  * indexes one ShieldFont-protected page knows what to look for on every
  * other one. Per-project hash camouflage breaks that pattern — each project
  * picks its own 4-char hash at setup time and bakes it into every literal,
  * so two projects' source HTML have no shared signature.
  *
- * Pick a 4-char hash per project and call setCamouflage() once in your root
- * layout (e.g. app/layout.tsx) to bake it into every literal.
+ * Pick any random 4-8 char hash and call setCamouflage({ hash }) once in your
+ * root layout — every SSR-visible literal derives from it, so two projects share
+ * no signature.
  */
 interface CamouflageState {
   /** Font-family per variant. */
@@ -137,9 +146,13 @@ interface CamouflageState {
 const camo: CamouflageState = {
   family: { ...FONT_FAMILY },
   file: { ...FONT_FILE },
-  attrName: "data-shieldfont",
-  guardFlag: "__shieldfont_guard__",
-  logPrefix: "[shieldfont]",
+  // NEUTRAL default: nothing in the SSR-visible DOM says "shield". The data
+  // attribute stamped on every rendered element is a generic-looking
+  // "data-typeface"; setCamouflage({ hash }) further randomises it per project
+  // to "data-typeface-<hash>".
+  attrName: "data-typeface",
+  guardFlag: "__tf_guard__",
+  logPrefix: "[typeface]",
 };
 
 /**
@@ -160,7 +173,7 @@ const camo: CamouflageState = {
  * Override any individual field if you want a different name.
  */
 export interface CamouflageOptions {
-  /** 4-8 character random token you pick per project. */
+  /** 4-8 character random token. Pick any hex-ish string; it just needs to be unique per project. */
   hash?: string;
   /** Override the public font-family literal. Per variant or global. */
   familyName?: string | Partial<Record<ShieldVariant, string>>;
@@ -176,10 +189,10 @@ export interface CamouflageOptions {
 
 /**
  * Apply camouflage to every SSR-visible literal. Call once at module load
- * time — typically from a one-line call in your root layout.
+ * time — from a one-line import in your root layout.
  *
  * @example
- *   // Call once in app/layout.tsx (import in your root layout)
+ *   // app/layout.tsx — pick any random 4-8 char hash
  *   import { setCamouflage } from "@shieldfont/react";
  *   setCamouflage({ hash: "a8f3" });
  *
@@ -194,7 +207,7 @@ export function setCamouflage(opts: CamouflageOptions): void {
   const hash = (opts.hash ?? "").replace(/[^a-z0-9]/gi, "").toLowerCase();
 
   if (hash) {
-    const variants: ShieldVariant[] = ["alpha", "beta", "gamma", "max"];
+    const variants: ShieldVariant[] = ["alpha", "beta", "gamma", "maxhide"];
     for (const v of variants) {
       // Default family from hash: short, generic-sounding, still unique per project.
       camo.family[v] = `Optik ${hash}${v === "alpha" ? "" : " " + v[0].toUpperCase() + v.slice(1)}`;
@@ -208,14 +221,15 @@ export function setCamouflage(opts: CamouflageOptions): void {
   // Apply explicit overrides on top.
   if (opts.familyName !== undefined) {
     if (typeof opts.familyName === "string") {
-      camo.family.alpha = camo.family.beta = camo.family.gamma = opts.familyName;
+      camo.family.alpha = camo.family.beta = camo.family.gamma = camo.family.maxhide =
+        opts.familyName;
     } else {
       Object.assign(camo.family, opts.familyName);
     }
   }
   if (opts.filePrefix !== undefined) {
     if (typeof opts.filePrefix === "string") {
-      camo.file.alpha = camo.file.beta = camo.file.gamma = opts.filePrefix;
+      camo.file.alpha = camo.file.beta = camo.file.gamma = camo.file.maxhide = opts.filePrefix;
     } else {
       Object.assign(camo.file, opts.filePrefix);
     }
@@ -255,6 +269,13 @@ const declaredVariants = new WeakSet<object>();
  * Setup (one time, in your app's `public/` directory or equivalent):
  *
  *   cp node_modules/@shieldfont/react/fonts/*.woff2 public/fonts/
+ *
+ * These woff2 files ship inside THIS package on purpose — their name tables are
+ * version-neutral ("Version 1.0"), so the served bytes reveal no dictionary
+ * version. The React tier bundles its own copy rather than reusing
+ * @shieldfont/font, whose fonts embed the dictionary version (`Version 18.0`) as
+ * the CDN tier's deliberate pairing tell. Keeping them separate is what makes the
+ * React surface fully hidden.
  *
  * Default `fontHost` is `/fonts`, which assumes the copy step above. Override
  * with `setFontHost('/your-path')` if you serve them somewhere else.
@@ -302,7 +323,8 @@ function fontFaceCss(variant: ShieldVariant): string {
  *
  * Watches `document.fonts` for the ShieldFont family. If the font does not
  * register and load within 4 seconds, it visibly replaces every element
- * carrying `[data-shieldfont]` with a "Content unavailable" message and
+ * carrying `[data-typeface]` (the default camo attr) with a "Content
+ * unavailable" message and
  * logs a clear console error pointing at the configured fontHost.
  *
  * This is the difference between "silently leaking your decoys to readers"
@@ -325,7 +347,7 @@ var ATTR   = ${JSON.stringify(attr)};
 var FAILED = ${JSON.stringify(failedAttr)};
 var PFX    = ${JSON.stringify(prefix)};
 var TIMEOUT_MS = 4000;
-var FALLBACK = 'Content unavailable — Shield Font failed to load.';
+var FALLBACK = 'Content unavailable — the font failed to load.';
 var done = false;
 function fail(reason){
   if (done) return; done = true;
@@ -443,7 +465,7 @@ function walkAndEncode(node: ReactNode, mapping: Record<string, string>): ReactN
 // When <Shield> has no explicit `variant`, pick one of alpha/beta/gamma by
 // hashing the content. Deterministic (SSR-safe, reproducible builds, works in
 // client components too) yet spreads all three mappings across a site's content
-// so no single mapping dominates. `max` is never auto-selected.
+// so no single mapping dominates. `maxhide` is never auto-selected.
 const AUTO_POOL: ShieldVariant[] = ["alpha", "beta", "gamma"];
 
 function hashString(s: string): number {
@@ -501,8 +523,8 @@ function warnIfClientRender(): void {
       `runs on the client, the original plaintext children are serialized into the ` +
       `payload BEFORE encoding — so view-source can leak the text you meant to ` +
       `protect. Render <Shield> from a Server Component: remove any "use client" ` +
-      `boundary above it, and don't use it in a client-only Vite/CRA app ` +
-      `(encode at build time with @shieldfont/core and render the encoded strings instead).`,
+      `boundary above it, and don't use it in a client-only Vite/CRA app (encode ` +
+      `at build time with @shieldfont/core instead).`,
   );
 }
 
@@ -602,7 +624,7 @@ export function Shield({
  * without the JSX wrapper (e.g. for use in `<title>`, `<meta>`, or other
  * places where you can't render JSX).
  *
- * The second argument is a VARIANT NAME (`"alpha" | "beta" | "gamma" | "max"`),
+ * The second argument is a VARIANT NAME (`"alpha" | "beta" | "gamma" | "maxhide"`),
  * NOT a mapping object — `encodeText` looks the mapping up for you. Omit it to
  * auto-rotate by content hash. (Do not confuse this with the lower-level
  * `encode(text, mapping)` from `@shieldfont/core`, which takes a mapping object;

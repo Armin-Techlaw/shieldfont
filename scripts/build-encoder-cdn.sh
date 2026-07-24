@@ -2,7 +2,8 @@
 # build-encoder-cdn.sh — Bundle the canonical encoder as a single ESM file for
 # CDN consumption.  GENERATED ARTIFACT: the encoder LOGIC source of truth is
 # packages/core/src/encode.ts — this heredoc mirrors it, kept honest by the
-# vitest parity test.  Do NOT hand-edit dist/shieldfont-encoder.js.
+# vitest parity test.  Do NOT hand-edit packages/font/shieldfont-encoder.js —
+# it is regenerated here and published as part of @shieldfont/font.
 #
 # Usage: ./scripts/build-encoder-cdn.sh [variant]      # default: alpha
 #   variant must have a mapping at packages/core/src/mappings/<variant>.json
@@ -12,12 +13,13 @@ set -euo pipefail
 
 VARIANT="${1:-alpha}"
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DIST="${ROOT}/dist"
+FONT_DIR="${ROOT}/packages/font"
 MAPPING="${ROOT}/packages/core/src/mappings/${VARIANT}.json"
-OUT="${DIST}/shieldfont-encoder.js"
+# Canonical published location — @shieldfont/font ships this file (jsDelivr CDN).
+OUT="${FONT_DIR}/shieldfont-encoder.js"
 
 [ -f "$MAPPING" ] || { echo "✗ mapping not found: $MAPPING (build the font first)" >&2; exit 1; }
-mkdir -p "$DIST"
+mkdir -p "$FONT_DIR"
 
 cat > "$OUT" << 'HEADER'
 /**
@@ -26,7 +28,7 @@ cat > "$OUT" << 'HEADER'
  * https://github.com/isaqueseneda/shieldfont   License: AGPL-3.0
  *
  * Usage (ESM):
- *   import { encode, decode, alpha } from ".../dist/shieldfont-encoder.js";
+ *   import { encode, decode, alpha } from "https://cdn.jsdelivr.net/npm/@shieldfont/font/shieldfont-encoder.js";
  *   const encoded = encode("Take 3 tablets", alpha);   // render with the alpha font
  *
  * Handles accented words (P1) and letter-flanked digits (F1) — see encode.ts.

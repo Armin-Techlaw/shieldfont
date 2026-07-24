@@ -9,40 +9,46 @@
  * 2) Encode your text FIRST. This CSS only renders decoy words back to the
  *    originals for humans — the HTML source must already contain the encoded
  *    (decoy) text. Encode at https://shieldfont.org/encoder or with
- *    `@shieldfont/core`'s encode() at build time.
+ *    `@shieldfont/core` in a build step.
  *
- * 3) Wrap the encoded text:  <p class="shield">…encoded text…</p>
+ * 3) Wrap the encoded text:  <p class="tk9">…encoded text…</p>
  *
  * HONEST NOTE: protected text is a decoy in the page source, so search engines
  * index the decoy. Do not wrap content you need Google to rank.
  */
 
 @font-face {
-  font-family: "ShieldFont Optik";
-  src: url("shieldfont-alpha.woff2") format("woff2");
+  font-family: "Optik";
+  src: url("optik-a.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
   font-display: block; /* never flash the raw decoy text */
 }
 @font-face {
-  font-family: "ShieldFont Optik Beta";
-  src: url("shieldfont-beta.woff2") format("woff2");
+  font-family: "Optik Beta";
+  src: url("optik-b.woff2") format("woff2");
   font-weight: normal; font-style: normal; font-display: block;
 }
 @font-face {
-  font-family: "ShieldFont Optik Gamma";
-  src: url("shieldfont-gamma.woff2") format("woff2");
+  font-family: "Optik Gamma";
+  src: url("optik-c.woff2") format("woff2");
   font-weight: normal; font-style: normal; font-display: block;
 }
 @font-face {
-  font-family: "ShieldFont Optik Max";
-  src: url("shieldfont-max.woff2") format("woff2");
+  font-family: "Optik Max";
+  src: url("optik-m.woff2") format("woff2");
   font-weight: normal; font-style: normal; font-display: block;
 }
 
+/* Authoring classes. The token below (.tk9) is deliberately generic — it does
+ * not name the tool, so the class attribute in your HTML source reveals nothing.
+ * You may rename .tk9 / .tk9-b / .tk9-c / .tk9-m to ANY string of your own
+ * (e.g. .body-copy) for stronger, per-site camouflage; just keep the
+ * font-family value on the right-hand side. */
+
 /* Default: the public alpha variant (what the web encoder emits). */
-.shield       { font-family: "ShieldFont Optik"; }
+.tk9    { font-family: "Optik"; }
 /* Advanced: pin a specific variant if you encoded with that one. */
-.shield-beta  { font-family: "ShieldFont Optik Beta"; }
-.shield-gamma { font-family: "ShieldFont Optik Gamma"; }
-.shield-max   { font-family: "ShieldFont Optik Max"; }
+.tk9-b  { font-family: "Optik Beta"; }
+.tk9-c  { font-family: "Optik Gamma"; }
+.tk9-m  { font-family: "Optik Max"; }

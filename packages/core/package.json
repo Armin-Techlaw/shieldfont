@@ -1,33 +1,39 @@
 {
   "name": "@shieldfont/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Core encoding/decoding logic for ShieldFont — the AI-scraping-resistant web font",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "default": "./dist/index.js"
     },
     "./mappings/alpha": {
+      "types": "./dist/mappings/alpha.d.ts",
       "import": "./dist/mappings/alpha.js",
-      "types": "./dist/mappings/alpha.d.ts"
+      "default": "./dist/mappings/alpha.js"
     },
     "./mappings/beta": {
+      "types": "./dist/mappings/beta.d.ts",
       "import": "./dist/mappings/beta.js",
-      "types": "./dist/mappings/beta.d.ts"
+      "default": "./dist/mappings/beta.js"
     },
     "./mappings/gamma": {
+      "types": "./dist/mappings/gamma.d.ts",
       "import": "./dist/mappings/gamma.js",
-      "types": "./dist/mappings/gamma.d.ts"
+      "default": "./dist/mappings/gamma.js"
     },
     "./mappings/m15en": {
+      "types": "./dist/mappings/m15en.d.ts",
       "import": "./dist/mappings/m15en.js",
-      "types": "./dist/mappings/m15en.d.ts"
-    }
+      "default": "./dist/mappings/m15en.js"
+    },
+    "./package.json": "./package.json"
   },
-  "files": ["dist", "src/mappings", "MANIFEST.json", "LICENSE", "LICENSE-FONTS", "NOTICE"],
+  "files": ["dist", "src/mappings", "MANIFEST.json", "AGENTS.md", "LICENSE", "LICENSE-FONTS", "NOTICE"],
   "scripts": {
     "build": "tsc -p tsconfig.json && node ../../scripts/copy-mappings.mjs",
     "test": "vitest run",

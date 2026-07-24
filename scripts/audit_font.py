@@ -28,6 +28,7 @@ import re
 import subprocess
 import sys
 import html
+import hashlib
 from pathlib import Path
 from collections import defaultdict
 
@@ -68,7 +69,9 @@ def expected_glyph(source_word):
     """
     if len(source_word) == 1 and source_word in DIGIT_GLYPH_NAME:
         return DIGIT_GLYPH_NAME[source_word]
-    return "word." + "".join(c if c.isalnum() else "_" for c in source_word)
+    # Mirrors the opaque hashed name in generate_font.py (SECURITY: no plaintext
+    # word in the glyph-name table). Must stay byte-identical to that formula.
+    return "word." + hashlib.sha1(source_word.encode("utf-8")).hexdigest()[:16]
 
 
 def audit():

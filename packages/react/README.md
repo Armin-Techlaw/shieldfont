@@ -34,6 +34,7 @@ export default function Page() {
 Then copy the fonts into your app once (they're bundled with the package):
 
 ```bash
+# copies the neutral optik-a / optik-b / optik-c / optik-m woff2 files
 cp node_modules/@shieldfont/react/fonts/*.woff2 public/fonts/
 ```
 
@@ -56,12 +57,12 @@ In **development**, `<Shield>` detects when it renders in the browser and logs a
 |---|---|---|
 | *(unset — **default**)* | **Auto-rotates** across `alpha`/`beta`/`gamma` | Recommended. Each `<Shield>` picks one by content hash, so your site uses **all three** mappings — a scraper can't learn one mapping and reverse everything. |
 | `"alpha"` / `"beta"` / `"gamma"` | Pin one v18 mapping | When you want a single fixed font per page (one font download instead of up to three). |
-| `"max"` | M15 "maximum coverage" | Encodes a higher share of common words. A single fixed mapping; **never** chosen by auto-rotation — opt in explicitly. |
+| `"maxhide"` | M15 "maximum coverage" | Encodes a higher share of common words. A single fixed mapping; **never** chosen by auto-rotation — opt in explicitly. |
 
 ```jsx
 <Shield>auto-rotated across alpha/beta/gamma</Shield>
 <Shield variant="beta">pinned to beta</Shield>
-<Shield variant="max">maximum-coverage dictionary</Shield>
+<Shield variant="maxhide">maximum-coverage dictionary</Shield>
 ```
 
 Auto-rotation is **deterministic by content** (same text → same variant): SSR-safe, reproducible builds, and it still spreads all three mappings across your content. **Cost:** a page that mixes variants loads one font per variant used (~1 MB each). Pin a variant if you want exactly one font per page.
@@ -73,7 +74,7 @@ Note: α/β/γ have slightly different pair counts (11,970 / 12,034 / 12,036), s
 | Prop | Type | Default | Purpose |
 |---|---|---|---|
 | `as` | `ElementType` | `"div"` | Element to render. `"span"` for inline; `"h1"`…`"h6"` for headings; `"article"`/`"section"`/`"main"`/`"aside"`/`"blockquote"` switch on **container mode** (see below). |
-| `variant` | `"alpha" \| "beta" \| "gamma" \| "max"` | *auto-rotate* | Pin a mapping, or leave unset to auto-rotate α/β/γ. |
+| `variant` | `"alpha" \| "beta" \| "gamma" \| "maxhide"` | *auto-rotate* | Pin a mapping, or leave unset to auto-rotate α/β/γ. |
 | `weight` | `number` (100–900) | inherit | Font weight passthrough. |
 | `lineHeight` | `number \| string` | inherit | Line-height passthrough. |
 | `size` | `string` | inherit | font-size passthrough. |
@@ -121,7 +122,7 @@ There is **no default public CDN by design**. A scraping defense must fail *loud
 
 ## Camouflage (optional, recommended for production)
 
-Every default-branded page shares the same fingerprints (`data-shieldfont`, `font-family: 'ShieldFont Optik'`, …). `setCamouflage({ hash })` rewrites all SSR-visible literals to per-project generic-sounding names so two sites share no signature:
+By default every ShieldFont React page shares the same **neutral** fingerprints (`data-typeface`, `font-family: 'Optik'`, the `optik-*` filenames) — nothing that names ShieldFont, but a signature two ShieldFont sites hold in common. `setCamouflage({ hash })` rewrites those shared SSR-visible literals to per-project unique names so two sites share no signature:
 
 ```jsx
 // Imported once in your root layout:
@@ -130,19 +131,19 @@ setCamouflage({ hash: "a8f3" });   // → font-family "Optik a8f3", data-typefac
 ```
 
 > [!WARNING]
-> **Camouflage also renames the font *files* in the `@font-face` `src` — so you MUST copy each font to its camouflaged filename, or the page fails loud.** With `hash: "a8f3"`, `<Shield>` stops requesting `shieldfont-*.woff2` and instead requests `/fonts/font-a8f3.woff2` (alpha), `/fonts/font-a8f3-beta.woff2`, and `/fonts/font-a8f3-gamma.woff2`. Those files don't exist until you create them; if they 404, the font-load guard replaces every protected element with *"Content unavailable."* The plain `cp …/*.woff2` step from the quick start is **not** enough once camouflage is on.
+> **Camouflage also renames the font *files* in the `@font-face` `src` — so you MUST copy each font to its camouflaged filename, or the page fails loud.** With `hash: "a8f3"`, `<Shield>` stops requesting `optik-*.woff2` and instead requests `/fonts/font-a8f3.woff2` (alpha), `/fonts/font-a8f3-beta.woff2`, and `/fonts/font-a8f3-gamma.woff2`. Those files don't exist until you create them; if they 404, the font-load guard replaces every protected element with *"Content unavailable."* The plain `cp …/*.woff2` step from the quick start is **not** enough once camouflage is on.
 
 Copy and rename every font in the auto-rotation pool to its camouflaged name (all three, because a block can hash to any of them). Repeat for each hash you use:
 
 ```bash
-cp node_modules/@shieldfont/react/fonts/shieldfont-alpha.woff2 public/fonts/font-a8f3.woff2
-cp node_modules/@shieldfont/react/fonts/shieldfont-beta.woff2  public/fonts/font-a8f3-beta.woff2
-cp node_modules/@shieldfont/react/fonts/shieldfont-gamma.woff2 public/fonts/font-a8f3-gamma.woff2
-# only if you also use <Shield variant="max">:
-cp node_modules/@shieldfont/react/fonts/shieldfont-max.woff2   public/fonts/font-a8f3-max.woff2
+cp node_modules/@shieldfont/react/fonts/optik-a.woff2 public/fonts/font-a8f3.woff2
+cp node_modules/@shieldfont/react/fonts/optik-b.woff2 public/fonts/font-a8f3-beta.woff2
+cp node_modules/@shieldfont/react/fonts/optik-c.woff2 public/fonts/font-a8f3-gamma.woff2
+# only if you also use <Shield variant="maxhide">:
+cp node_modules/@shieldfont/react/fonts/optik-m.woff2 public/fonts/font-a8f3-maxhide.woff2
 ```
 
-A `shieldfont` CLI that generates the hash and does the copy/rename for you is in development (not yet published); for now, do the copies by hand as shown above.
+There's no CLI for this step: pick any short string for the hash and script the copy/rename into your build — e.g. a `package.json` `postinstall`/build script — alongside the build-time encoding you run with [`@shieldfont/core`](https://www.npmjs.com/package/@shieldfont/core). Or just do the copies by hand as shown above.
 
 ## Accessibility — read this
 
@@ -155,15 +156,15 @@ Protected regions are `aria-hidden="true"`: the DOM text is encoded gibberish, s
 
 ```jsx
 import { VERSION } from "@shieldfont/react";   // re-exported from @shieldfont/core
-console.log(VERSION);   // "0.1.0" — matches the font name table (nameID 5) and every mapping's _meta.version
+console.log(VERSION);   // "0.1.1" — matches the font name table (nameID 5) and every mapping's _meta.version
 ```
 
 Use it to confirm which encoder + dictionary generation you're running.
 
 ## License
 
-AGPL-3.0-or-later. The bundled default fonts are built on Optik, a commercial
-Playtype typeface distributed with permission for use as part of ShieldFont —
-**not** under OFL, and not for standalone use as a typeface. The SIL Open Font
-License 1.1 applies to fonts you build yourself from the OFL base fonts (Inter,
-Syne Mono, Young Serif). See [NOTICE](./NOTICE).
+AGPL-3.0-or-later. The bundled default fonts use **Optik — © Playtype, used
+under the ShieldFont–Playtype partnership**, for ShieldFont's replaced-glyph
+form only — **not** under OFL. The SIL Open Font License 1.1 applies only to
+fonts you build yourself from the OFL base fonts (Inter, Syne Mono, Young Serif).
+See [NOTICE](./NOTICE).

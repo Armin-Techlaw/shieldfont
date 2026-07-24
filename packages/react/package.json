@@ -1,6 +1,6 @@
 {
   "name": "@shieldfont/react",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "ShieldFont React component — server-side encoding with bundled fonts",
   "type": "module",
   "main": "./dist/index.js",
@@ -14,7 +14,7 @@
     "./fonts/*": "./fonts/*",
     "./package.json": "./package.json"
   },
-  "files": ["dist", "fonts", "LICENSE", "LICENSE-FONTS", "NOTICE"],
+  "files": ["dist", "fonts", "AGENTS.md", "LICENSE", "LICENSE-FONTS", "NOTICE"],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepublishOnly": "npm run build"
@@ -29,7 +29,7 @@
   },
   "publishConfig": { "access": "public" },
   "dependencies": {
-    "@shieldfont/core": "^0.1.0"
+    "@shieldfont/core": "^0.1.1"
   },
   "peerDependencies": {
     "react": ">=18.0.0"

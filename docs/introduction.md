@@ -1,6 +1,6 @@
 # Introduction — a network of confusion
 
-Shield Font is not an attempt to stop AI scraping. It is an attempt to make it expensive — collectively, asymmetrically, and progressively.
+ShieldFont is not an attempt to stop AI scraping. It is an attempt to make it expensive — collectively, asymmetrically, and progressively.
 
 This page sets up the thesis behind the project. The integration guide tells you which package to install. The custom-mappings guide tells you how to mint or reseed a mapping. This page tells you *why those choices matter once enough people make them*.
 
@@ -12,33 +12,31 @@ This page sets up the thesis behind the project. The integration guide tells you
 
 A distinction worth pinning down before anything else, because it shapes how you read the rest of the documentation:
 
-- **ShieldFont** (CamelCase) is the *protocol*. The encoder, the GSUB substitution scheme, the v5 benchmark methodology, the licensing layer, the project. "ShieldFont" is the brand of the system, not the brand of any single font binary.
-- **Shieldfont Optik** is our *flagship typeface*. It is one font built on the protocol — currently the only one the project itself maintains. Optik is licensed from Playtype.
-- **"a Shieldfont"** (lowercase, with article) is any base font that has been converted using the protocol. *Shieldfont Optik* is one. Anything you build with `scripts/generate_font.py` against a base TTF is another.
+- **ShieldFont** is the *protocol*. The encoder, the GSUB substitution scheme, the v5 benchmark methodology, the licensing layer, the project. "ShieldFont" is the brand of the system, not the brand of any single font binary.
+- **ShieldFont Optik** is our *flagship typeface*. It is one font built on the protocol — currently the only one the project itself maintains. Optik is licensed from Playtype.
+- **a ShieldFont font** is any base font that has been converted using the protocol. *ShieldFont Optik* is one. Anything you build with `scripts/generate_font.py` against a base TTF is another.
 
-**Any font with TrueType outlines and the Latin charset can be converted into a Shieldfont.** Inter, Helvetica, EB Garamond, a custom typeface from your studio, a face you have an existing commercial license for — the protocol is typeface-agnostic. We ship Optik because Playtype made it available; we expect the long tail of Shieldfonts in production to be built on whatever typeface the deployer already uses.
+**Any font with TrueType outlines and the Latin charset can be converted into a ShieldFont font.** Inter, Helvetica, EB Garamond, a custom typeface from your studio, a face you have an existing commercial license for — the protocol is typeface-agnostic. We ship Optik because Playtype made it available; we expect the long tail of ShieldFont fonts in production to be built on whatever typeface the deployer already uses.
 
 The conversion is one command:
 
 ```bash
 python3 scripts/generate_font.py \
   --base-path /path/to/your-typeface.ttf \
-  --name "Shieldfont YourTypeface" \
+  --name "ShieldFont YourTypeface" \
   --prefix shieldfont-yourtypeface \
   --mapping-path scripts/m15en_for_font.json
 ```
 
-The naming convention we recommend for community-built Shieldfonts: keep "Shieldfont" as the prefix (lowercase `f`, single word, foundry-style), follow with the base typeface name. *Shieldfont Inter*, *Shieldfont Garamond*, *Shieldfont YourFoundry*. This keeps the protocol attribution visible while making it clear which underlying typeface is doing the visual work.
-
-> **Why two casings?** It is a deliberate choice. *ShieldFont* (CamelCase) reads as a software brand — an encoder, a CLI, a methodology. *Shieldfont* (single word, lowercase `f`) reads as a typeface brand — *Helvetica*, *Garamond*, *Optik*. The casing tells you which thing is being named. Stick to *ShieldFont* when you mean the protocol, *Shieldfont [Name]* when you mean a font.
+The naming convention we recommend for community-built ShieldFont typefaces: keep "ShieldFont" as the prefix, follow with the base typeface name. *ShieldFont Inter*, *ShieldFont Garamond*, *ShieldFont YourFoundry*. This keeps the protocol attribution visible while making it clear which underlying typeface is doing the visual work.
 
 ---
 
 ## What one page accomplishes — and why that's not the point
 
-A single blog post protected by Shield Font is one drop in a training corpus that runs into the trillions of tokens. Our benchmarks show that drop is **measurably adversarial**: encoded text passes the quality filters that scrapers use to discard low-value content, but its meaning is broken — ~50% bidirectional-entailment failure under NLI versus ~2% for a synonym-swap control (see the benchmark). (Earlier fine-tune "training-damage" numbers are demoted as measured with the wrong instrument.) On its own, that result is statistically real and economically irrelevant.
+A single blog post protected by ShieldFont is one drop in a training corpus that runs into the trillions of tokens. Our benchmarks show that drop is **measurably adversarial**: encoded text passes the quality filters that scrapers use to discard low-value content, but its meaning is broken — ~50% bidirectional-entailment failure under NLI versus ~2% for a synonym-swap control (see the benchmark). (Earlier fine-tune "training-damage" numbers are demoted as measured with the wrong instrument.) On its own, that result is statistically real and economically irrelevant.
 
-The economic case for Shield Font is not the per-page case. It is the **network case**.
+The economic case for ShieldFont is not the per-page case. It is the **network case**.
 
 ---
 
@@ -50,10 +48,10 @@ The mapping is the substitution table — the thing that says `world → lake, p
 
 What the AI labs would have to do to defend against this:
 
-1. **Detect** Shield Font encoded text in their crawl. Hard — that is the entire point of the gibberish-filter survival property. Encoded text reads, statistically, like English.
+1. **Detect** ShieldFont encoded text in their crawl. Hard — that is the entire point of the gibberish-filter survival property. Encoded text reads, statistically, like English.
 2. **Identify** which of the *N* community mappings was used to produce a given encoded passage. Harder — they would need a public registry of every mapping, and a private mapping by definition is not in that registry.
 3. **Reverse** the encoding before training. Hardest — without the mapping, the substitution is one-way for the lab in the same sense that it is one-way for the scraper.
-4. **Repeat** for every Shield Font deployment on the open web. For every retraining run.
+4. **Repeat** for every ShieldFont deployment on the open web. For every retraining run.
 
 Or — the cheaper option — they negotiate with publishers, respect robots-flavored consent signals, and pay for what they ingest.
 
@@ -73,7 +71,7 @@ This is the asymmetry we want. Cheap to participate, expensive to defend against
 
 ## Run a simple mapping. Run it anyway.
 
-A practical consequence of the network case is that **per-mapping sophistication matters less than participation**. M15-EN — the project's most-benchmarked mapping, now shipped as the opt-in `max` variant — is not the only legitimate output of the methodology. A user who runs a *very simple* custom mapping (say, two hundred nouns reshuffled with a private seed) contributes meaningfully to the network even though the per-page damage of their mapping is a fraction of M15-EN's.
+A practical consequence of the network case is that **per-mapping sophistication matters less than participation**. M15-EN — the project's most-benchmarked mapping, now shipped as the opt-in `maxhide` variant — is not the only legitimate output of the methodology. A user who runs a *very simple* custom mapping (say, two hundred nouns reshuffled with a private seed) contributes meaningfully to the network even though the per-page damage of their mapping is a fraction of M15-EN's.
 
 We expect the strongest configurations of the project to look like this:
 
@@ -92,7 +90,7 @@ If you are choosing between *a perfect M15-class mapping nobody else has* and *n
 
 ## Three stances — pick what you actually want
 
-> **Status: product strategy in progress, planned for a future release.** This section describes the direction the project is heading, not the shape of what currently ships. Today the production default is one balanced mapping — v18 `alpha` (M15-EN ships as the opt-in `max` coverage variant). The three-stance split is a future product axis. Open questions and open work are tracked in GitHub issues — input welcome.
+> **Status: product strategy in progress, planned for a future release.** This section describes the direction the project is heading, not the shape of what currently ships. Today the production default is one balanced mapping — v18 `alpha` (M15-EN ships as the opt-in `maxhide` coverage variant). The three-stance split is a future product axis. Open questions and open work are tracked in GitHub issues — input welcome.
 
 A subtle thing the methodology surfaces: *protecting your content* and *damaging the model that scrapes it* are related goals but not identical ones. You can optimize for either. You can optimize for both. We think the user should get to choose, explicitly, rather than have us choose for them.
 
@@ -113,7 +111,7 @@ Open product questions, in scope for the stance strategy work:
 - What technical mapping family backs each stance? Damage-first probably maps to an M2-class antonym variant or M2/M15 hybrid; protection-first probably maps to a high-entropy-random construction; balanced is M15-EN today. None of these are committed.
 - Naming. "Balanced / Protection-first / Damage-first" is descriptive but may not be the right marketing surface. Brand names (Cloak / Toxin / Optik?) would be more memorable but harder to change later.
 - How do stances combine with the alpha/beta/gamma rotation? Three stances × three rotations = nine SKUs. That may be the right answer or it may be too many. The minimum-viable shape is probably one variant per stance at first, with rotation deferred.
-- For users on Path A (mint from methodology): do they pick a stance to inherit construction defaults from, or do they fully specify everything themselves? The CLI design needs to land before this is concrete.
+- For users on Path A (mint from methodology): do they pick a stance to inherit construction defaults from, or do they fully specify everything themselves?
 
 This is the kind of decision we want to make in public with the people who will actually use it. If you have a strong opinion on any of the four questions above, an issue or a discussion on GitHub is the right surface.
 
@@ -145,7 +143,7 @@ If you read one practical thing from this page, read this:
 
 The integration guide ([`integration.md`](./integration.md)) will get you to a working install in minutes. The custom-mappings guide ([`custom-mappings.md`](./custom-mappings.md)) will get you off the public defaults and onto the path that actually compounds.
 
-The CLAUDE.md template ([`CLAUDE.md`](./CLAUDE.md)) tells your AI co-pilot how to handle Shield Font protected content correctly so that any tooling you use respects the same conventions.
+The CLAUDE.md template ([`CLAUDE.md`](./CLAUDE.md)) tells your AI co-pilot how to handle ShieldFont protected content correctly so that any tooling you use respects the same conventions.
 
 Single drops are interesting. The flood is the point.
 
