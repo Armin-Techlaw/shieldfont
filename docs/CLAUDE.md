@@ -13,10 +13,12 @@ The HTML source of every protected page contains **encoded** text (substitute wo
 
 ## Conventions you MUST follow
 
-### 1. Encoding happens at build time, NEVER at runtime
+### 1. Your original text must never ship to the browser
 
-- ✅ Server-side React component (`<Shield>` from `@shieldfont/react`) encodes at SSR
-- ✅ Build-time / server-side call to `encode()` from `@shieldfont/core` (any other framework)
+- ✅ `<Shield>` from `@shieldfont/react` rendered in a **Server Component** (a static export is fully protected: no runtime server needed)
+- ✅ Build-step or server-render call to `encode()` from `@shieldfont/core` (any other framework)
+- ❌ `<Shield>` inside a `"use client"` component: the plaintext AND the whole ~38,000-pair dictionary compile into the JS bundle. Served HTML still looks encoded, so this fails silently.
+- ❌ Passing unencoded text from a server component into a client component as a prop: the plaintext lands in the served HTML and the RSC payload.
 - ❌ NEVER write a JavaScript runtime encoder that runs in the browser. Scrapers don't run JS: they'd see your plain-English source.
 - ❌ NEVER write an Edge / middleware encoder. Stay out of that space.
 

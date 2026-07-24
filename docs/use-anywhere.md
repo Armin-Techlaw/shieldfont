@@ -13,7 +13,7 @@ step: anywhere the encoding runs **before the bytes reach the browser**.
 
 ## The one rule
 
-**Encode at build time or during server render: never in the browser.** Scrapers
+**Your original text must never ship to the browser.** Encode in Node, at build time or during server render. Scrapers
 don't run JavaScript, so a browser-runtime encoder would leave your plain-English
 source exposed. The encoded form is what you store, serve, and cache.
 

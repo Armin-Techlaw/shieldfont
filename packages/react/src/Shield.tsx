@@ -493,12 +493,17 @@ function collectText(node: ReactNode): string {
   return "";
 }
 
-// ---- Dev-only "use client" footgun guard -----------------------------------
-// `process` is not typed in this package (no @types/node). Declare a minimal
-// shape so the warning below can read NODE_ENV. Bundlers (Next, Vite, webpack)
-// statically inline `process.env.NODE_ENV`, so this whole branch is dead-code
-// eliminated from production client bundles (no shieldfont string ships).
-declare const process: { env: { NODE_ENV?: string } } | undefined;
+// ---- "use client" footgun guard (fires in production too) -------------------
+// This warning was previously dev-only, to keep any brand string out of
+// production bundles. Measured, that trade did not pay: it made the single
+// worst misuse fail SILENTLY in production, which is the opposite of this
+// package's stated fail-loud principle.
+//
+// It costs nothing to keep. The guard only fires when <Shield> renders in a
+// browser, and in that case the bundle ALREADY contains the plaintext and all
+// ~38,000 dictionary pairs — camouflage is long gone. Used correctly (server
+// components only), this module never reaches the client bundle at all, so the
+// string does not ship either. Loud on failure, invisible when correct.
 
 let warnedClientRender = false;
 
@@ -514,8 +519,6 @@ let warnedClientRender = false;
 function warnIfClientRender(): void {
   if (warnedClientRender) return;
   if (typeof window === "undefined") return; // server / build render: correct path
-  // Only in development, and only when we can confirm it (bundlers inline this).
-  if (typeof process === "undefined" || process.env.NODE_ENV === "production") return;
   warnedClientRender = true;
   console.warn(
     `${camo.logPrefix} <Shield> is rendering in the browser. It is a server ` +
@@ -529,7 +532,10 @@ function warnIfClientRender(): void {
 }
 
 /**
- * `<Shield>` — server-side encoder + font scope, in one component.
+ * `<Shield>` — encoder + font scope in one component. Render it from a SERVER
+ * component: the plaintext must never reach the browser. Rendering it in a
+ * `"use client"` file, or passing unencoded text into a client component as a
+ * prop, leaks the original text (and the whole dictionary) into the bundle.
  *
  * Whatever string you pass as children gets encoded with the variant's
  * mapping and rendered inside an element using the ShieldFont font

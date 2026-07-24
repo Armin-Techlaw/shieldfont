@@ -1,5 +1,6 @@
 /**
- * @shieldfont/react — server-side encoding + font scope for React.
+ * @shieldfont/react — encodes in Node (build time or server render) so your
+ * original text never ships to the browser. Font scope included.
  *
  * Quick start:
  *   import { Shield } from "@shieldfont/react";

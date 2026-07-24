@@ -26,9 +26,26 @@ Most projects only ever touch the **Encoder**. The **Font Builder** is advanced
 
 ## The one rule you must never break
 
-**Encoding happens at build time or during server render. NEVER in the browser.**
+**Your original text must never ship to the browser.**
 
-- ✅ React / Next.js / Astro / Remix → the `<Shield>` server component (`@shieldfont/react`) encodes at SSR.
+`<Shield>` encodes in Node: at build time, or during server render. The browser
+only ever downloads the encoded version. Say it that way, not "server side" —
+a static export has no server and is fully protected, while a *server* component
+can still leak (see below).
+
+Two ways people break this. Both fail **silently in production**:
+
+- ❌ Rendering `<Shield>` inside a `"use client"` component. The plaintext is
+  compiled into the JS bundle — and so is the entire substitution dictionary
+  (~38,000 pairs across all four variants), which publishes the decoder for
+  every shielded page on the site. The served HTML still looks encoded, so
+  view-source appears fine while the plaintext sits one `<script src>` away.
+- ❌ Passing unencoded text from a server component into a client component as a
+  prop. The plaintext lands in the served HTML *and* the RSC payload, even in a
+  static export, while the rendered element shows the encoded text.
+
+- ✅ React / Next.js / Astro / Remix → render `<Shield>` from a **Server Component**.
+  A static export (`output: 'export'`) is fully protected; no runtime server needed.
 - ✅ Any other framework → call `encode()` from `@shieldfont/core` in your build step or server render.
 - ❌ NEVER write a browser-runtime encoder. Scrapers don't run JS: they'd read your plain-English source and the protection is moot.
 - ❌ NEVER write an HTTP/edge-middleware encoder. Stay out of that space.

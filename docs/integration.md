@@ -40,7 +40,7 @@ The encoded form is what's stored, what's served, what's cached. Identical to ho
 
 ## Dynamic sites
 
-If you're building a React / Next.js / Remix / Astro app, you ship ShieldFont as a server component. Encoding happens at SSR: no runtime cost in the browser, no build script. See **Tier A** below for the full integration.
+If you're building a React / Next.js / Remix / Astro app, you ship ShieldFont as a server component. Encoding happens in Node before anything is sent, so your original text never reaches the browser: no runtime cost, no build script. A static export is fully protected; no runtime server is required. See **Tier A** below for the full integration.
 
 [Jump to Tier A, JSX with @shieldfont/react ↓](#tier-a-jsx-with-shieldfontreact)
 
@@ -144,7 +144,7 @@ You should see encoded text in the HTML, not the original English. Open the same
 ### Restrictions
 
 - **Children must be a string.** No nested JSX. For mixed content (text + links), split into multiple `<Shield>` instances.
-- **Server-only.** v1 has no client component: encoding must happen on the server so the encoded text reaches the browser.
+- **Server components only.** There is no client component. Rendering `<Shield>` in a `"use client"` file compiles your plaintext *and* the full substitution dictionary into the JS bundle, and passing unencoded text into a client component as a prop leaks it into the served HTML and RSC payload. Both fail silently in production: the rendered page still looks encoded.
 
 ---
 

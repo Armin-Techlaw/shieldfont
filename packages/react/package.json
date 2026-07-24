@@ -1,7 +1,7 @@
 {
   "name": "@shieldfont/react",
   "version": "0.1.1",
-  "description": "ShieldFont React component — server-side encoding with bundled fonts",
+  "description": "ShieldFont React component \u2014 encodes in Node so your original text never ships to the browser",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -14,12 +14,24 @@
     "./fonts/*": "./fonts/*",
     "./package.json": "./package.json"
   },
-  "files": ["dist", "fonts", "AGENTS.md", "LICENSE", "LICENSE-FONTS", "NOTICE"],
+  "files": [
+    "dist",
+    "fonts",
+    "AGENTS.md",
+    "LICENSE",
+    "LICENSE-FONTS",
+    "NOTICE"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "prepublishOnly": "npm run build"
   },
-  "keywords": ["shieldfont", "react", "server-component", "anti-scraping"],
+  "keywords": [
+    "shieldfont",
+    "react",
+    "server-component",
+    "anti-scraping"
+  ],
   "license": "AGPL-3.0-or-later",
   "author": "Isaque Seneda and Gabriel Abrucio",
   "repository": {
@@ -27,7 +39,9 @@
     "url": "https://github.com/isaqueseneda/shieldfont.git",
     "directory": "packages/react"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "dependencies": {
     "@shieldfont/core": "^0.1.1"
   },

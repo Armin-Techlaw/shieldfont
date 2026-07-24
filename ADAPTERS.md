@@ -1,7 +1,7 @@
 # Framework adapters
 
 ShieldFont's engine is a single zero-dependency library, [`@shieldfont/core`](./packages/core).
-Any framework can wrap it: encode at build time or during server render (never in
+Any framework can wrap it: encode in Node so the original text never ships to the browser, at build time or during server render (never in
 the browser). See [`docs/use-anywhere.md`](./docs/use-anywhere.md) for the recipe.
 
 ## Official
