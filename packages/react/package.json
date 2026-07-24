@@ -1,7 +1,7 @@
 {
   "name": "@shieldfont/react",
   "version": "0.1.1",
-  "description": "ShieldFont React component \u2014 encodes in Node so your original text never ships to the browser",
+  "description": "ShieldFont React component: encodes in Node so your original text never ships to the browser",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
