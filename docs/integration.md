@@ -7,7 +7,7 @@ ShieldFont ships in four flavors depending on how you build pages. Pick the one 
 | [**A. JSX** (`<Shield>` component)](#tier-a-jsx-with-shieldfontreact) | React / Next.js / Astro / Remix | `npm i @shieldfont/react` | At server-render time |
 | [**B. Any framework / build step**](#tier-b-any-framework--build-step-shieldfontcore) | Vue, Svelte, Astro/11ty/Hugo builds, CI pipelines | `npm i @shieldfont/core` | In your build or server render |
 | [**C. CSS @import + paste**](#tier-c-css-import--paste) | Blogs, hosted CMSes, plain HTML | one-line `@import` in your site CSS | At encoder time (browser tool) |
-| [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors | one-click `.zip` | At Word/PDF render time via OpenType ligatures |
+| [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors | download the font + use the web encoder | At Word/PDF render time via OpenType ligatures |
 
 All four tiers share the same default `alpha` mapping (v18): just different delivery mechanisms.
 
@@ -46,7 +46,7 @@ If you're building a React / Next.js / Remix / Astro app, you ship ShieldFont as
 
 ---
 
-## Tier A, JSX with `@shieldfont/react`
+## Tier A: JSX with `@shieldfont/react`
 
 The recommended path for vibe-coders, Next.js apps, Astro, Remix, and any React Server Component framework.
 
@@ -93,8 +93,8 @@ That's it. The font + `@font-face` + encoding all happen automatically. Anything
 | `weight` | `100..900` | inherit | Font weight (Optik is variable). |
 | `lineHeight` | `number \| string` | inherit | Passthrough. |
 | `size` | `string` | inherit | font-size passthrough. |
-| `className` | `string` | none | Escape hatch, merges with internal scope. |
-| `style` | `CSSProperties` | none | Escape hatch. |
+| `className` | `string` | n/a | Escape hatch, merges with internal scope. |
+| `style` | `CSSProperties` | n/a | Escape hatch. |
 | `children` | `string` | required | The text to encode (must be a plain string). |
 
 ### Host the font (required: self-host by design)
@@ -309,4 +309,4 @@ Our framing: **ShieldFont raises the cost of extraction; it doesn't promise zero
 - For any non-React stack: [Use anywhere](./use-anywhere.md): call `@shieldfont/core` in your build or server render.
 - For AI co-pilots: drop [`docs/CLAUDE.md`](./CLAUDE.md) (or the [`AGENTS.md`](../AGENTS.md) that ships in every package) into your project so Claude / Cursor / GPT / Aider follow the convention by default.
 - For new framework adapters: the wire format (comment markers) is documented in [`@shieldfont/core`](../packages/core/README.md); list your adapter in [`ADAPTERS.md`](../ADAPTERS.md).
-- For mapping internals: see [`MAPPINGS.md`](../MAPPINGS.md) for the M0 → M15 evolution and [`benchmarks/v4/results/`](../benchmarks/v4/results/) for the white paper.
+- For mapping internals: see [`MAPPINGS.md`](../MAPPINGS.md) for the M0 → M15 evolution and the [white paper](https://shieldfont.org/white-paper).

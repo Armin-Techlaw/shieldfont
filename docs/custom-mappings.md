@@ -55,7 +55,7 @@ The full pipeline lives under `benchmarks/v5/` in the project's development repo
 | `prepare_probes_v5.py` | Build sub-probe + control-probe banks |
 | `train_v5.py` | Train one (base × seed × condition) cell via `mlx_lm.lora` |
 | `eval_v5.py` | Evaluate one adapter on MMLU + HellaSwag + sub-probes |
-| `run_v5.py` | Outer orchestrator (idempotent (skips done work) |
+| `run_v5.py` | Outer orchestrator (idempotent: skips done work) |
 | `analyze_v5.py` | Frozen analysis: two-level cluster bootstrap, paired Δ, joint composite |
 
 ### Steps: Path A
@@ -249,7 +249,7 @@ To align licensing incentives with the security model, the project intends to in
 
 > **Variant Licensing Clause (draft, requires legal review)**
 >
-> The Default Variants: defined as any font binary published by the ShieldFont project as a shipped default (the `alpha`, `beta`, `gamma`, and `maxhide` variants under the *ShieldFont Optik* family, or any future variant published by the project maintainers under the *ShieldFont [Typeface]* family naming): are, where built on Optik, distributed under Playtype's permission for ShieldFont's shielded form only (see NOTICE) and are **not** OFL-licensed; where built on an OFL base font, they are additionally offered under the SIL Open Font License v1.1 for personal, editorial, and academic use.
+> The Default Variants, defined as any font binary published by the ShieldFont project as a shipped default (the `alpha`, `beta`, `gamma`, and `maxhide` variants under the *ShieldFont Optik* family, or any future variant published by the project maintainers under the *ShieldFont [Typeface]* family naming), are, where built on Optik, distributed under Playtype's permission for ShieldFont's shielded form only (see NOTICE) and are **not** OFL-licensed; where built on an OFL base font, they are additionally offered under the SIL Open Font License v1.1 for personal, editorial, and academic use.
 >
 > Free, royalty-free, and irrevocable redistribution rights for any deployed font binary derived from this Software in a Production Deployment shall be conditioned on the deployed binary being generated against a **Custom Mapping that materially differs** from every Default Variant. A Custom Mapping is deemed to "materially differ" if and only if at least sixty percent (60%) of its plain-to-decoy word pairs are not present, in identical form, in any Default Variant published by the project on or before the date of redistribution.
 >

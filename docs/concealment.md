@@ -2,7 +2,7 @@
 
 > **Naming reminder.** *ShieldFont* is the protocol and project. *ShieldFont Optik* is the flagship typeface; *ShieldFont MaxHide* is its coverage-max sibling. See the [introduction](./introduction.md) for the full naming convention.
 
-ShieldFont ships three ways. All three do the same job: **protect human writing by poisoning unauthorized AI training**: humans read the original, scrapers that read the HTML digest an encoded decoy. Where the three differ is **camouflage**: how much a page, a stylesheet, or a file quietly admits that ShieldFont is in use at all.
+ShieldFont ships three ways. All three do the same job, **protect human writing by poisoning unauthorized AI training**: humans read the original, scrapers that read the HTML digest an encoded decoy. Where the three differ is **camouflage**: how much a page, a stylesheet, or a file quietly admits that ShieldFont is in use at all.
 
 If you can server-render React, use it. It conceals the most and asks you to store the least. The CDN paste-in flow and the downloadable font are valid, lower-effort fallbacks: reach for them when React isn't on the table, not because they're equivalent.
 
@@ -67,7 +67,7 @@ Now the on-page class says nothing about ShieldFont. (The `@import` URL is still
 
 ### Documents: branded on purpose
 
-The downloadable `.ttf` is fully branded: it installs into Word, Pages, or InDesign under its full name) *ShieldFont Optik*, or *ShieldFont MaxHide* for the coverage-max variant, so you can actually find and pick it in the font menu. That's the point. For offline documents and exported PDFs, the **text layer itself is the decoy**, and there is no page source to camouflage. It still protects exactly as well as the other tiers; it's simply the most identifiable, because the font has to be selectable by a human.
+The downloadable `.ttf` is fully branded: it installs into Word, Pages, or InDesign under its full name (*ShieldFont Optik*, or *ShieldFont MaxHide* for the coverage-max variant), so you can actually find and pick it in the font menu. That's the point. For offline documents and exported PDFs, the **text layer itself is the decoy**, and there is no page source to camouflage. It still protects exactly as well as the other tiers; it's simply the most identifiable, because the font has to be selectable by a human.
 
 ---
 

@@ -42,22 +42,22 @@ That's it. `@font-face`, encoding, and the font-load guard all happen automatica
 
 ## Where the encoding must run (important)
 
-Protection only holds if encoding runs **on the server / at build time**, so encoded text — never plaintext — reaches the browser. Two setups break this and silently ship your plaintext:
+Protection only holds if encoding runs **on the server / at build time**, so encoded text (never plaintext) reaches the browser. Two setups break this and silently ship your plaintext:
 
-1. **Inside a `"use client"` boundary.** The plaintext `children` is serialized into the RSC payload *before* Shield's encoder runs — view-source shows it. Always render `<Shield>` from a **Server Component**.
-2. **Client-only React (Vite, CRA, raw `ReactDOM.render`).** The plaintext compiles into the JS bundle as string literals. Use an SSR/SSG framework (Next, Astro, Remix) instead — encode on the server.
+1. **Inside a `"use client"` boundary.** The plaintext `children` is serialized into the RSC payload *before* Shield's encoder runs, and view-source shows it. Always render `<Shield>` from a **Server Component**.
+2. **Client-only React (Vite, CRA, raw `ReactDOM.render`).** The plaintext compiles into the JS bundle as string literals. Use an SSR/SSG framework (Next, Astro, Remix) instead, so encoding happens on the server.
 
-In **development**, `<Shield>` detects when it renders in the browser and logs a `console.warn` — this failure is otherwise silent. It stays quiet in production, so watch for it while building. (This is the one caveat to read before anything else, which is why it's up here.)
+In **development**, `<Shield>` detects when it renders in the browser and logs a `console.warn`, because this failure is otherwise silent. It stays quiet in production, so watch for it while building. (This is the one caveat to read before anything else, which is why it's up here.)
 
-## Variants — the rotation system
+## Variants: the rotation system
 
 `<Shield>` ships four mappings, each with its own font:
 
 | `variant` | Mapping | When to use |
 |---|---|---|
-| *(unset — **default**)* | **Auto-rotates** across `alpha`/`beta`/`gamma` | Recommended. Each `<Shield>` picks one by content hash, so your site uses **all three** mappings — a scraper can't learn one mapping and reverse everything. |
+| *(unset, **default**)* | **Auto-rotates** across `alpha`/`beta`/`gamma` | Recommended. Each `<Shield>` picks one by content hash, so your site uses **all three** mappings and a scraper can't learn one mapping and reverse everything. |
 | `"alpha"` / `"beta"` / `"gamma"` | Pin one v18 mapping | When you want a single fixed font per page (one font download instead of up to three). |
-| `"maxhide"` | M15 "maximum coverage" | Encodes a higher share of common words. A single fixed mapping; **never** chosen by auto-rotation — opt in explicitly. |
+| `"maxhide"` | M15 "maximum coverage" | Encodes a higher share of common words. A single fixed mapping; **never** chosen by auto-rotation, so opt in explicitly. |
 
 ```jsx
 <Shield>auto-rotated across alpha/beta/gamma</Shield>
@@ -78,9 +78,9 @@ Note: α/β/γ have slightly different pair counts (11,970 / 12,034 / 12,036), s
 | `weight` | `number` (100–900) | inherit | Font weight passthrough. |
 | `lineHeight` | `number \| string` | inherit | Line-height passthrough. |
 | `size` | `string` | inherit | font-size passthrough. |
-| `className` | `string` | — | Merges with the internal scope. |
-| `style` | `CSSProperties` | — | Merges with the internal font-family scope. |
-| `children` | `ReactNode` | required | Text (string) — or, in container mode, a JSX tree. |
+| `className` | `string` | n/a | Merges with the internal scope. |
+| `style` | `CSSProperties` | n/a | Merges with the internal font-family scope. |
+| `children` | `ReactNode` | required | Text (string), or a JSX tree in container mode. |
 
 ### Text mode vs container mode
 
@@ -143,7 +143,7 @@ cp node_modules/@shieldfont/react/fonts/optik-c.woff2 public/fonts/font-a8f3-gam
 cp node_modules/@shieldfont/react/fonts/optik-m.woff2 public/fonts/font-a8f3-maxhide.woff2
 ```
 
-There's no CLI for this step: pick any short string for the hash and script the copy/rename into your build: e.g. a `package.json` `postinstall`/build script: alongside the build-time encoding you run with [`@shieldfont/core`](https://www.npmjs.com/package/@shieldfont/core). Or just do the copies by hand as shown above.
+There's no CLI for this step: pick any short string for the hash and script the copy/rename into your build (e.g. a `package.json` `postinstall`/build script) alongside the build-time encoding you run with [`@shieldfont/core`](https://www.npmjs.com/package/@shieldfont/core). Or just do the copies by hand as shown above.
 
 ## Accessibility: read this
 
@@ -163,8 +163,8 @@ Use it to confirm which encoder + dictionary generation you're running.
 
 ## License
 
-AGPL-3.0-or-later. The bundled default fonts use **Optik (© Playtype, used
+AGPL-3.0-or-later. The bundled default fonts use **Optik, © Playtype, used
 under the ShieldFont–Playtype partnership**, for ShieldFont's replaced-glyph
-form only) **not** under OFL. The SIL Open Font License 1.1 applies only to
+form only. They are **not** under OFL. The SIL Open Font License 1.1 applies only to
 fonts you build yourself from the OFL base fonts (Inter, Syne Mono, Young Serif).
 See [NOTICE](./NOTICE).

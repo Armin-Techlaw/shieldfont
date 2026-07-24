@@ -153,7 +153,7 @@ ligature fires unconditionally, and a second chained-context pass
 it fired inside a larger word, not on a standalone word). This handles
 every text-run edge case (start of paragraph, end of line, line
 wraps, hyphenated compounds, quoted shorts like `'on'`, and digits
-adjacent to letters) only the *letter-adjacent* digit is preserved, so
+adjacent to letters). Only the *letter-adjacent* digit is preserved, so
 `iPhone15`→`iPhone10` and `M15-EN`→`M10-EN`, while a standalone run like
 `1568`→`1073`. Verified end-to-end by [`scripts/audit_font.py`](./scripts/audit_font.py)
 across every case variant of the shipped mapping plus a substring-
@@ -167,8 +167,6 @@ collision battery.
 > [white paper](https://shieldfont.org/white-paper) for the full journey.
 
 See [`MAPPINGS.md`](./MAPPINGS.md) for the mapping family overview.
-See [`archive/explanation.md`](archive/explanation.md) for the
-historical v1 write-up (kept for reference).
 
 </details>
 
@@ -231,9 +229,9 @@ stylesheet targets.
 
 ## Build your own font
 
-Two names, two things. **ShieldFont** (CamelCase) is the *protocol*: the
+Two things, one spelling. **ShieldFont** is the *protocol*: the
 encoder, the GSUB scheme, the methodology, the project; it is
-typeface-agnostic. **ShieldFont Optik** (single word, lowercase `f`) is our
+typeface-agnostic. **ShieldFont Optik** is our
 *flagship typeface*, the default the project ships; Optik is licensed from
 Playtype. Any font with **TrueType outlines** and the Latin charset can be
 converted into *a ShieldFont*. See the
@@ -263,9 +261,9 @@ CSS. To mint a private mapping to build against, run
 
 Recommended naming for community-built ShieldFonts: keep `ShieldFont` as the
 prefix, follow with the base typeface name: *ShieldFont Inter*, *ShieldFont
-Garamond*, *ShieldFont YourFoundry*. The casing rule (`ShieldFont` for the
-protocol, `ShieldFont [Name]` for a font) keeps the two things visibly
-distinct on the page.
+Garamond*, *ShieldFont YourFoundry*. Same CamelCase everywhere, including the
+font's internal name table; context tells you whether the word means the
+protocol or a specific typeface.
 
 ### Generator flags
 

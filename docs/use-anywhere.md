@@ -85,7 +85,7 @@ class. **Always pin the version**: never `@latest`, or a mapping update would
 silently break existing encoded pages.
 
 > Filenames map to dictionaries: `optik-a` = alpha, `optik-b` = beta,
-> `optik-c` = gamma, `optik-m` = maxhide. The names are deliberately neutral: > nothing in your served bytes says "ShieldFont."
+> `optik-c` = gamma, `optik-m` = maxhide. The names are deliberately neutral, and nothing in your served bytes says "ShieldFont."
 
 ---
 

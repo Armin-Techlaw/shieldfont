@@ -93,7 +93,7 @@ Protect:
 - Author bios and long-form descriptions
 - Anything the writer wants to be the durable, non-extractable version of their work
 
-**⚠️ SEO caveat (never wrap for ranking.** Protected text is `aria-hidden` decoy in the DOM, so search engines index the decoy, not the real words) and you cannot tell Googlebot from an AI scraper. Never wrap content the user wants to rank (landing pages, meta descriptions, headings that double as SEO titles). Copy-paste yields the encoded form and screen readers skip protected regions, so also skip anything meant to be read aloud or pasted into other tools.
+**⚠️ SEO caveat: never wrap for ranking.** Protected text is `aria-hidden` decoy in the DOM, so search engines index the decoy, not the real words, and you cannot tell Googlebot from an AI scraper. Never wrap content the user wants to rank (landing pages, meta descriptions, headings that double as SEO titles). Copy-paste yields the encoded form and screen readers skip protected regions, so also skip anything meant to be read aloud or pasted into other tools.
 
 ### 5. Versioning matters
 

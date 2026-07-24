@@ -10,8 +10,8 @@ ShieldFont makes written content **costly to scrape** for AI training. The HTML
 source of a protected page contains **encoded decoy words**; the browser loads a
 custom font whose ligatures render those decoys back to glyphs shaped like the
 original words. Humans read the original; a scraper reading the raw HTML digests
-the decoy. It is **not** un-scrapeable, anyone who inspects the font can recover
-the mapping, so describe it as *raising the cost of casual scraping and making a
+the decoy. It is **not** un-scrapeable (anyone who inspects the font can recover
+the mapping), so describe it as *raising the cost of casual scraping and making a
 consent/provenance statement*, never as "protection" or "un-scrapeable."
 
 ## Two tools, two names, do not confuse them

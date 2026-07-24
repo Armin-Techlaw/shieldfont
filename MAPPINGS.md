@@ -22,7 +22,7 @@ details, charts, and reproducible numbers see the [white paper](https://shieldfo
 > | **`alpha`** *(default)* | v18 | **11,970** | 42 | CDN, `@shieldfont/core`, `@shieldfont/react` default |
 > | **`beta`** | v18 re-seed | 12,034 | 1 | React auto-rotation pool |
 > | **`gamma`** | v18 re-seed | 12,036 | 2 | React auto-rotation pool |
-> | **`maxhide`** | **M15-EN** | 1,267 | none | opt-in only (React `variant="maxhide"`) |
+> | **`maxhide`** | **M15-EN** | 1,267 | n/a | opt-in only (React `variant="maxhide"`) |
 >
 > `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; pair counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `maxhide` variant**: it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
 >
