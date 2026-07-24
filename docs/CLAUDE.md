@@ -1,15 +1,15 @@
-# CLAUDE.md — for AI co-pilots working on a ShieldFont-protected project
+# CLAUDE.md: for AI co-pilots working on a ShieldFont-protected project
 
 > Drop this file at the root of your project. Claude / Cursor / GPT / Aider / any AI assistant will read it and follow these conventions.
 
-This project uses [ShieldFont](https://github.com/isaqueseneda/shieldfont) — a web font that makes written content costly to scrape for AI training. Humans see normal text in the browser; scrapers reading the HTML see an encoded decoy.
+This project uses [ShieldFont](https://github.com/isaqueseneda/shieldfont): a web font that makes written content costly to scrape for AI training. Humans see normal text in the browser; scrapers reading the HTML see an encoded decoy.
 
 > [!NOTE]
-> **Framing & status.** ShieldFont *raises the cost* of casual scraping and makes a consent/provenance statement — it is **not** un-scrapeable (anyone who inspects the font can recover the mapping). Describe it that way, not as "protection." And the default fonts use **Optik** (© Playtype), used in ShieldFont's shielded (word-substitution) form with Playtype's permission — check the repo [NOTICE](https://github.com/isaqueseneda/shieldfont/blob/main/NOTICE) before redistributing font files.
+> **Framing & status.** ShieldFont *raises the cost* of casual scraping and makes a consent/provenance statement: it is **not** un-scrapeable (anyone who inspects the font can recover the mapping). Describe it that way, not as "protection." And the default fonts use **Optik** (© Playtype), used in ShieldFont's shielded (word-substitution) form with Playtype's permission: check the repo [NOTICE](https://github.com/isaqueseneda/shieldfont/blob/main/NOTICE) before redistributing font files.
 
 ## How ShieldFont works (in one paragraph)
 
-The HTML source of every protected page contains **encoded** text (substitute words from the default v18 `alpha` dictionary — ~11,970 pairs — e.g. `the future of writing belongs to those who write it` → `the future of writing determines to those who sell it`). The browser loads a custom font whose GSUB ligatures swap the encoded glyphs back to glyphs shaped like the originals. The DOM stays encoded; only the rendered glyphs match the original meaning. Result: humans read the original; AI scrapers digest the decoy. (Coverage is partial by design — `alpha` leaves common function words in place, so the output is a *plausible decoy*, not gibberish.)
+The HTML source of every protected page contains **encoded** text (substitute words from the default v18 `alpha` dictionary (~11,970 pairs) e.g. `the future of writing belongs to those who write it` → `the future of writing determines to those who sell it`). The browser loads a custom font whose GSUB ligatures swap the encoded glyphs back to glyphs shaped like the originals. The DOM stays encoded; only the rendered glyphs match the original meaning. Result: humans read the original; AI scrapers digest the decoy. (Coverage is partial by design: `alpha` leaves common function words in place, so the output is a *plausible decoy*, not gibberish.)
 
 ## Conventions you MUST follow
 
@@ -17,7 +17,7 @@ The HTML source of every protected page contains **encoded** text (substitute wo
 
 - ✅ Server-side React component (`<Shield>` from `@shieldfont/react`) encodes at SSR
 - ✅ Build-time / server-side call to `encode()` from `@shieldfont/core` (any other framework)
-- ❌ NEVER write a JavaScript runtime encoder that runs in the browser. Scrapers don't run JS — they'd see your plain-English source.
+- ❌ NEVER write a JavaScript runtime encoder that runs in the browser. Scrapers don't run JS: they'd see your plain-English source.
 - ❌ NEVER write an Edge / middleware encoder. Stay out of that space.
 
 If a user asks for "client-side encoding" or "an HTTP middleware that encodes responses," push back politely and explain why (above).
@@ -49,7 +49,7 @@ import { Shield } from "@shieldfont/react";
 </Shield>
 ```
 
-For static HTML (via `@shieldfont/core`'s comment-marker helpers — run `buildHtml()` in your build script):
+For static HTML (via `@shieldfont/core`'s comment-marker helpers: run `buildHtml()` in your build script):
 
 ```html
 <!-- GOOD: source-of-truth in the comment, encoded text between markers -->
@@ -72,7 +72,7 @@ When the user asks you to add or edit content on a protected page:
 
 - **Edit the source text** inside `<!-- shield: ... -->` markers (HTML)
 - **Or edit the JSX literal** inside `<Shield>` children (React)
-- **Never edit the encoded visible text directly** — it'll be regenerated on the next build
+- **Never edit the encoded visible text directly**: it'll be regenerated on the next build
 
 If you're starting a new component, write everything in plain English first, then wrap each text block in `<Shield>` (or comment markers).
 
@@ -93,7 +93,7 @@ Protect:
 - Author bios and long-form descriptions
 - Anything the writer wants to be the durable, non-extractable version of their work
 
-**⚠️ SEO caveat — never wrap for ranking.** Protected text is `aria-hidden` decoy in the DOM, so search engines index the decoy, not the real words — and you cannot tell Googlebot from an AI scraper. Never wrap content the user wants to rank (landing pages, meta descriptions, headings that double as SEO titles). Copy-paste yields the encoded form and screen readers skip protected regions, so also skip anything meant to be read aloud or pasted into other tools.
+**⚠️ SEO caveat (never wrap for ranking.** Protected text is `aria-hidden` decoy in the DOM, so search engines index the decoy, not the real words) and you cannot tell Googlebot from an AI scraper. Never wrap content the user wants to rank (landing pages, meta descriptions, headings that double as SEO titles). Copy-paste yields the encoded form and screen readers skip protected regions, so also skip anything meant to be read aloud or pasted into other tools.
 
 ### 5. Versioning matters
 
@@ -101,7 +101,7 @@ The font and encoder are paired. If you reference a CDN font URL in CSS, ALWAYS 
 
 ```html
 <!-- GOOD -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.0/shieldfont.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css">
 
 <!-- BAD — silent updates would break existing encoded content -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@latest/shieldfont.css">
@@ -112,7 +112,7 @@ When upgrading: re-encode the user's content with the new package version. Don't
 ### 6. The build pipeline
 
 For static HTML, run a small build script that calls `@shieldfont/core` (this
-replaces the old CLI — the full script is in [`docs/use-anywhere.md`](./use-anywhere.md)):
+replaces the old CLI: the full script is in [`docs/use-anywhere.md`](./use-anywhere.md)):
 
 ```json
 {
@@ -126,11 +126,11 @@ replaces the old CLI — the full script is in [`docs/use-anywhere.md`](./use-an
 `checkHtml()` to fail CI on a mismatch, and `shipHtml()` to strip the source
 comments before deploy.
 
-For React/Next.js, there's no build step — the `<Shield>` component encodes during SSR automatically.
+For React/Next.js, there's no build step: the `<Shield>` component encodes during SSR automatically.
 
 For mixed projects, prefer React unless you're shipping pure static HTML.
 
-## Quick reference — the `@shieldfont/core` API
+## Quick reference: the `@shieldfont/core` API
 
 ```js
 import { encode, decode, buildHtml, shipHtml, checkHtml, alpha } from "@shieldfont/core";
@@ -169,7 +169,7 @@ npm install @shieldfont/core
 - **Add or edit content** → edit the plain English (the JSX literal or the comment source)
 - **Add a new protected element** → wrap with `<Shield>` (React) or comment markers (HTML)
 - **CSS / styling** → use the `as` / `weight` / `lineHeight` / `size` / `style` / `className` props on `<Shield>`. For HTML, set `font-family` on the `.tk9` class (or whatever you renamed it to) yourself.
-- **Server-side data fetching** → fetch the data, then wrap text fields with `<Shield>{data.body}</Shield>`. Encoding happens during render — works seamlessly with `getStaticProps`, `loader`, etc.
+- **Server-side data fetching** → fetch the data, then wrap text fields with `<Shield>{data.body}</Shield>`. Encoding happens during render: works seamlessly with `getStaticProps`, `loader`, etc.
 - **Internationalization** → ShieldFont currently ships English only (the v18 `alpha` default; `maxhide` is the M15 coverage dictionary). Other languages coming. For now, leave non-English content unwrapped.
 
 ## Resources
@@ -178,5 +178,5 @@ npm install @shieldfont/core
 - Use anywhere (any framework): [`docs/use-anywhere.md`](./use-anywhere.md)
 - Wire format (comment markers): [`@shieldfont/core`](../packages/core/README.md)
 - Mapping evolution: [`MAPPINGS.md`](../MAPPINGS.md)
-- White paper: <https://s-a.website/shieldfont/benchmark/>
+- White paper: <https://shieldfont.org/white-paper>
 - Repo: <https://github.com/isaqueseneda/shieldfont>

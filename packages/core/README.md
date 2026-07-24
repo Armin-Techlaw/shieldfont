@@ -1,6 +1,6 @@
 # @shieldfont/core
 
-The shared encoding/decoding logic for [ShieldFont](https://github.com/isaqueseneda/shieldfont) — the AI-scraping-resistant web font.
+The shared encoding/decoding logic for [ShieldFont](https://github.com/isaqueseneda/shieldfont): the AI-scraping-resistant web font.
 
 Zero runtime dependencies. Used by `@shieldfont/react` and any framework adapter you care to build.
 
@@ -71,7 +71,7 @@ For maintaining editable copy across builds, use the comment-marker convention i
 
 The opening comment carries the source-of-truth (plain English). The text between the markers is what's displayed (encoded). `buildHtml` re-derives the visible text from the comment every time, so the visible text never drifts from the source. To edit copy, change the comment and re-run `build`.
 
-For first-time setup, wrap a region with block markers and run `buildHtml` once — it normalizes them into per-text-node markers:
+For first-time setup, wrap a region with block markers and run `buildHtml` once: it normalizes them into per-text-node markers:
 
 ```html
 <!-- shield-on -->
@@ -111,8 +111,7 @@ build the matching font with `generate_font.py`. See `docs/custom-mappings.md`.
 
 ## Honest limits
 
-Protected text is a **decoy in the DOM**, so search engines index the decoy —
-don't wrap content you need ranked (you can't tell Googlebot from an AI scraper).
+Protected text is a **decoy in the DOM**, so search engines index the decoy: don't wrap content you need ranked (you can't tell Googlebot from an AI scraper).
 Copy-paste yields the decoy; give screen-reader users unprotected copy; and
 `alpha` deliberately keeps common function words, so coverage is partial by
 design (a short sentence may change only ~2 of ~11 words).
@@ -121,7 +120,7 @@ design (a short sentence may change only ~2 of ~11 words).
 
 AGPL-3.0-or-later. The project's shipped default variants are built on
 **Optik**, a proprietary typeface © Playtype, used in ShieldFont's shielded
-(word-substitution) form with Playtype's permission — **not** under OFL, and
+(word-substitution) form with Playtype's permission: **not** under OFL, and
 not for standalone use as a typeface. Fonts you generate yourself from the OFL
 base fonts (Inter, Syne Mono, Young Serif) ship under the SIL Open Font
 License 1.1. See [NOTICE](./NOTICE).

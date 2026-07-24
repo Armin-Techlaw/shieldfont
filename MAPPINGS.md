@@ -1,20 +1,19 @@
-# ShieldFont Mappings — M0 through M15
+# ShieldFont Mappings: M0 through M15
 
 The "mapping" is the dictionary that tells ShieldFont **which words to swap
 for which other words**. It's a flat bidirectional JSON of `{source: target}`
 pairs (so encoding and decoding both look up the same dict). Picking a good
-mapping turns out to be most of the engineering challenge — pick poorly and
+mapping turns out to be most of the engineering challenge: pick poorly and
 you either fail to protect the content (substitutes are too synonymous to
 the originals) or fail to render naturally (the encoded text looks like
 gibberish to humans, defeating the whole "humans see normal text" idea).
 
 This document is the executive summary of the M0 → M15 journey. For full
-details, charts, and reproducible numbers see the [V4 white paper](https://s-a.website/shieldfont/benchmark/)
-(plain English) and the [V4 technical companion](https://s-a.website/shieldfont/benchmark/technical.html).
+details, charts, and reproducible numbers see the [white paper](https://shieldfont.org/white-paper).
 
 ---
 
-> ## ⚠️ Current production default: **v18 `alpha`** — not M15-EN
+> ## ⚠️ Current production default: **v18 `alpha`**, not M15-EN
 >
 > This document's history predates the current release. **What ships today is the v18 family**, not M15-EN:
 >
@@ -23,17 +22,17 @@ details, charts, and reproducible numbers see the [V4 white paper](https://s-a.w
 > | **`alpha`** *(default)* | v18 | **11,970** | 42 | CDN, `@shieldfont/core`, `@shieldfont/react` default |
 > | **`beta`** | v18 re-seed | 12,034 | 1 | React auto-rotation pool |
 > | **`gamma`** | v18 re-seed | 12,036 | 2 | React auto-rotation pool |
-> | **`maxhide`** | **M15-EN** | 1,267 | — | opt-in only (React `variant="maxhide"`) |
+> | **`maxhide`** | **M15-EN** | 1,267 | none | opt-in only (React `variant="maxhide"`) |
 >
-> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; pair counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `maxhide` variant** — it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
+> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; pair counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `maxhide` variant**: it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
 >
-> **Everything below is the M0 → M15 research journey that produced M15-EN (now `maxhide`).** It is kept as history — v18 `alpha` descends from this line. When this document and a shipped mapping's `_meta` / `MANIFEST.json` disagree, the shipped artifacts win.
+> **Everything below is the M0 → M15 research journey that produced M15-EN (now `maxhide`).** It is kept as history: v18 `alpha` descends from this line. When this document and a shipped mapping's `_meta` / `MANIFEST.json` disagree, the shipped artifacts win.
 
 ---
 
-## The M15-EN mapping — now the opt-in `maxhide` variant
+## The M15-EN mapping: now the opt-in `maxhide` variant
 
-*(Historical: M15-EN was the V3 production champion. It now ships as the `maxhide` variant; the production default is v18 `alpha` — see the note above.)*
+*(Historical: M15-EN was the V3 production champion. It now ships as the `maxhide` variant; the production default is v18 `alpha`: see the note above.)*
 
 | File | Pairs | Coverage on real Wikipedia text | KenLM-Wiki PPL | H2 damage |
 |---|---|---|---|---|
@@ -43,17 +42,17 @@ details, charts, and reproducible numbers see the [V4 white paper](https://s-a.w
 > below).** These small-model fine-tune scores were the ranking metric
 > during development, but we now **demote them as unreliable** (the wrong
 > instrument; see [`benchmark/EXCLUDED.md`](./benchmark/EXCLUDED.md)). Read
-> them as a historical *relative* ranking, not a headline claim — the
+> them as a historical *relative* ranking, not a headline claim: the
 > meaning-divergence result in [`benchmark/`](./benchmark/) is the solid one.
 
 The full M15-EN mapping ships short pairs (`at↔by`, `is↔was`, `on↔in`),
 content-word substitutes, antonyms, and digit rotation (`1↔6`, `3↔8`,
 `4↔9`). Substring collisions inside larger words are prevented by the
-font's **fire-then-revert** GSUB structure — every ligature fires
+font's **fire-then-revert** GSUB structure: every ligature fires
 unconditionally, and a chained-context pass reverts substitutions that
 have a letter neighbor (i.e. fired inside a larger word). See the
-"How it works" section of the [README](./README.md#-see-the-trick) and
-the [V4 white paper](https://s-a.website/shieldfont/benchmark/).
+"How it works" section of the [README](./README.md#see-the-trick) and
+the [white paper](https://shieldfont.org/white-paper).
 
 The previous ≥4-char filter at `legacy/scripts/m15en_safe.json` is
 kept for forensic reproducibility but is no longer used in production.
@@ -65,47 +64,47 @@ kept for forensic reproducibility but is no longer used in production.
 | Mapping | Built around | Real-text coverage | KenLM PPL | H2 damage | Why it mattered |
 |---|---|---|---|---|---|
 | **M0** (legacy) | 400 rare-noun substitutes (`the→plumb`) | 47% | ~510 | +0.082 | The original ShieldFont. Asymmetric (encoder-only). |
-| M1 | Max-distance frequency swap | 49% | ~2,238 | +0.024 (weak) | Failed to poison — substitutes too predictable. |
-| **M2** | Antonym swap (WordNet, 199 pairs) | 9% | **~40** | **+0.110 (diffuse)** | First H2 win. Trained models lost ~11pp on substitutes AND controls — broad capability damage. |
+| M1 | Max-distance frequency swap | 49% | ~2,238 | +0.024 (weak) | Failed to poison: substitutes too predictable. |
+| **M2** | Antonym swap (WordNet, 199 pairs) | 9% | **~40** | **+0.110 (diffuse)** | First H2 win. Trained models lost ~11pp on substitutes AND controls: broad capability damage. |
 | M3 | Cross-POS scramble | 31% | ~2,465 | -0.051 | Backfired (model improved). Falsified the "scramble = damage" hypothesis. |
-| M4 | High-attention swap | 36% | ~271 | -0.056 | Same — backfire. |
+| M4 | High-attention swap | 36% | ~271 | -0.056 | Same: backfire. |
 | M5a / M6 | Hybrid antonym + rare-sub | 31% IDF | ~3,000 | **+0.110 (focal)** | Strong H2 ceiling. Substitutes specifically corrupted; controls intact. |
 | M7 / M5b / M6s | Hybrid variants | 30-32% IDF | ~570 GPT-2 | mixed | Sweet-spot search exploring antonym vs hybrid weighting. |
 | **M8** | Pure antonym, 308 pairs | 13% IDF | **~50** | +0.051 | Lowest PPL of any non-trivial mapping. Strong filter survival, weak damage. |
 | **hs100_xfw** | M8 base + 100 content rare-sub (extended function-word exclusion) | 18% IDF | **1,182** | +0.085 | First mapping to **simultaneously** pass strict GPT-2 PPL AND produce non-trivial damage. |
-| M9 / M9v2 / M10 | "Naturalistic" — agent-generated POS-matched substitutes | 25-31% IDF | ~2,400 | **+0.108 inverse-focal** | Surprising negative-composite damage: substitutes got STRONGER while controls degraded. Discovered a third damage mode. |
-| **M11a** | Granular bucketing (verb inflection + noun concreteness via Brysbaert) | 39% IDF | 1,803 | +0.108 inverse-focal | "The poetry variant" — encoded text reads like surrealist news. Syntactically intact, semantically dead. |
+| M9 / M9v2 / M10 | "Naturalistic": agent-generated POS-matched substitutes | 25-31% IDF | ~2,400 | **+0.108 inverse-focal** | Surprising negative-composite damage: substitutes got STRONGER while controls degraded. Discovered a third damage mode. |
+| **M11a** | Granular bucketing (verb inflection + noun concreteness via Brysbaert) | 39% IDF | 1,803 | +0.108 inverse-focal | "The poetry variant": encoded text reads like surrealist news. Syntactically intact, semantically dead. |
 | **M14** | M11a + de-synonymization (178 synonym pairs replaced with cross-domain alternatives) | 49% real-text | 1,855 | +0.050 | First mapping where synonym-audit was applied. Proved synonyms were inflating false coverage. |
 | M12 / M13 | Multi-agent function-word designer fleet (LOO-pruned) | 43-49% real-text | 1,604-1,929 | not trained | The function-word coverage exploration that fed into M15. |
-| **M15-EN** ⭐ | M14 + digits + LOO-pruned aggressive function pairs | **53%** real-text | **1,874** | **+0.130** | **Production champion** — beats the M5a/M6 ceiling by 18% AND passes the lenient filter. |
-| **M15-MULTI** | M14 noun-only base + content-word antonyms + numerals | 29% | **1,260** | not trained | Cross-language template — uses only operations that survive translation (noun pairing, content antonyms, digit/calendar rotation). |
+| **M15-EN** ⭐ | M14 + digits + LOO-pruned aggressive function pairs | **53%** real-text | **1,874** | **+0.130** | **Production champion**: beats the M5a/M6 ceiling by 18% AND passes the lenient filter. |
+| **M15-MULTI** | M14 noun-only base + content-word antonyms + numerals | 29% | **1,260** | not trained | Cross-language template: uses only operations that survive translation (noun pairing, content antonyms, digit/calendar rotation). |
 
 ---
 
 ## How to read the metrics
 
-**Coverage** — what % of words in a typical Wikipedia paragraph get encoded.
+**Coverage**: what % of words in a typical Wikipedia paragraph get encoded.
 Higher = stronger H1 protection (AI scrapers see more decoy text).
 
-**KenLM-Wiki 5-gram PPL** — perplexity assigned to encoded text by a small
+**KenLM-Wiki 5-gram PPL**: perplexity assigned to encoded text by a small
 n-gram language model trained on Wikipedia. Used by CCNet/RedPajama/Dolma
 data pipelines as a quality filter. Lower is more "Wikipedia-like" and
 survives the filter; higher gets dropped before training.
 
-**H2 damage** — composite degradation score after fine-tuning Qwen 2.5 3B
+**H2 damage**: composite degradation score after fine-tuning Qwen 2.5 3B
 on a corpus that contains 10% encoded text. Defined as `−Δsubstitute-probe
 − ΔMMLU` vs the clean100 control. **Positive = the model got worse.**
-Negative is "inverse focal" — the model got better at the substituted
+Negative is "inverse focal": the model got better at the substituted
 words specifically, even as controls degraded.
 
 ---
 
 ## The damage profile taxonomy (discovered during this work)
 
-1. **Focal** — substitute words specifically corrupted, controls intact. (M5a, M6)
-2. **Diffuse** — both substitutes and controls drop together — broad capability damage. (M2, M14)
-3. **Inverse focal** (new) — substitute vocabulary REINFORCED while control vocabulary degrades. The model becomes lopsided. (M11a — discovered when we built genuinely natural-looking substitutes that the model could integrate as parallel reality.)
-4. **Mixed** — substitute drop + control drop + MMLU drop, all moderate. (M15-EN — the strongest overall composite damage.)
+1. **Focal**: substitute words specifically corrupted, controls intact. (M5a, M6)
+2. **Diffuse**, both substitutes and controls drop together, broad capability damage. (M2, M14)
+3. **Inverse focal** (new): substitute vocabulary REINFORCED while control vocabulary degrades. The model becomes lopsided. (M11a: discovered when we built genuinely natural-looking substitutes that the model could integrate as parallel reality.)
+4. **Mixed**: substitute drop + control drop + MMLU drop, all moderate. (M15-EN: the strongest overall composite damage.)
 
 ---
 
@@ -119,11 +118,11 @@ repository and is **not** included in this lean release.
 |---|---|
 | `packages/core/src/mappings/{alpha,beta,gamma,m15en}.json` | **The shipped mappings**, each with a `_meta` provenance block. `alpha` (v18, 11,970 pairs, seed 42) is the production default; `beta`/`gamma` are its re-seeds; `m15en` is the `maxhide` variant. |
 | `scripts/v18{alpha,beta,gamma}_for_font.json` | Font-build inputs for the v18 α/β/γ variants (what `generate_font.py` consumes to emit the shipped fonts). |
-| `scripts/m15en_for_font.json` | The **M15-EN** dictionary — full M15-EN with shorts + digits (1,267 pairs). Now shipped as the opt-in **`maxhide`** variant (React `variant="maxhide"`); no longer the default (see the note at the top). |
+| `scripts/m15en_for_font.json` | The **M15-EN** dictionary: full M15-EN with shorts + digits (1,267 pairs). Now shipped as the opt-in **`maxhide`** variant (React `variant="maxhide"`); no longer the default (see the note at the top). |
 | `legacy/scripts/m15en_safe.json` *(dev repo)* | Historical: M15-EN filtered to ≥4-char pairs (1,138 pairs). Was the v2.0.0 production mapping; kept for forensic reproducibility. |
 | `legacy/scripts/m0_word_mapping.json` *(dev repo)* | Original 400-pair M0 mapping. Kept for reproducibility of pre-V3 builds. |
 | `benchmarks/v3/mappings/m*.json` *(dev repo)* | All 16 mappings (M0..M15) used in the benchmark. The full study data. |
-| `benchmarks/v3/mappings/m15_multi_universals.json` *(dev repo)* | Cross-language template (M15-MULTI) — for non-English deployments. |
+| `benchmarks/v3/mappings/m15_multi_universals.json` *(dev repo)* | Cross-language template (M15-MULTI): for non-English deployments. |
 | `benchmarks/v3/results/eval_*.json` *(dev repo)* | Per-mapping H2 evaluation results from LoRA fine-tuning. |
 
 ---
@@ -132,14 +131,14 @@ repository and is **not** included in this lean release.
 
 The full mapping-research toolchain lives in the project's development repository (under `benchmarks/v3/`, **not** in this lean release):
 
-- `mappings/build_m11.py` — granular content-word random pairing (verb inflection + concreteness + measurement bucketing)
-- `mappings/build_m9_random.py` — random POS-pool pairing baseline
-- the synonym-repair pass (the M11 "v2" refinement) is folded into the M11 build lineage — there is no standalone `build_m11_v2.py` in the repo
-- `mappings/build_sweetspot.py` — sweet-spot variants for the M5/M6 family
-- `sweetspot_measure.py` — KenLM/GPT-2 PPL + crawler leakage measurement harness
-- `validate_semantic_metrics.py` — IDF-weighted coverage validation against H1
-- `evo_test.py` — evolutionary leaderboard for the M12/M13/M15 sprint
-- `evo_loo.py` — leave-one-out PPL contribution analysis
+- `mappings/build_m11.py`, granular content-word random pairing (verb inflection + concreteness + measurement bucketing)
+- `mappings/build_m9_random.py`, random POS-pool pairing baseline
+- the synonym-repair pass (the M11 "v2" refinement) is folded into the M11 build lineage, there is no standalone `build_m11_v2.py` in the repo
+- `mappings/build_sweetspot.py`, sweet-spot variants for the M5/M6 family
+- `sweetspot_measure.py`, KenLM/GPT-2 PPL + crawler leakage measurement harness
+- `validate_semantic_metrics.py`, IDF-weighted coverage validation against H1
+- `evo_test.py`, evolutionary leaderboard for the M12/M13/M15 sprint
+- `evo_loo.py`, leave-one-out PPL contribution analysis
 
 For the cross-language template, replace the wordfreq language code (`en` →
 `es`/`fr`/`de`/etc.) and re-run the noun-only pairing pipeline. Concreteness

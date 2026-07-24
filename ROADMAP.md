@@ -1,7 +1,7 @@
 # ShieldFont Roadmap
 
 The roadmap is a living document. Items here are our current best
-thinking — nothing is committed until there's an issue, an owner, and
+thinking: nothing is committed until there's an issue, an owner, and
 (where relevant) a design discussion. Expect this to change as we learn.
 
 If you want to own any of these, open an issue or comment on the
@@ -11,30 +11,30 @@ tracking issue. New ideas are welcome via GitHub Discussions.
 
 ## Current release
 
-**v0.1.0 — first public release.** The v18 `alpha` mapping (production
+**v0.1.0: first public release.** The v18 `alpha` mapping (production
 default) plus `beta` / `gamma` / `max`, the fire-then-revert font, and the
 bring-your-own-TTF toolchain. (The project ran a private beta as v1.x–v2.1
 before this public release; see [`CHANGELOG.md`](./CHANGELOG.md).) See
 [`MAPPINGS.md`](./MAPPINGS.md) for the mapping family overview.
 
-Live beta site: <https://s-a.website/shieldfont/>
+Live site: <https://shieldfont.org>
 
 ---
 
 ## Legend
 
-- 🔴 **Critical** — must ship before we recommend ShieldFont for
+- 🔴 **Critical**: must ship before we recommend ShieldFont for
   general content protection.
-- 🟠 **Near-term** — the next 1–2 releases.
-- 🟡 **Mid-term** — on the path, scoped but not scheduled.
-- 🟢 **Exploration** — worth building, design still open.
+- 🟠 **Near-term**: the next 1–2 releases.
+- 🟡 **Mid-term**: on the path, scoped but not scheduled.
+- 🟢 **Exploration**: worth building, design still open.
 
 ---
 
 ## 🔴 Accessibility layer
 
 *Screen readers read the DOM. The DOM contains the scrambled text.
-Without a fix, ShieldFont is exclusionary — it protects content from
+Without a fix, ShieldFont is exclusionary: it protects content from
 scrapers by making it unreadable to blind users too. This must be
 solved before any general-purpose recommendation.*
 
@@ -103,7 +103,7 @@ enough scraped text. We want the next generation to be rotation-aware.*
   another.
 - **Time windows.** Mapping rotates daily/weekly. Old content is
   still readable because the *font file* encodes the mapping at the
-  time the page was encoded — older pages reference older font files.
+  time the page was encoded: older pages reference older font files.
 - **Multi-seed mixing.** Different sections of a document use different
   seeds, identified by CSS class. Raises the cost of any reversal
   attack linearly with the number of seeds.
@@ -183,25 +183,24 @@ per-language synonym audit.
 
 **Target languages (priority order):**
 
-- 🇧🇷 / 🇵🇹 **Portuguese** (pt-BR + pt-PT) — founding-team native
+- 🇧🇷 / 🇵🇹 **Portuguese** (pt-BR + pt-PT): founding-team native
   language; first non-English target.
-- 🇪🇸 **Spanish** — concreteness norm available, large speaker base.
-- 🇫🇷 **French** — concreteness norm available.
-- 🇩🇪 **German** — concreteness norm available; tokenizer disruption
+- 🇪🇸 **Spanish**: concreteness norm available, large speaker base.
+- 🇫🇷 **French**: concreteness norm available.
+- 🇩🇪 **German**: concreteness norm available; tokenizer disruption
   is interesting because of compounds.
-- 🇮🇹 **Italian** — concreteness norm available.
+- 🇮🇹 **Italian**: concreteness norm available.
 
 **Larger English dictionary** is also possible (target: 2,000+ words,
 ~75% text coverage), but each addition risks synonym collisions or
-adjacency issues — see [`MAPPINGS.md`](./MAPPINGS.md)
+adjacency issues: see [`MAPPINGS.md`](./MAPPINGS.md)
 for the rationale on why M15-EN deliberately under-represents
 adjectives. Treated as M16 work; not blocking.
 
 **Linguist-curated, not random.** Rather than mechanical pairing,
 engage native linguists to design mappings that are maximally
 disruptive to NLP tokenizers, to semantic embedding models, and to
-simple frequency analysis. Decorative/aesthetic pairings also matter —
-read the output out loud and it should feel absurd, not just wrong.
+simple frequency analysis. Decorative/aesthetic pairings also matter: read the output out loud and it should feel absurd, not just wrong.
 
 Open question: whether language dictionaries ship with the generator,
 or are fetched from a central registry. Central registry gives
@@ -279,15 +278,15 @@ Things we don't have answers to yet but think are worth investigating:
 
 ## ✅ Resolved (shipped in v2.x)
 
-- ✅ **M15-EN production mapping** (v2.0.0 / v2.1.0) — 1,267 pairs
+- ✅ **M15-EN production mapping** (v2.0.0 / v2.1.0): 1,267 pairs
   covering ≈53% of real-text words. (It ranked highest in the M-series
   fine-tune tests; those small-model "H2 damage" scores are now demoted
-  as unreliable — see `benchmark/EXCLUDED.md`.)
-- ✅ **Word-boundary GSUB at scale** (v2.1.0) — fire-then-revert
+  as unreliable, see `benchmark/EXCLUDED.md`.)
+- ✅ **Word-boundary GSUB at scale** (v2.1.0), fire-then-revert
   design handles all 1,267 pairs including shorts (`on↔in`, `at↔by`)
   and digits (`1↔6`, `3↔8`, `4↔9`) without substring collisions or
   the per-rule offset-graph explosion that broke earlier attempts.
-- ✅ **Strict audit pipeline** (v2.1.0) — `scripts/audit_font.py`
+- ✅ **Strict audit pipeline** (v2.1.0): `scripts/audit_font.py`
   verifies 7,590 round-trip cases (every pair × case variants) plus
   a substring-collision battery, with a visual side-by-side HTML
   report.

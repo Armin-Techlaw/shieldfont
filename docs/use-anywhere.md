@@ -1,10 +1,10 @@
-# Use ShieldFont anywhere — any framework, any build step
+# Use ShieldFont anywhere: any framework, any build step
 
 Not using React? ShieldFont's engine is a tiny, zero-dependency JavaScript
-library — **`@shieldfont/core`**. Call it wherever you already generate HTML: a
+library: **`@shieldfont/core`**. Call it wherever you already generate HTML: a
 Vue/Svelte/Angular server render, an Astro/11ty/Hugo/Jekyll build hook, an Eleventy
 filter, a Python or Ruby template (via a subprocess), a Cloudflare/Vercel build
-step — anywhere the encoding runs **before the bytes reach the browser**.
+step: anywhere the encoding runs **before the bytes reach the browser**.
 
 > **Two tools, don't confuse them.** The **Encoder** (`@shieldfont/core`, JS) turns
 > text into encoded decoys. The **Font Builder** (`scripts/generate_font.py`,
@@ -13,7 +13,7 @@ step — anywhere the encoding runs **before the bytes reach the browser**.
 
 ## The one rule
 
-**Encode at build time or during server render — never in the browser.** Scrapers
+**Encode at build time or during server render: never in the browser.** Scrapers
 don't run JavaScript, so a browser-runtime encoder would leave your plain-English
 source exposed. The encoded form is what you store, serve, and cache.
 
@@ -48,15 +48,15 @@ const html = `<p class="tk9">${encode(original, alpha)}</p>`;
 ```
 
 `alpha` is the default v18 dictionary. `beta` and `gamma` are alternate pairings
-for rotation; `m15en` is the coverage-max dictionary. Import whichever you pin — a
+for rotation; `m15en` is the coverage-max dictionary. Import whichever you pin: a
 page must be rendered by the font that matches the dictionary that encoded it.
 
 ## 3. Load the font once (`@font-face`)
 
-`@shieldfont/core` does **not** touch your CSS — you load the font yourself. Two
+`@shieldfont/core` does **not** touch your CSS: you load the font yourself. Two
 options.
 
-**Self-host (recommended — fails safe if the CDN ever dies):**
+**Self-host (recommended: fails safe if the CDN ever dies):**
 
 ```bash
 npm install @shieldfont/font
@@ -77,16 +77,15 @@ cp node_modules/@shieldfont/font/optik-a.woff2 public/fonts/
 **Or CDN (zero setup, version-pinned):**
 
 ```css
-@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.0/shieldfont.css');
+@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css');
 ```
 
 The CDN bundle already declares `@font-face` for `'Optik'` and ships the `.tk9`
-class. **Always pin the version** — never `@latest`, or a mapping update would
+class. **Always pin the version**: never `@latest`, or a mapping update would
 silently break existing encoded pages.
 
 > Filenames map to dictionaries: `optik-a` = alpha, `optik-b` = beta,
-> `optik-c` = gamma, `optik-m` = maxhide. The names are deliberately neutral —
-> nothing in your served bytes says "ShieldFont."
+> `optik-c` = gamma, `optik-m` = maxhide. The names are deliberately neutral: > nothing in your served bytes says "ShieldFont."
 
 ---
 
@@ -94,7 +93,7 @@ silently break existing encoded pages.
 
 If you keep static HTML in git and want the **plain-English source to stay the
 source of truth**, use the comment-marker helpers in `@shieldfont/core`. This is
-exactly what a build step should do — no separate tool needed.
+exactly what a build step should do: no separate tool needed.
 
 ```js
 // scripts/shield.mjs — run in your build (e.g. after your SSG emits dist/)
@@ -114,7 +113,7 @@ the visible decoy every run (idempotent), so the visible text never drifts:
 <!-- shield: The future of writing -->The future for watching<!-- /shield -->
 ```
 
-First-time setup: wrap a region with block markers and run `buildHtml` once — it
+First-time setup: wrap a region with block markers and run `buildHtml` once: it
 normalizes them into per-text-node markers.
 
 ```html
@@ -148,7 +147,7 @@ A typical `package.json`:
 
 If you build a clean adapter for your framework (an Astro integration, an Eleventy
 plugin, a Vue directive…), add it to [`ADAPTERS.md`](../ADAPTERS.md) so others can
-find it. `@shieldfont/react` is the reference implementation — read its source for
+find it. `@shieldfont/react` is the reference implementation: read its source for
 the SSR + font-load-guard pattern worth copying.
 
 ## Honest caveats (same for every integration)
@@ -161,7 +160,7 @@ the SSR + font-load-guard pattern worth copying.
 
 ## See also
 
-- [Integration guide](./integration.md) — the React path and the CDN/download tiers
-- [`@shieldfont/core` README](../packages/core/README.md) — full API
-- [Custom mappings](./custom-mappings.md) — bring your own mapping / build your own font
+- [Integration guide](./integration.md), the React path and the CDN/download tiers
+- [`@shieldfont/core` README](../packages/core/README.md), full API
+- [Custom mappings](./custom-mappings.md): bring your own mapping / build your own font
 - [AI co-pilot conventions](./CLAUDE.md) · [`AGENTS.md`](../AGENTS.md)

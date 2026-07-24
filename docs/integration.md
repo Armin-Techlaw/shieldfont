@@ -1,27 +1,27 @@
-# Integrating ShieldFont — the four tiers
+# Integrating ShieldFont: the four tiers
 
 ShieldFont ships in four flavors depending on how you build pages. Pick the one that matches your stack:
 
 | Tier | Audience | Install | Encoding happens... |
 |---|---|---|---|
-| [**A. JSX** (`<Shield>` component)](#tier-a--jsx-with-shieldfontreact) | React / Next.js / Astro / Remix | `npm i @shieldfont/react` | At server-render time |
-| [**B. Any framework / build step**](#tier-b--any-framework--build-step-shieldfontcore) | Vue, Svelte, Astro/11ty/Hugo builds, CI pipelines | `npm i @shieldfont/core` | In your build or server render |
-| [**C. CSS @import + paste**](#tier-c--css-import--paste) | Blogs, hosted CMSes, plain HTML | one-line `@import` in your site CSS | At encoder time (browser tool) |
-| [**D. Downloadable font**](#tier-d--download--microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors | one-click `.zip` | At Word/PDF render time via OpenType ligatures |
+| [**A. JSX** (`<Shield>` component)](#tier-a-jsx-with-shieldfontreact) | React / Next.js / Astro / Remix | `npm i @shieldfont/react` | At server-render time |
+| [**B. Any framework / build step**](#tier-b-any-framework--build-step-shieldfontcore) | Vue, Svelte, Astro/11ty/Hugo builds, CI pipelines | `npm i @shieldfont/core` | In your build or server render |
+| [**C. CSS @import + paste**](#tier-c-css-import--paste) | Blogs, hosted CMSes, plain HTML | one-line `@import` in your site CSS | At encoder time (browser tool) |
+| [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors | one-click `.zip` | At Word/PDF render time via OpenType ligatures |
 
-All four tiers share the same default `alpha` mapping (v18) — just different delivery mechanisms.
+All four tiers share the same default `alpha` mapping (v18): just different delivery mechanisms.
 
 > **How much each tier reveals differs.** React hides the most (neutral font family `Optik`, neutral filenames, no version, no telltale class); the downloadable font is branded on purpose. For the concealment / protection-level story tier by tier, see [Concealment & camouflage](./concealment.md).
 
 ---
 
-## ⚠️ Before you wrap anything — SEO and other honest caveats
+## ⚠️ Before you wrap anything: SEO and other honest caveats
 
 Protected text ships as `aria-hidden` decoy words in the DOM. Read this before you decide *what* to wrap:
 
-- **SEO — the big one.** Search engines index the *decoy* text, not your real words. You **cannot** distinguish Googlebot from an AI scraper — the same bytes go to both — so **don't wrap content you want to rank** (landing pages, product copy, meta descriptions, headings that double as SEO titles). Wrap the durable prose you'd rather keep out of a training set: essays, manifestos, long-form.
+- **SEO: the big one.** Search engines index the *decoy* text, not your real words. You **cannot** distinguish Googlebot from an AI scraper, the same bytes go to both, so **don't wrap content you want to rank** (landing pages, product copy, meta descriptions, headings that double as SEO titles). Wrap the durable prose you'd rather keep out of a training set: essays, manifestos, long-form.
 - **Copy-paste** yields the encoded form, not the original.
-- **Screen readers** skip protected regions — they're removed from the accessibility tree. Don't wrap anything a user needs read aloud.
+- **Screen readers** skip protected regions: they're removed from the accessibility tree. Don't wrap anything a user needs read aloud.
 - **JS off + font 404.** The fail-loud font guard is JavaScript; with JS disabled and the font missing, a human sees the raw decoy text.
 - **Coverage is partial by design.** The default `alpha` mapping deliberately leaves common function words in place, so a short sentence may change only ~2 of its ~11 words. The output is a *plausible decoy*, not gibberish.
 
@@ -40,13 +40,13 @@ The encoded form is what's stored, what's served, what's cached. Identical to ho
 
 ## Dynamic sites
 
-If you're building a React / Next.js / Remix / Astro app, you ship ShieldFont as a server component. Encoding happens at SSR — no runtime cost in the browser, no build script. See **Tier A** below for the full integration.
+If you're building a React / Next.js / Remix / Astro app, you ship ShieldFont as a server component. Encoding happens at SSR: no runtime cost in the browser, no build script. See **Tier A** below for the full integration.
 
-[Jump to Tier A — JSX with @shieldfont/react ↓](#tier-a--jsx-with-shieldfontreact)
+[Jump to Tier A, JSX with @shieldfont/react ↓](#tier-a-jsx-with-shieldfontreact)
 
 ---
 
-## Tier A — JSX with `@shieldfont/react`
+## Tier A, JSX with `@shieldfont/react`
 
 The recommended path for vibe-coders, Next.js apps, Astro, Remix, and any React Server Component framework.
 
@@ -93,14 +93,14 @@ That's it. The font + `@font-face` + encoding all happen automatically. Anything
 | `weight` | `100..900` | inherit | Font weight (Optik is variable). |
 | `lineHeight` | `number \| string` | inherit | Passthrough. |
 | `size` | `string` | inherit | font-size passthrough. |
-| `className` | `string` | — | Escape hatch — merges with internal scope. |
-| `style` | `CSSProperties` | — | Escape hatch. |
+| `className` | `string` | none | Escape hatch, merges with internal scope. |
+| `style` | `CSSProperties` | none | Escape hatch. |
 | `children` | `string` | required | The text to encode (must be a plain string). |
 
-### Host the font (required — self-host by design)
+### Host the font (required: self-host by design)
 
 The React component is **self-host only**: it never points at a public CDN it
-doesn't control. Reason — a typography-based defense must *fail loud*, never
+doesn't control. Reason: a typography-based defense must *fail loud*, never
 silent. If the font can't load, a bundled 4-second guard replaces protected text
 with "Content unavailable"; it must never fall back to showing the raw decoy. A
 CDN you don't own can vanish and break that guarantee, so you serve the font
@@ -139,12 +139,12 @@ After running `next build` (or `astro build` or whatever), scrape your own page:
 curl https://your-site.com/some-protected-page | grep 'data-typeface'
 ```
 
-You should see encoded text in the HTML, not the original English. Open the same URL in a browser — humans see the original because the font reverses the encoding visually.
+You should see encoded text in the HTML, not the original English. Open the same URL in a browser: humans see the original because the font reverses the encoding visually.
 
 ### Restrictions
 
 - **Children must be a string.** No nested JSX. For mixed content (text + links), split into multiple `<Shield>` instances.
-- **Server-only.** v1 has no client component — encoding must happen on the server so the encoded text reaches the browser.
+- **Server-only.** v1 has no client component: encoding must happen on the server so the encoded text reaches the browser.
 
 ---
 
@@ -152,16 +152,16 @@ You should see encoded text in the HTML, not the original English. Open the same
 
 If your site is a blog, a hosted CMS (WordPress / Ghost / Squarespace), or plain HTML where you control the site's CSS but don't run a build step, you use the **CSS @import + paste** flow. Drop one `@import` line into your site's CSS once, then paste encoded paragraphs anywhere in your body content. See **Tier C** below.
 
-If your site is an SSG (Astro / 11ty / Hugo / Jekyll) with a real build pipeline, call `@shieldfont/core` directly in your build — encode plain English, or use the comment-marker helpers to keep your source-of-truth in the file. See **Tier B**.
+If your site is an SSG (Astro / 11ty / Hugo / Jekyll) with a real build pipeline, call `@shieldfont/core` directly in your build: encode plain English, or use the comment-marker helpers to keep your source-of-truth in the file. See **Tier B**.
 
-[Jump to Tier C — CSS @import + paste ↓](#tier-c--css-import--paste) · [Jump to Tier B — any framework ↓](#tier-b--any-framework--build-step-shieldfontcore)
+[Jump to Tier C, CSS @import + paste ↓](#tier-c-css-import--paste) · [Jump to Tier B, any framework ↓](#tier-b-any-framework--build-step-shieldfontcore)
 
 ---
 
-## Tier B — Any framework / build step (`@shieldfont/core`)
+## Tier B: Any framework / build step (`@shieldfont/core`)
 
 Not on React? The encoder is a **zero-dependency JavaScript library** you call
-yourself — in a Vue/Svelte/Angular server render, an Astro/11ty/Hugo build hook, a
+yourself: in a Vue/Svelte/Angular server render, an Astro/11ty/Hugo build hook, a
 Vercel/Cloudflare build step, anywhere the encoding runs **before the HTML reaches
 the browser**. (The CLI that used to live here was only ever a thin wrapper around
 this library; call the library directly instead.)
@@ -187,39 +187,38 @@ element you want rendered through the protection font.
 
 ### Keep your plain-English source as the source of truth
 
-For static HTML in git, `@shieldfont/core` ships comment-marker helpers —
-`buildHtml` (re-derive the decoy from a `<!-- shield: … -->` source comment,
+For static HTML in git, `@shieldfont/core` ships comment-marker helpers: `buildHtml` (re-derive the decoy from a `<!-- shield: … -->` source comment,
 idempotently), `checkHtml` (verify round-trip; fail CI on mismatch), and
 `shipHtml` (strip every comment before deploy so the shipped HTML carries zero
 signal). A ~12-line build script replaces the old CLI entirely.
 
-👉 **Full recipe — encode, `@font-face`, and the marker-based build script — is in
+👉 **Full recipe (encode, `@font-face`, and the marker-based build script) is in
 [Use anywhere](./use-anywhere.md).**
 
 ---
 
-## Tier C — CSS @import + paste
+## Tier C: CSS @import + paste
 
-The lowest-friction path for blogs, hosted CMSes (WordPress, Ghost, Squarespace), and anyone who controls their site's CSS but doesn't have a build step. Two pastes — one is permanent site setup, one is per protected paragraph.
+The lowest-friction path for blogs, hosted CMSes (WordPress, Ghost, Squarespace), and anyone who controls their site's CSS but doesn't have a build step. Two pastes: one is permanent site setup, one is per protected paragraph.
 
-### Step 1 — One-time install (paste into your site's CSS)
+### Step 1: One-time install (paste into your site's CSS)
 
 ```css
-@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.0/shieldfont.css');
+@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css');
 ```
 
 Where to put it depends on your platform:
 
-- **WordPress** — Appearance → Customize → Additional CSS (Customizer plan and above), or your theme's `style.css`.
-- **Ghost** — Settings → Code injection → Site header (or the Custom CSS field if your theme exposes one).
-- **Squarespace** — Design → Custom CSS (this panel is available on every plan; the Code Injection panel is gated to Business+ but you don't need it for this).
-- **Plain HTML / static sites** — either drop the `@import` into your existing stylesheet, or use `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.0/shieldfont.css">` in `<head>`. The `<link>` form is marginally faster (parses in parallel with HTML) — prefer it if you have `<head>` access.
+- **WordPress**: Appearance → Customize → Additional CSS (Customizer plan and above), or your theme's `style.css`.
+- **Ghost**: Settings → Code injection → Site header (or the Custom CSS field if your theme exposes one).
+- **Squarespace**: Design → Custom CSS (this panel is available on every plan; the Code Injection panel is gated to Business+ but you don't need it for this).
+- **Plain HTML / static sites**: either drop the `@import` into your existing stylesheet, or use `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css">` in `<head>`. The `<link>` form is marginally faster (parses in parallel with HTML): prefer it if you have `<head>` access.
 
 This stylesheet declares `@font-face` for `'Optik'` and ships a `.tk9` utility class.
 
-> **Which dictionary version?** On the CDN tier the font family and filenames stay neutral, but the font stamps the **dictionary generation** it was built for into its own version field — the one deliberate tell of this tier. Encoded text only reads back correctly under a font whose version matches the dictionary that encoded it, so if you (or a collaborator) re-render a page later, read the font's version to pair it with the right dictionary. See [Checking your font version](./concealment.md#checking-your-font-version).
+> **Which dictionary version?** On the CDN tier the font family and filenames stay neutral, but the font stamps the **dictionary generation** it was built for into its own version field: the one deliberate tell of this tier. Encoded text only reads back correctly under a font whose version matches the dictionary that encoded it, so if you (or a collaborator) re-render a page later, read the font's version to pair it with the right dictionary. See [Checking your font version](./concealment.md#checking-your-font-version).
 
-### Step 2 — Per-paragraph paste (anywhere in body content)
+### Step 2: Per-paragraph paste (anywhere in body content)
 
 Encode your text in the [encoder](https://github.com/isaqueseneda/shieldfont) (visit the site, paste plain English on the left, copy the embed on the right), then paste the result into your post body:
 
@@ -229,9 +228,9 @@ Encode your text in the [encoder](https://github.com/isaqueseneda/shieldfont) (v
 </p>
 ```
 
-That's the entire embed. No `<link>`, no inline `style`, no `<script>` — just a paragraph with a class. This shape survives the strictest CMS sanitizers, including WordPress KSES for non-admin authors.
+That's the entire embed. No `<link>`, no inline `style`, no `<script>`: just a paragraph with a class. This shape survives the strictest CMS sanitizers, including WordPress KSES for non-admin authors.
 
-### Where this works — and where it doesn't
+### Where this works, and where it doesn't
 
 | Platform | Step 1 (CSS @import) | Step 2 (paragraph paste) |
 |---|---|---|
@@ -243,55 +242,51 @@ That's the entire embed. No `<link>`, no inline `style`, no `<script>` — just 
 | **Substack** | ✗ no custom CSS/HTML in posts | ✗ |
 | **Medium** | ✗ no custom CSS/HTML in posts | ✗ |
 
-Substack and Medium are out by platform policy — they don't accept custom CSS or HTML in user content at all. For now, the only ShieldFont path that reaches those audiences is exporting protected PDFs (Tier D).
+Substack and Medium are out by platform policy: they don't accept custom CSS or HTML in user content at all. For now, the only ShieldFont path that reaches those audiences is exporting protected PDFs (Tier D).
 
 ### Why single-variant on this tier
 
-The React route (Tier A) rotates between three variants (alpha / beta / gamma) so adversarial scrapers can't fingerprint protected pages by font-family name. That rotation depends on the React component running at SSR time. The CSS tier doesn't have one — there's no JavaScript involved — so it ships one variant. If you need rotation, use `@shieldfont/react`.
+The React route (Tier A) rotates between three variants (alpha / beta / gamma) so adversarial scrapers can't fingerprint protected pages by font-family name. That rotation depends on the React component running at SSR time. The CSS tier doesn't have one, there's no JavaScript involved, so it ships one variant. If you need rotation, use `@shieldfont/react`.
 
 ---
 
-## Tier D — Download (Microsoft Word / PDF)
+## Tier D: Download (Microsoft Word / PDF)
 
 For journalists, document authors, anyone sending PDFs through email.
 
-Download the .zip from [s-a.website/shieldfont/download](https://s-a.website/shieldfont/) (ships with the v0.1.0 release):
+You need two things, both on the site:
 
-```
-shieldfont-alpha.zip
-  shieldfont-alpha.ttf       <- install in Word, Pages, InDesign
-  shieldfont-alpha.otf       <- compatibility with older apps
-  shieldfont-alpha.woff2     <- web (in case)
-  README.md                  <- 1-page how-to
-  encoder.html               <- standalone offline encoder you open in any browser
-```
+| What | Where |
+|---|---|
+| The font | <https://shieldfont.org/fonts/shieldfont-alpha.ttf> (also linked from the homepage) |
+| The encoder | <https://shieldfont.org/encoder> |
 
 **Workflow:**
 
-1. Install the .ttf or .otf on your system.
-2. **Encode your text first.** Open the bundled `encoder.html` in any browser, paste your plain English, and copy the **encoded** output.
-3. Paste the **encoded** text into Word / Pages / InDesign, then set the ShieldFont font on those paragraphs. The font's GSUB ligatures render the encoded words back to glyphs *shaped like the originals*, so a human reading the page sees your original English — while the document's underlying text stream stays the encoded decoy.
+1. Install `shieldfont-alpha.ttf` on your system.
+2. **Encode your text first.** Open the [encoder](https://shieldfont.org/encoder), paste your plain English, and copy the **encoded** output.
+3. Paste the **encoded** text into Word / Pages / InDesign, then set the ShieldFont font on those paragraphs. The font's GSUB ligatures render the encoded words back to glyphs *shaped like the originals*, so a human reading the page sees your original English, while the document's underlying text stream stays the encoded decoy.
 4. Export to PDF. The decoy (encoded) form is what's stored in the PDF's text layer; readers still see the original through the font.
 5. Email the PDF. If your recipient's email provider scrapes attachments to train AI models, the encoded text is useless training data.
 
-> ⚠️ **Don't type plain English straight into the document.** The mapping is an involution, so typing plaintext fires the ligatures in reverse — you'd see the *decoy* on screen while the file quietly stores your real words (the exact opposite of the protection you want). Always encode first, then paste the encoded text.
+> ⚠️ **Don't type plain English straight into the document.** The mapping is an involution, so typing plaintext fires the ligatures in reverse: you'd see the *decoy* on screen while the file quietly stores your real words (the exact opposite of the protection you want). Always encode first, then paste the encoded text.
 
-For documents you'll edit later, also keep a plain-English source copy somewhere (the encoder.html in the zip lets you re-encode any time).
+For documents you'll edit later, also keep a plain-English source copy somewhere (the encoder decodes as well as encodes, but a source file is cheaper than a round trip).
 
 ---
 
 ## Versioning
 
-Every CDN URL we publish is **version-pinned and immutable**. No "latest" channels — silently upgrading the mapping would break existing encoded content.
+Every CDN URL we publish is **version-pinned and immutable**. No "latest" channels: silently upgrading the mapping would break existing encoded content.
 
 ```
-✅ https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.0/shieldfont.css
+✅ https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css
 ❌ https://cdn.jsdelivr.net/npm/@shieldfont/font@latest/shieldfont.css
 ```
 
 Upgrading to a new mapping version is opt-in: re-run your `@shieldfont/core` build (Tier B), bump the npm package (Tier A), regenerate your snippet (Tier C), or re-download (Tier D).
 
-## Threat model — what ShieldFont does and doesn't protect against
+## Threat model: what ShieldFont does and doesn't protect against
 
 **Defends:**
 - Naive HTML scrapers (`curl + regex`, `requests + BeautifulSoup`, trafilatura, readability-lxml)
@@ -311,7 +306,7 @@ Our framing: **ShieldFont raises the cost of extraction; it doesn't promise zero
 
 ## Next steps
 
-- For any non-React stack: [Use anywhere](./use-anywhere.md) — call `@shieldfont/core` in your build or server render.
+- For any non-React stack: [Use anywhere](./use-anywhere.md): call `@shieldfont/core` in your build or server render.
 - For AI co-pilots: drop [`docs/CLAUDE.md`](./CLAUDE.md) (or the [`AGENTS.md`](../AGENTS.md) that ships in every package) into your project so Claude / Cursor / GPT / Aider follow the convention by default.
 - For new framework adapters: the wire format (comment markers) is documented in [`@shieldfont/core`](../packages/core/README.md); list your adapter in [`ADAPTERS.md`](../ADAPTERS.md).
 - For mapping internals: see [`MAPPINGS.md`](../MAPPINGS.md) for the M0 → M15 evolution and [`benchmarks/v4/results/`](../benchmarks/v4/results/) for the white paper.

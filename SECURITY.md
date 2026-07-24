@@ -41,8 +41,8 @@ personal email before public launch.
 
 - The mapping is a static lookup table in v1. Anyone who downloads the
   font and runs frequency analysis on a corpus can reverse it. The
-  roadmap addresses this (`ROADMAP.md` — *Rotating mappings*). If you
-  have ideas for mitigation, please contribute — but demonstrating that
+  roadmap addresses this (`ROADMAP.md`: *Rotating mappings*). If you
+  have ideas for mitigation, please contribute. But demonstrating that
   the current scheme is reversible is expected, not a finding.
 - ShieldFont does not protect against screenshots, headless browsers
   with font rendering, OCR, or vision-language models reading rendered
@@ -56,7 +56,7 @@ We practice **coordinated disclosure**. When an issue is fixed we will:
 
 1. Publish a fix (private branch merged into `main`).
 2. Credit the reporter in the release notes (unless you prefer
-   anonymity — tell us).
+   anonymity: tell us).
 3. Write a short public advisory describing impact and mitigation.
 
 If you report in good faith and give us reasonable time to respond, we

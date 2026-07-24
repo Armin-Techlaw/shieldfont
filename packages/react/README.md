@@ -1,17 +1,17 @@
 # @shieldfont/react
 
-A React **server component** for [ShieldFont](https://github.com/isaqueseneda/shieldfont) — encodes its children at server-render time and ships them to the browser through a bundled font.
+A React **server component** for [ShieldFont](https://github.com/isaqueseneda/shieldfont): encodes its children at server-render time and ships them to the browser through a bundled font.
 
 **Encoded text is what reaches the browser.** Scrapers reading the HTML source see the encoded form. Humans, rendering through the font, see the original.
 
 > [!WARNING]
-> **Wrapping content in `<Shield>` removes it from search-engine indexing.** The DOM text is `aria-hidden` decoy gibberish, and you **cannot** distinguish Googlebot from an AI scraper — so search engines index the decoy, not your words. **Do not wrap anything you want to rank.** This is the single biggest thing to understand before you ship; see [Accessibility](#accessibility--read-this) and [Where the encoding must run](#where-the-encoding-must-run-important).
+> **Wrapping content in `<Shield>` removes it from search-engine indexing.** The DOM text is `aria-hidden` decoy gibberish, and you **cannot** distinguish Googlebot from an AI scraper, so search engines index the decoy, not your words. **Do not wrap anything you want to rank.** This is the single biggest thing to understand before you ship; see [Accessibility](#accessibility-read-this) and [Where the encoding must run](#where-the-encoding-must-run-important).
 
 ```bash
 npm install @shieldfont/react
 ```
 
-## Quick start (Next.js App Router, Astro, Remix — any RSC framework)
+## Quick start (Next.js App Router, Astro, Remix: any RSC framework)
 
 ```jsx
 import { Shield } from "@shieldfont/react";
@@ -95,7 +95,7 @@ Note: α/β/γ have slightly different pair counts (11,970 / 12,034 / 12,036), s
 </Shield>
 ```
 
-## `encodeText` — for places JSX can't go
+## `encodeText`: for places JSX can't go
 
 `<title>`, `<meta>`, attribute values:
 
@@ -116,13 +116,13 @@ import { setFontHost } from "@shieldfont/react";
 setFontHost("/static/shieldfont");           // or your OWN CDN
 ```
 
-There is **no default public CDN by design**. A scraping defense must fail *loud*, never silent: if the font can't load, readers would otherwise see decoy gibberish with no signal it's wrong. Self-hosting guarantees the font ships with your build — and the bundled **font-load guard** (inlined, no hydration needed) watches `document.fonts` and, if the font doesn't load within 4 s, visibly replaces every protected element with *"Content unavailable"* and logs a clear console error. Never the raw decoy.
+There is **no default public CDN by design**. A scraping defense must fail *loud*, never silent: if the font can't load, readers would otherwise see decoy gibberish with no signal it's wrong. Self-hosting guarantees the font ships with your build, and the bundled **font-load guard** (inlined, no hydration needed) watches `document.fonts` and, if the font doesn't load within 4 s, visibly replaces every protected element with *"Content unavailable"* and logs a clear console error. Never the raw decoy.
 
-> **JS-off caveat:** that font-load guard is **JavaScript**. With JavaScript disabled *and* the font failing to load (e.g. a 404), the guard can't run — and a reader in that state sees the **raw decoy text**. There is no non-JS fallback for this specific case; the fail-loud guarantee holds only where scripts run.
+> **JS-off caveat:** that font-load guard is **JavaScript**. With JavaScript disabled *and* the font failing to load (e.g. a 404), the guard can't run, and a reader in that state sees the **raw decoy text**. There is no non-JS fallback for this specific case; the fail-loud guarantee holds only where scripts run.
 
 ## Camouflage (optional, recommended for production)
 
-By default every ShieldFont React page shares the same **neutral** fingerprints (`data-typeface`, `font-family: 'Optik'`, the `optik-*` filenames) — nothing that names ShieldFont, but a signature two ShieldFont sites hold in common. `setCamouflage({ hash })` rewrites those shared SSR-visible literals to per-project unique names so two sites share no signature:
+By default every ShieldFont React page shares the same **neutral** fingerprints (`data-typeface`, `font-family: 'Optik'`, the `optik-*` filenames): nothing that names ShieldFont, but a signature two ShieldFont sites hold in common. `setCamouflage({ hash })` rewrites those shared SSR-visible literals to per-project unique names so two sites share no signature:
 
 ```jsx
 // Imported once in your root layout:
@@ -131,7 +131,7 @@ setCamouflage({ hash: "a8f3" });   // → font-family "Optik a8f3", data-typefac
 ```
 
 > [!WARNING]
-> **Camouflage also renames the font *files* in the `@font-face` `src` — so you MUST copy each font to its camouflaged filename, or the page fails loud.** With `hash: "a8f3"`, `<Shield>` stops requesting `optik-*.woff2` and instead requests `/fonts/font-a8f3.woff2` (alpha), `/fonts/font-a8f3-beta.woff2`, and `/fonts/font-a8f3-gamma.woff2`. Those files don't exist until you create them; if they 404, the font-load guard replaces every protected element with *"Content unavailable."* The plain `cp …/*.woff2` step from the quick start is **not** enough once camouflage is on.
+> **Camouflage also renames the font *files* in the `@font-face` `src`, so you MUST copy each font to its camouflaged filename, or the page fails loud.** With `hash: "a8f3"`, `<Shield>` stops requesting `optik-*.woff2` and instead requests `/fonts/font-a8f3.woff2` (alpha), `/fonts/font-a8f3-beta.woff2`, and `/fonts/font-a8f3-gamma.woff2`. Those files don't exist until you create them; if they 404, the font-load guard replaces every protected element with *"Content unavailable."* The plain `cp …/*.woff2` step from the quick start is **not** enough once camouflage is on.
 
 Copy and rename every font in the auto-rotation pool to its camouflaged name (all three, because a block can hash to any of them). Repeat for each hash you use:
 
@@ -143,14 +143,14 @@ cp node_modules/@shieldfont/react/fonts/optik-c.woff2 public/fonts/font-a8f3-gam
 cp node_modules/@shieldfont/react/fonts/optik-m.woff2 public/fonts/font-a8f3-maxhide.woff2
 ```
 
-There's no CLI for this step: pick any short string for the hash and script the copy/rename into your build — e.g. a `package.json` `postinstall`/build script — alongside the build-time encoding you run with [`@shieldfont/core`](https://www.npmjs.com/package/@shieldfont/core). Or just do the copies by hand as shown above.
+There's no CLI for this step: pick any short string for the hash and script the copy/rename into your build: e.g. a `package.json` `postinstall`/build script: alongside the build-time encoding you run with [`@shieldfont/core`](https://www.npmjs.com/package/@shieldfont/core). Or just do the copies by hand as shown above.
 
-## Accessibility — read this
+## Accessibility: read this
 
 > [!WARNING]
-> **SEO:** the same property that hides text from scrapers hides it from **search engines**. Protected text is `aria-hidden` gibberish in the DOM, and you can't tell Googlebot apart from an AI scraper — so anything inside `<Shield>` is indexed as decoy, not as your real words. **Don't wrap content you want to rank** (page titles, headings, marketing copy). Wrap only what you're deliberately withholding from machines.
+> **SEO:** the same property that hides text from scrapers hides it from **search engines**. Protected text is `aria-hidden` gibberish in the DOM, and you can't tell Googlebot apart from an AI scraper, so anything inside `<Shield>` is indexed as decoy, not as your real words. **Don't wrap content you want to rank** (page titles, headings, marketing copy). Wrap only what you're deliberately withholding from machines.
 
-Protected regions are `aria-hidden="true"`: the DOM text is encoded gibberish, so screen readers, `Ctrl/⌘-F`, copy-paste, and translation tools operate on the gibberish, not the visible words. **This is inherent to the approach** (a font that hides text from machines hides it from assistive tech too). For any content that must be accessible, provide a parallel path — e.g. a "Listen / read aloud" control driven by the *original* build-time text, or an accessible plaintext version behind auth. Don't wrap navigation, form labels, or essential interactive text.
+Protected regions are `aria-hidden="true"`: the DOM text is encoded gibberish, so screen readers, `Ctrl/⌘-F`, copy-paste, and translation tools operate on the gibberish, not the visible words. **This is inherent to the approach** (a font that hides text from machines hides it from assistive tech too). For any content that must be accessible, provide a parallel path: e.g. a "Listen / read aloud" control driven by the *original* build-time text, or an accessible plaintext version behind auth. Don't wrap navigation, form labels, or essential interactive text.
 
 ## Version
 
@@ -163,8 +163,8 @@ Use it to confirm which encoder + dictionary generation you're running.
 
 ## License
 
-AGPL-3.0-or-later. The bundled default fonts use **Optik — © Playtype, used
+AGPL-3.0-or-later. The bundled default fonts use **Optik (© Playtype, used
 under the ShieldFont–Playtype partnership**, for ShieldFont's replaced-glyph
-form only — **not** under OFL. The SIL Open Font License 1.1 applies only to
+form only) **not** under OFL. The SIL Open Font License 1.1 applies only to
 fonts you build yourself from the OFL base fonts (Inter, Syne Mono, Young Serif).
 See [NOTICE](./NOTICE).
