@@ -2,9 +2,18 @@
 """reseed_mapping.py — generate YOUR OWN private ShieldFont mapping from your own
 seed, by re-pairing the shipped v18 word pool WITHIN its grammatical buckets.
 
-This is exactly how the shipped β/γ variants were made from α: same pool, same
-buckets, seeds 1 and 2. A re-seeded mapping is unique to you, so a scraper that
-reverse-engineers the PUBLIC alpha dictionary cannot decode your pages.
+This is the same in-bucket re-pairing method used to derive the shipped β/γ
+variants from α (same pool, same buckets, seeds 1 and 2), but it is NOT a
+byte-reproduction of them: running this script at --seed 1 reproduces only 194
+of β's 12,034 entries, because the shipped variants also went through the full
+build pipeline (semantic veto, collision drops) that this script skips. What you
+get is an equivalent-quality mapping of your own, not a copy of a shipped one.
+
+A re-seeded mapping is unique to you, so a scraper holding the PUBLIC alpha
+dictionary cannot batch-decode your pages with it. That is dictionary reuse, and
+it is the only attack a seed defeats: the font you serve still encodes your
+pairs, so anyone who downloads it can invert THAT font and recover your
+originals, seed or no seed. See docs/custom-mappings.md.
 
   in  : a v18 pairs file whose entries carry a `bucket` (default: shipped alpha)
   out : a flat {src: tgt} mapping JSON — the exact form the encoder consumes,

@@ -49,6 +49,12 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 > dedicated α/β/γ re-eval, matching `BUILDING_VARIANTS.md:300`) gives content
 > **48.36%**, KenLM **120.8%**. They agree on sem-div (~0.297) and pass_27
 > (10.27%). README uses the `v18_variants_eval.json` figures. VERIFIED both.
+>
+> **On the `pass_27` values in rows 21–23.** These are v7-harness readouts on
+> curated corpora. README no longer prints this per-variant metrics table, and
+> quotes none of these `pass_27` values as a filter-survival claim; the rows are
+> retained as provenance for the v7 eval. For what the README does claim about
+> filter survival, see rows 42a/42b and flag F-F.
 
 ---
 
@@ -93,7 +99,9 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 
 | # | README claim | Source | Status |
 |---|---|---|---|
-| 42 | α FineWeb-Edu pass **10.27%** (v7) | `benchmarks/v7/results/v18_variants_eval.json › [0].pass_27` = 10.27; `V18_FINAL.md:139` | VERIFIED |
+| 42 | α FineWeb-Edu pass **10.27%**: a **v7-harness measurement on curated wiki/books/webtext**, kept for provenance, never quoted as a real-corpus rate | `benchmarks/v7/results/v18_variants_eval.json › [0].pass_27` = 10.27; `V18_FINAL.md:139`. The figure **was** measured; what it is not is generalisable. `benchmarks/v8/results/FINAL_REPORT.md:9,155` calls it "a Wiki-LM artifact" that "over-generalizes", and `EXCLUDED.md:44-47` keeps it as caveat only | VERIFIED **as a v7-harness value**; see flag F-F |
+| 42a | α FineWeb-Edu pass, **absolute** (v8, real corpora): **0.2% / 1.0% / 0.2%** (cc_news / owt / pg19) against clean baselines **2.9% / 7.4% / 3.1%** → **99.0–99.8% of encoded chunks dropped** | `benchmarks/v8/phase2_filters/results/gate_fineweb_edu.json`; `benchmarks/v8/results/FINAL_REPORT.md:48-55` | VERIFIED |
+| 42b | Same measurement stated **relative** to the chunks that pass clean: **6.5–13.5%**, the only defensible reading of the old "~10% passes" shorthand | Computed from the `FINAL_REPORT.md:48-55` table: 0.2/2.9 = 6.9%, 1.0/7.4 = 13.5%, 0.2/3.1 = 6.5%. `FINAL_REPORT.md:56` states the same band rounded, "closer to 5-15% of clean-passing chunks" | VERIFIED |
 | 43 | FineWeb-Edu threshold ≥ **2.7** | `benchmarks/v8/README.md:117`; `eval_phase1` context; FINAL_REPORT.md:56 | VERIFIED |
 | 44 | v18 wasted-per-passing-page **~24%** (median α/β/γ, FineWeb-Edu primary) | `benchmarks/v8/phase3_wasted/results/wasted_tokens.json › wasted.{v18_a,b,c}.*.fineweb_edu.wasted_per_passing_page`; 3-corpus medians 0.2485 / 0.2381 / 0.2411 → cross-variant median **0.2411 = 24.1%**; `FINAL_REPORT.md:92-99` (F3a PASS 24.1%) | VERIFIED |
 | 45 | ~24pp above clean baseline (excess_waste) | `wasted_tokens.json › …fineweb_edu.excess_waste` (clean baseline 0.0, so excess = wasted); `FINAL_REPORT.md:100` (F3b PASS 24.1pp) | VERIFIED |
@@ -112,7 +120,7 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 |---|---|---|---|
 | 52 | build_pairs → apply_v15_cell → generate_font → audit_font chain; `--expand-paradigms` required; pair-identical to α at seed 42 | `benchmarks/v7/BUILDING_VARIANTS.md:129-235,160-164,182` | VERIFIED |
 | 53 | Flatten via `scripts/build_alpha_mapping.py <pairs> <out>` | `scripts/build_alpha_mapping.py:9-12` (usage) | VERIFIED |
-| 54 | Expected bands: pairs 11.8–12k, sem-div 0.295–0.300, content ≈48%, KenLM 110–140%, pass_27 8–15% | `benchmarks/v7/BUILDING_VARIANTS.md:253-260` | VERIFIED |
+| 54 | Expected bands: pairs 11.8–12k, sem-div 0.295–0.300, content ≈48%, KenLM 110–140%, pass_27 8–15% | `benchmarks/v7/BUILDING_VARIANTS.md:253-260` | VERIFIED **as a v7-harness rebuild sanity check**. The 8–15% `pass_27` band is measured on the v7 harness and its curated wiki/books/webtext corpora; it is **not** comparable to the v8 real-corpus absolute rate of 0.2–1.0% (row 42a) and is not a prediction of field behaviour. README states it under exactly that label. See flag F-F |
 | 55 | Hero re-run scripts + models pulled | `benchmarks/v8/scripts/eval_phase1_semdiv.py`, `gate_fineweb_edu.py`, `aggregate_phase3.py`; models at `eval_phase1_semdiv.py:127,131` + `README.md:117` | VERIFIED |
 | 56 | β/γ shipped fonts built by running `build_alpha_mapping.py` on `pairs_v7_alpha_v18_b/c.json` | **INFERRED.** `build_alpha_mapping.py` is generic (argv src/out); no script or shell file names the β/γ invocations (grep found none). Files exist and match structure. | **ASSUMED (mechanism inferred, outputs VERIFIED to exist).** |
 
@@ -135,3 +143,15 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 - **Within-file NLI value (F-E).** One results file carries both a 3-corpus bar
   value (0.504) and a 4-corpus derived value (0.418); the reports publish
   0.504, which is the value used here.
+
+- **The 10.27% pass rate and the 8–15% band (F-F).** Both were genuinely
+  measured, and both are **v7-harness numbers on curated wiki/books/webtext**.
+  The project's own v8 report calls 10.27% "a Wiki-LM artifact" that
+  "over-generalizes" (`FINAL_REPORT.md:9,155`), and `EXCLUDED.md:44-47` keeps
+  Wikipedia-KenLM/FineWeb-Edu perplexity figures **only** as an explicit
+  caveat, never as a standalone stat. On real-world corpora the **absolute**
+  FineWeb-Edu pass rate is **0.2–1.0%** (row 42a); ~10% is defensible only as a
+  **relative** retention figure, and the measured band there is **6.5–13.5%**
+  (row 42b). The 8–15% `pass_27` band in §3 is a rebuild sanity signal on the
+  v7 harness, not a field prediction. Always say which of the two you mean;
+  never blend them into one number.

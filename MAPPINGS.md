@@ -17,14 +17,16 @@ details, charts, and reproducible numbers see the [white paper](https://shieldfo
 >
 > This document's history predates the current release. **What ships today is the v18 family**, not M15-EN:
 >
-> | Variant | Mapping | Pairs | Seed | Where it ships |
+> | Variant | Mapping | Dict entries | Seed | Where it ships |
 > |---|---|---|---|---|
 > | **`alpha`** *(default)* | v18 | **11,970** | 42 | CDN, `@shieldfont/core`, `@shieldfont/react` default |
 > | **`beta`** | v18 re-seed | 12,034 | 1 | React auto-rotation pool |
 > | **`gamma`** | v18 re-seed | 12,036 | 2 | React auto-rotation pool |
-> | **`maxhide`** | **M15-EN** | 1,267 | n/a | opt-in only (React `variant="maxhide"`) |
+> | **`maxhide`** | **M15-EN** | **2,534** | n/a | opt-in only (React `variant="maxhide"`) |
 >
-> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; pair counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `maxhide` variant**: it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
+> "Dict entries" counts every `{source: target}` key in the shipped mapping, i.e. `a→b` and `b→a` separately. That is the number `_meta.pairs` and `MANIFEST.json` report; halve it for logical pairs (`maxhide` = 2,534 entries = 1,267 logical pairs). The tables further down this page count **logical pairs**, so the two do not line up on their face.
+>
+> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; entry counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `maxhide` variant**: it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
 >
 > **Everything below is the M0 → M15 research journey that produced M15-EN (now `maxhide`).** It is kept as history: v18 `alpha` descends from this line. When this document and a shipped mapping's `_meta` / `MANIFEST.json` disagree, the shipped artifacts win.
 
@@ -36,7 +38,19 @@ details, charts, and reproducible numbers see the [white paper](https://shieldfo
 
 | File | Pairs | Coverage on real Wikipedia text | KenLM-Wiki PPL | H2 damage |
 |---|---|---|---|---|
-| [`scripts/m15en_for_font.json`](./scripts/m15en_for_font.json) | **1,267** | ~53% | ~1,874 (passes lenient filter) | **+0.130** (highest in the study) |
+| [`scripts/m15en_for_font.json`](./scripts/m15en_for_font.json) | **1,267** | ~53% | ~1,874 | **+0.130** (highest in the study) |
+
+*(Pairs here are **logical** pairs; the shipped `maxhide` dictionary is the
+same mapping written out bidirectionally as 2,534 entries.)*
+
+> **On "passes the filter."** M15-EN cleared the lenient Wikipedia-KenLM
+> threshold this study used, and that is all the ~1,874 figure says. Against
+> the modern classifier gates measured in v8 it is rejected almost entirely
+> (FineWeb-Edu 0.2% / 1.0% / 0.1%; per-corpus KenLM 0–1.6%). That is the
+> *rejection* branch, and it is a defence in its own right, because a page the
+> classifier drops never teaches the model anything. It is not, however, the
+> same claim as "survives the filter." See
+> [`benchmark/README.md`](./benchmark/README.md) §1.
 
 > **Caveat on the "H2 damage" column (here and in the comparison table
 > below).** These small-model fine-tune scores were the ranking metric
@@ -76,7 +90,7 @@ kept for forensic reproducibility but is no longer used in production.
 | **M11a** | Granular bucketing (verb inflection + noun concreteness via Brysbaert) | 39% IDF | 1,803 | +0.108 inverse-focal | "The poetry variant": encoded text reads like surrealist news. Syntactically intact, semantically dead. |
 | **M14** | M11a + de-synonymization (178 synonym pairs replaced with cross-domain alternatives) | 49% real-text | 1,855 | +0.050 | First mapping where synonym-audit was applied. Proved synonyms were inflating false coverage. |
 | M12 / M13 | Multi-agent function-word designer fleet (LOO-pruned) | 43-49% real-text | 1,604-1,929 | not trained | The function-word coverage exploration that fed into M15. |
-| **M15-EN** ⭐ | M14 + digits + LOO-pruned aggressive function pairs | **53%** real-text | **1,874** | **+0.130** | **Production champion**: beats the M5a/M6 ceiling by 18% AND passes the lenient filter. |
+| **M15-EN** ⭐ | M14 + digits + LOO-pruned aggressive function pairs | **53%** real-text | **1,874** | **+0.130** | **The V3-era champion, and the endpoint of this line**: beat the M5a/M6 ceiling by 18% and cleared the lenient Wikipedia-KenLM filter. Ships today as the opt-in `maxhide`; production is v18 `alpha`. |
 | **M15-MULTI** | M14 noun-only base + content-word antonyms + numerals | 29% | **1,260** | not trained | Cross-language template: uses only operations that survive translation (noun pairing, content antonyms, digit/calendar rotation). |
 
 ---
@@ -88,8 +102,20 @@ Higher = stronger H1 protection (AI scrapers see more decoy text).
 
 **KenLM-Wiki 5-gram PPL**: perplexity assigned to encoded text by a small
 n-gram language model trained on Wikipedia. Used by CCNet/RedPajama/Dolma
-data pipelines as a quality filter. Lower is more "Wikipedia-like" and
-survives the filter; higher gets dropped before training.
+data pipelines as a quality filter. Lower is more "Wikipedia-like."
+
+Read this column as a **within-study ranking signal only**, never as a
+pass/fail prediction. A Wikipedia-trained KenLM mis-references non-wiki
+registers, and the four gates instrumented in v8 (per-corpus KenLM,
+FineWeb-Edu, Pythia-160M, Wiki-KenLM) barely agree on which chunks are
+"high quality" at all (Kendall τ ≈ 0). Real pipelines (FineWeb, DCLM,
+RefinedWeb) gate with fastText / DistilRoBERTa / FineWeb-Edu **classifiers**,
+not with a Wikipedia perplexity threshold. For what actually happens to an
+encoded page at a modern gate (absolute FineWeb-Edu pass 0.2–1.0%, relative
+retention 6.5–13.5% of clean-passing chunks), see
+[`benchmark/README.md`](./benchmark/README.md) §2.3, and
+[`benchmark/EXCLUDED.md`](./benchmark/EXCLUDED.md) for why Wiki-KenLM numbers
+are kept as caveat rather than headline.
 
 **H2 damage**: composite degradation score after fine-tuning Qwen 2.5 3B
 on a corpus that contains 10% encoded text. Defined as `−Δsubstitute-probe

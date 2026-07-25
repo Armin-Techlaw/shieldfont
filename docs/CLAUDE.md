@@ -9,7 +9,9 @@ This project uses [ShieldFont](https://github.com/isaqueseneda/shieldfont): a we
 
 ## How ShieldFont works (in one paragraph)
 
-The HTML source of every protected page contains **encoded** text (substitute words from the default v18 `alpha` dictionary (~11,970 pairs) e.g. `the future of writing belongs to those who write it` → `the future of writing determines to those who sell it`). The browser loads a custom font whose GSUB ligatures swap the encoded glyphs back to glyphs shaped like the originals. The DOM stays encoded; only the rendered glyphs match the original meaning. Result: humans read the original; AI scrapers digest the decoy. (Coverage is partial by design: `alpha` leaves common function words in place, so the output is a *plausible decoy*, not gibberish.)
+The HTML source of every protected page contains **encoded** text (substitute words from the default v18 `alpha` dictionary, e.g. `the future of writing belongs to those who write it` → `the future of writing determines to those who sell it`). The browser loads a custom font whose GSUB ligatures swap the encoded glyphs back to glyphs shaped like the originals. The DOM stays encoded; only the rendered glyphs match the original meaning. Result: humans read the original; AI scrapers digest the decoy. (Coverage is partial by design: `alpha` leaves common function words in place, so the output is a *plausible decoy*, not gibberish.)
+
+Dictionary sizes differ per variant, so don't quote one number for all of them: `alpha` is the default v18 dictionary (11,970 entries); `beta` (12,034) and `gamma` (12,036) are alternate pairings for rotation, near-identical in size; `m15en` is the coverage-max dictionary and a different shape entirely (2,534 entries covering a higher share of a page's words, including short function words). A page must be rendered by the font that matches the dictionary that encoded it.
 
 ## Conventions you MUST follow
 
@@ -17,7 +19,7 @@ The HTML source of every protected page contains **encoded** text (substitute wo
 
 - ✅ `<Shield>` from `@shieldfont/react` rendered in a **Server Component** (a static export is fully protected: no runtime server needed)
 - ✅ Build-step or server-render call to `encode()` from `@shieldfont/core` (any other framework)
-- ❌ `<Shield>` inside a `"use client"` component: the plaintext AND the whole ~38,000-pair dictionary compile into the JS bundle. Served HTML still looks encoded, so this fails silently.
+- ❌ `<Shield>` inside a `"use client"` component: the plaintext AND all four bundled dictionaries (~38,000 entries) compile into the JS bundle. The served HTML still *looks* encoded, so nothing on the page appears wrong. `<Shield>` does print a one-time console warning when it detects a browser render, in production as well as development, so check the console: that warning is the only visible symptom.
 - ❌ Passing unencoded text from a server component into a client component as a prop: the plaintext lands in the served HTML and the RSC payload.
 - ❌ NEVER write a JavaScript runtime encoder that runs in the browser. Scrapers don't run JS: they'd see your plain-English source.
 - ❌ NEVER write an Edge / middleware encoder. Stay out of that space.
@@ -97,6 +99,8 @@ Protect:
 
 **⚠️ SEO caveat: never wrap for ranking.** Protected text is `aria-hidden` decoy in the DOM, so search engines index the decoy, not the real words, and you cannot tell Googlebot from an AI scraper. Never wrap content the user wants to rank (landing pages, meta descriptions, headings that double as SEO titles). Copy-paste yields the encoded form and screen readers skip protected regions, so also skip anything meant to be read aloud or pasted into other tools.
 
+**⚠️ Accessibility caveat: this is the project's number one unsolved problem.** `<Shield>` hardcodes `aria-hidden="true"` on every protected block, with **no prop to turn it off**, and it ships **no** accessible fallback. Assistive tech therefore skips shielded regions entirely. Any alternative (an `aria-label` marking the region as machine-obfuscated, a "Listen" button reading the *real* words, a plain-text copy exposed to assistive tech) has to be built by hand **around** the component; there is nothing to switch on inside it. If the user asks you to make a protected block accessible, say this plainly rather than reaching for a `<Shield>` prop that does not exist, and recommend shielding only content that has a human-readable alternative.
+
 ### 5. Versioning matters
 
 The font and encoder are paired. If you reference a CDN font URL in CSS, ALWAYS pin the version:
@@ -146,15 +150,27 @@ checkHtml(html, alpha); // verify markers round-trip → { total, passed, failed
 
 ## Edge cases the encoder handles correctly
 
+*(Every row below was run through `encode(…, alpha)` and reflects the shipped
+`alpha` dictionary. Other variants map different words, so the specific decoys
+change; the rules don't.)*
+
 | Input | Encoded | Why |
 |---|---|---|
-| `page's, it's, world's` | `prison's, him's, house's` | Apostrophe + suffix passes through |
+| `world's, author's` | `lake's, teen's` | Apostrophe + suffix passes through; the base word is what gets looked up |
+| `page's, it's` | unchanged | Not every word is in the dictionary: `page` and `it` have no `alpha` pair, so they stay put. Partial coverage is by design |
 | `v3` | `v3` | A digit flanked by a letter is preserved (letter-adjacent) |
 | `M15-EN`, `iPhone15` | `M10-EN`, `iPhone10` | Only the letter-adjacent digit is preserved; non-adjacent digits rotate (`5→0`) |
 | `1568` | `1073` | Standalone digit run rotates (`0↔5`, `3↔8`, `4↔9`, `6↔7`; `1`,`2` unchanged) |
 | `don't`, `I'm`, `they're` | unchanged | No mapped base |
-| `<code>let x = 1;</code>` | unchanged | code/pre/script/style/svg/math always skipped |
+| `café`, `naïve` | unchanged | Accented forms are not in the dictionary and pass through untouched |
+| `<code>let x = 1;</code>` | unchanged | `script`/`style`/`code`/`pre`/`textarea`/`svg`/`math`/`noscript` contents are never encoded |
 | `<a href="/about">About</a>` | href untouched | Attributes never modified |
+
+Encoding is its own inverse: the mapping is bidirectional, so `decode(text, m)`
+is the same operation as `encode(text, m)`. That also means a *double* encode
+returns the original. Re-running the build over already-encoded output is safe
+via `buildHtml()` (it is idempotent), but calling `encode()` twice on the same
+string by hand un-encodes it.
 
 ## Recommended package install
 

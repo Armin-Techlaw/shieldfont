@@ -47,7 +47,7 @@ Protection only holds if encoding runs **on the server / at build time**, so enc
 1. **Inside a `"use client"` boundary.** The plaintext `children` is serialized into the RSC payload *before* Shield's encoder runs, and view-source shows it. Always render `<Shield>` from a **Server Component**.
 2. **Client-only React (Vite, CRA, raw `ReactDOM.render`).** The plaintext compiles into the JS bundle as string literals. Use an SSR/SSG framework (Next, Astro, Remix) instead, so encoding happens on the server.
 
-In **development**, `<Shield>` detects when it renders in the browser and logs a `console.warn`, because this failure is otherwise silent. It stays quiet in production, so watch for it while building. (This is the one caveat to read before anything else, which is why it's up here.)
+`<Shield>` detects when it renders in the browser and logs a `console.warn`, because this failure is otherwise silent. **The warning fires in production too**, deliberately: a dev-only warning made the single worst misuse fail silently in the one environment where it matters. It costs nothing, because by the time it can fire the bundle already contains your plaintext and the full dictionary; used correctly (server components only) the module never reaches the client bundle, so neither does the message. It is deduped to one warning per process. (This is the one caveat to read before anything else, which is why it's up here.)
 
 ## Variants: the rotation system
 
@@ -150,16 +150,22 @@ There's no CLI for this step: pick any short string for the hash and script the 
 > [!WARNING]
 > **SEO:** the same property that hides text from scrapers hides it from **search engines**. Protected text is `aria-hidden` gibberish in the DOM, and you can't tell Googlebot apart from an AI scraper, so anything inside `<Shield>` is indexed as decoy, not as your real words. **Don't wrap content you want to rank** (page titles, headings, marketing copy). Wrap only what you're deliberately withholding from machines.
 
-Protected regions are `aria-hidden="true"`: the DOM text is encoded gibberish, so screen readers, `Ctrl/⌘-F`, copy-paste, and translation tools operate on the gibberish, not the visible words. **This is inherent to the approach** (a font that hides text from machines hides it from assistive tech too). For any content that must be accessible, provide a parallel path: e.g. a "Listen / read aloud" control driven by the *original* build-time text, or an accessible plaintext version behind auth. Don't wrap navigation, form labels, or essential interactive text.
+Protected regions are `aria-hidden="true"`: the DOM text is encoded gibberish, so screen readers, `Ctrl/⌘-F`, copy-paste, and translation tools operate on the gibberish, not the visible words. **This is inherent to the approach** (a font that hides text from machines hides it from assistive tech too), and it is not configurable: `aria-hidden` is set unconditionally, there is no prop to turn it off, and the package ships no accessible fallback. For any content that must be accessible, provide a parallel path: e.g. a "Listen / read aloud" control driven by the *original* build-time text, or an accessible plaintext version behind auth. Don't wrap navigation, form labels, or essential interactive text.
 
 ## Version
 
 ```jsx
 import { VERSION } from "@shieldfont/react";   // re-exported from @shieldfont/core
-console.log(VERSION);   // "0.1.1" — matches the font name table (nameID 5) and every mapping's _meta.version
+console.log(VERSION);   // "0.1.1" — the package version
 ```
 
-Use it to confirm which encoder + dictionary generation you're running.
+Use it to confirm which encoder you're running. It is **not** a dictionary
+stamp: the fonts bundled here are deliberately version-neutral (their name table
+reads `Version 1.0`, so nothing in your served bytes names a dictionary
+generation), and the shipped mappings carry their own `_meta.version`, currently
+`0.1.0`. Read a mapping's generation with `mappingMeta()` from
+[`@shieldfont/core`](https://www.npmjs.com/package/@shieldfont/core) rather than
+inferring it from `VERSION`.
 
 ## License
 

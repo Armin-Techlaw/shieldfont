@@ -7,9 +7,9 @@ ShieldFont ships in four flavors depending on how you build pages. Pick the one 
 | [**A. JSX** (`<Shield>` component)](#tier-a-jsx-with-shieldfontreact) | React / Next.js / Astro / Remix | `npm i @shieldfont/react` | At server-render time |
 | [**B. Any framework / build step**](#tier-b-any-framework--build-step-shieldfontcore) | Vue, Svelte, Astro/11ty/Hugo builds, CI pipelines | `npm i @shieldfont/core` | In your build or server render |
 | [**C. CSS @import + paste**](#tier-c-css-import--paste) | Blogs, hosted CMSes, plain HTML | one-line `@import` in your site CSS | At encoder time (browser tool) |
-| [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors | download the font + use the web encoder | At Word/PDF render time via OpenType ligatures |
+| [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors (**not** Google Docs) | download the font + use the web encoder | At Word/PDF render time via OpenType ligatures |
 
-All four tiers share the same default `alpha` mapping (v18): just different delivery mechanisms.
+All four tiers build on the same v18 dictionary family, and `alpha` is the default everywhere. One difference worth knowing before you pick: **Tier A rotates by default.** Left unset, `<Shield>` picks `alpha`, `beta`, or `gamma` per block of text by content hash; Tiers B, C and D encode with whichever single mapping you pin, and the browser-based encoder behind Tier C emits `alpha`.
 
 > **How much each tier reveals differs.** React hides the most (neutral font family `Optik`, neutral filenames, no version, no telltale class); the downloadable font is branded on purpose. For the concealment / protection-level story tier by tier, see [Concealment & camouflage](./concealment.md).
 
@@ -21,7 +21,9 @@ Protected text ships as `aria-hidden` decoy words in the DOM. Read this before y
 
 - **SEO: the big one.** Search engines index the *decoy* text, not your real words. You **cannot** distinguish Googlebot from an AI scraper, the same bytes go to both, so **don't wrap content you want to rank** (landing pages, product copy, meta descriptions, headings that double as SEO titles). Wrap the durable prose you'd rather keep out of a training set: essays, manifestos, long-form.
 - **Copy-paste** yields the encoded form, not the original.
-- **Screen readers** skip protected regions: they're removed from the accessibility tree. Don't wrap anything a user needs read aloud.
+- **Screen readers** skip protected regions: they're removed from the accessibility tree. Don't wrap anything a user needs read aloud. `<Shield>` sets `aria-hidden="true"` unconditionally; **there is no prop to turn it off**, and no accessible fallback ships. If a piece of content needs an accessible path, build it yourself from your build-time original (a "Listen" control, a plaintext version behind auth) or don't wrap that content.
+- **The default dictionaries are public.** `alpha`/`beta`/`gamma`/`maxhide` ship as plaintext JSON in `@shieldfont/core`, and `@shieldfont/font` publishes a browser encoder (`shieldfont-encoder.js`, 277 KB) with all 11,970 `alpha` pairs inlined. Anyone can fetch either from npm or the CDN. Defaults are a convenience, not a secret; if you want a dictionary nobody else has, see [custom mappings](./custom-mappings.md).
+- **The font is invertible.** It has to reach the browser to render your page, and its composite glyphs are drawn from the original words' own letters, so anyone who downloads it can read the substitution table back out. We recovered all 11,962 word pairs from our own shipped font in 43 seconds (the dictionary's remaining 8 entries are single-digit swaps, which have no word glyph to read). This is the load-bearing caveat: ShieldFont raises the cost for scrapers that don't stop to invert; it does not make text unrecoverable.
 - **JS off + font 404.** The fail-loud font guard is JavaScript; with JS disabled and the font missing, a human sees the raw decoy text.
 - **Coverage is partial by design.** The default `alpha` mapping deliberately leaves common function words in place, so a short sentence may change only ~2 of its ~11 words. The output is a *plausible decoy*, not gibberish.
 
@@ -254,6 +256,8 @@ The React route (Tier A) rotates between three variants (alpha / beta / gamma) s
 
 For journalists, document authors, anyone sending PDFs through email.
 
+**Where this works.** Microsoft Word, Pages, and InDesign all render the substitutions: they ride the OpenType `ccmp` feature rather than `liga`, so an app's ligature setting doesn't affect them. **Google Docs cannot use this tier at all**, because it cannot load custom fonts. Draft in a desktop app and export, or use another tier.
+
 You need two things, both on the site:
 
 | What | Where |
@@ -295,10 +299,11 @@ Upgrading to a new mapping version is opt-in: re-run your `@shieldfont/core` bui
 - Copy-paste into text-only tools
 
 **Does not defend:**
+- **Anyone who downloads the font and inverts it.** The font is a self-decoding codebook: 11,962 of 11,962 pairs recovered from the shipped file in 43 seconds, no dictionary needed. A private mapping raises the per-site cost of this attack; nothing removes it.
 - Headless browsers that fully render fonts (Playwright, Puppeteer)
 - OCR on rendered pages or screenshots
 - Vision-language models reading screenshots
-- Frequency analysis on a large corpus (per-deploy random seeds coming in v2.3)
+- Frequency analysis on a large corpus (per-deploy seed rotation is on the [roadmap](../ROADMAP.md), not shipped; note that changing a seed also requires rebuilding a matching font)
 
 Our framing: **ShieldFont raises the cost of extraction; it doesn't promise zero extraction.**
 

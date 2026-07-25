@@ -512,9 +512,10 @@ let warnedClientRender = false;
  * If it runs in the browser instead — imported into a `"use client"` module, or
  * used in a client-only React app (Vite/CRA) — the original plaintext children
  * are serialized into the RSC/JS payload BEFORE the encoder runs, so view-source
- * leaks the very text you meant to protect, and it fails SILENTLY. A scraping
- * defense must fail loud, so warn once in development (deduped to one message
- * per process to avoid console spam).
+ * leaks the very text you meant to protect, and the page itself looks fine. A
+ * scraping defense must fail loud, so this warns whenever it runs in a browser,
+ * in production as well as development (see the note above on why the dev-only
+ * gate was removed). Deduped to one message per process to avoid console spam.
  */
 function warnIfClientRender(): void {
   if (warnedClientRender) return;

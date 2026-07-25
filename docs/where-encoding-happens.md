@@ -1,0 +1,102 @@
+# Where the encoding happens (and how it leaks)
+
+There is exactly one rule in ShieldFont:
+
+> **Your original text must never ship to the browser.**
+
+Everything else is detail. This page shows what that means in practice, because
+the two ways people break it both *look correct* and both fail **silently in
+production**.
+
+We did not reason this out. We built five real apps against the published
+packages and grepped the output for the plaintext. The results are below.
+
+## The test
+
+Eleven words, chosen so that **not one of them survives encoding**. If any of
+them appears anywhere in a build, it is a real leak, not a coincidence:
+
+```
+plain   : confidential manuscript quick lazy dog treasure guarded knowledge stolen scraped robot
+encoded : guilty visa wise logistic rabbit currency geared quantity took cruised barrier
+```
+
+## The results
+
+| How you render | Served HTML | JS bundle | Protected? |
+|---|---|---|---|
+| `<Shield>` in a **Server Component**, static export | clean | clean | **yes** |
+| `<Shield>` in a **Server Component**, SSR | clean | clean | **yes** |
+| `encode()` in a Node build script | clean | n/a | **yes** |
+| `<Shield>` inside a `"use client"` file | clean | **leaks** | **no** |
+| `<Shield>` in a client-only app (Vite, CRA) | empty shell | **leaks** | **no** |
+| Server Component passing plain text **as a prop** to a client component | **leaks** | **leaks** | **no** |
+
+## Why "server side" is the wrong way to say it
+
+We used to say ShieldFont encodes "server side." That phrasing is wrong in three
+ways, and each one hides a real failure:
+
+**It suggests you need a server.** You do not. A static export has no server at
+all, and it was the cleanest result in the table. This site is a static export.
+
+**It suggests a Server Component is automatically safe.** It is not. Look at the
+last row: that page *is* a server component. It hands your unencoded text to a
+client component as a prop, and the plaintext lands in the served HTML while the
+element on screen shows the encoded version. It looks right in DevTools and is
+fully exposed in view-source.
+
+**It points you at the check that passes.** In Next.js, client components are
+still rendered on the server, so their HTML comes out encoded and clean. You view
+source, see decoys, and conclude you are protected. The plaintext is sitting one
+`<script src>` away in the bundle.
+
+So say what actually matters:
+
+> `<Shield>` encodes in Node, at build time or during server render, so the
+> browser only ever downloads the encoded version.
+
+## The part that surprised us
+
+When `<Shield>` runs in the browser, it does not only leak that one page. It
+bundles the dictionary:
+
+```
+alpha   11971 pairs | in bundle: 11971 (100%)
+beta    12035 pairs | in bundle: 12035 (100%)
+gamma   12037 pairs | in bundle: 12037 (100%)
+maxhide  2535 pairs | in bundle:  2535 (100%)
+```
+
+All 38,578 pairs, in plain text, e.g. `confidential:"guilty"`. One misplaced
+`"use client"` publishes the decoder for **every** shielded page on your site,
+not just the one that leaked.
+
+## What to do
+
+**React, Next.js, Astro, Remix.** Render `<Shield>` from a Server Component. Do
+not put it in a `"use client"` file, and do not pass your unencoded text into a
+client component as a prop. If a client component needs the text, encode first
+and pass the encoded string.
+
+**Everything else.** Call `encode()` from `@shieldfont/core` in your build step
+or server render. See [Use anywhere](./use-anywhere.md).
+
+**Never** write a browser-runtime encoder. Scrapers do not run JavaScript, so
+they would read your plain English source and the whole exercise is pointless.
+
+## How to check your own build
+
+Do not trust a page that looks right. Grep for a sentence you know is protected:
+
+```bash
+npm run build
+grep -rn "a sentence from your protected text" out/ .next/ dist/ 2>/dev/null
+```
+
+No output means no leak. Any output is the file that is exposing you. Check the
+JS chunks too, not just the HTML: that is the case people miss.
+
+`<Shield>` also warns in the console if it detects itself rendering in a browser,
+in development **and** in production. If you see that warning, protection is
+already gone on that page.

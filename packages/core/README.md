@@ -88,12 +88,22 @@ Every bundled mapping carries a `_meta` block, and the package exports its versi
 
 ```ts
 import { VERSION, alpha, mappingMeta } from "@shieldfont/core";
-VERSION;                        // "0.1.0"
-mappingMeta(alpha)?.mappingId;  // "shieldfont-en-v18-alpha@0.1.0"
+VERSION;                        // "0.1.1"  (the npm package version)
+mappingMeta(alpha)?.mappingId;  // "shieldfont-en-v18-alpha@0.1.0"  (the dictionary generation)
 ```
 
-The matching font's name table carries the same id (nameID 3) and version
-(nameID 5), so you can always tell which font + dictionary generation you run.
+**These two are different numbers on purpose, and they will drift apart.**
+`VERSION` is the package version and moves with every release. `_meta.version`
+(inside `mappingId`) stamps the *dictionary generation* and only moves when the
+word pairs themselves are rebuilt, so a patch release that touches no dictionary
+leaves it where it was. Read the generation with `mappingMeta()`; never infer it
+from `VERSION`.
+
+The bundled fonts are deliberately **version-neutral** in the other direction:
+their name table carries no `mappingId`, so nothing in your served bytes names a
+dictionary generation. If you build your own font with
+`scripts/stamp_font_version.py`, it writes the `mappingId` into nameID 3 and the
+version into nameID 5, and then font and dictionary do identify each other.
 
 `encode(text, mapping)` accepts **any** mapping object, so you can bring your own:
 

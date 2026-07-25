@@ -47,9 +47,12 @@ Wrap the encoded text in an element that carries the protection font's class:
 const html = `<p class="tk9">${encode(original, alpha)}</p>`;
 ```
 
-`alpha` is the default v18 dictionary. `beta` and `gamma` are alternate pairings
-for rotation; `m15en` is the coverage-max dictionary. Import whichever you pin: a
-page must be rendered by the font that matches the dictionary that encoded it.
+`alpha` is the default v18 dictionary (11,970 entries). `beta` (12,034) and
+`gamma` (12,036) are alternate pairings for rotation, near-identical in size;
+`m15en` is the coverage-max dictionary and a different shape entirely (2,534
+entries covering a higher share of a page's words, including short function
+words). Import whichever you pin: a page must be rendered by the font that
+matches the dictionary that encoded it.
 
 ## 3. Load the font once (`@font-face`)
 
@@ -154,6 +157,17 @@ the SSR + font-load-guard pattern worth copying.
 
 - **SEO:** search engines index the *decoy*. Never wrap content you want to rank.
 - **Screen readers** skip protected regions; **copy-paste** yields the decoy.
+  `<Shield>` hardcodes `aria-hidden="true"` with no opt-out, and no accessible
+  fallback ships: build one yourself from your build-time original, or leave that
+  content unwrapped.
+- **The font is the codebook.** It has to reach the browser to render the page,
+  and its composite glyphs are drawn from the original words' own letters, so
+  anyone who downloads it can read the substitution table straight back out. We
+  recovered all 11,962 pairs from our own shipped font in 43 seconds, with no
+  dictionary. A private mapping raises the per-site cost; nothing removes it.
+- **The default dictionaries are public**, by design: `alpha`/`beta`/`gamma`/`m15en`
+  ship as plaintext JSON in `@shieldfont/core`, and `@shieldfont/font` publishes a
+  browser encoder with all 11,970 `alpha` pairs inlined.
 - **Not un-scrapeable:** a headless browser that renders fonts, OCR, or a
   vision-language model reading a screenshot all defeat it. ShieldFont raises the
   cost of casual scraping; it does not promise zero extraction.

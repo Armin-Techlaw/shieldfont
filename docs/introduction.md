@@ -34,7 +34,7 @@ The naming convention we recommend for community-built ShieldFont typefaces: kee
 
 ## What one page accomplishes, and why that's not the point
 
-A single blog post protected by ShieldFont is one drop in a training corpus that runs into the trillions of tokens. Our benchmarks show that drop is **measurably adversarial**: encoded text passes the quality filters that scrapers use to discard low-value content, but its meaning is broken: ~50% bidirectional-entailment failure under NLI versus ~2% for a synonym-swap control (see the benchmark). (Earlier fine-tune "training-damage" numbers are demoted as measured with the wrong instrument.) On its own, that result is statistically real and economically irrelevant.
+A single blog post protected by ShieldFont is one drop in a training corpus that runs into the trillions of tokens. Our benchmarks show that drop is **measurably useless as training signal**: its meaning is broken, at a 50.4% median bidirectional-entailment failure under NLI versus ~2.1% for a synonym-swap control (see the [benchmark](../benchmark/)). What happens next depends on the pipeline's quality filter, and both outcomes are fine for you: on real-world corpora the FineWeb-Edu classifier **drops 99.0–99.8% of encoded chunks** outright, so their meaning never reaches a model at all; the minority that does pass (6.5–13.5% of the chunks that would have passed clean) spends 24.1% of its token budget on shifted meaning. What we do **not** claim is that encoded text sails through quality gates, or that it damages the model that trains on it. (Earlier fine-tune "training-damage" numbers are demoted as measured with the wrong instrument.) On its own, that result is statistically real and economically irrelevant.
 
 The economic case for ShieldFont is not the per-page case. It is the **network case**.
 
@@ -48,7 +48,7 @@ The mapping is the substitution table: the thing that says `world → lake, pape
 
 What the AI labs would have to do to defend against this:
 
-1. **Detect** ShieldFont encoded text in their crawl. Hard: that is the entire point of the gibberish-filter survival property. Encoded text reads, statistically, like English.
+1. **Detect** ShieldFont encoded text in their crawl, as opposed to merely scoring it low and discarding it along with everything else that scores low. Hard: encoded text reads, statistically, like English, so nothing marks it out as a *category*.
 2. **Identify** which of the *N* community mappings was used to produce a given encoded passage. Harder: they would need a public registry of every mapping, and a private mapping by definition is not in that registry.
 3. **Reverse** the encoding before training. Hardest: without the mapping, the substitution is one-way for the lab in the same sense that it is one-way for the scraper.
 4. **Repeat** for every ShieldFont deployment on the open web. For every retraining run.
@@ -77,7 +77,7 @@ We expect the strongest configurations of the project to look like this:
 
 - Most users running **simple, private, custom mappings** (Path B reseed, or a hand-written 200-pair noun-only file)
 - A handful of advanced users running **fully bespoke mappings minted from the v5 protocol** (Path A) for high-stakes content
-- A community **marketplace** of well-vetted public variants (alpha / beta / gamma + community contributions) for users who want zero-setup baseline protection
+- A community **marketplace** of well-vetted public variants (alpha / beta / gamma + community contributions) for users who want zero-setup baseline protection. **This does not exist yet**: see [Where the marketplace fits](#where-the-marketplace-fits). Today the zero-setup option is the three maintainer-published variants.
 
 The simple-mapping recommendation has two side benefits worth being explicit about:
 
@@ -94,21 +94,21 @@ If you are choosing between *a perfect M15-class mapping nobody else has* and *n
 
 A subtle thing the methodology surfaces: *protecting your content* and *damaging the model that scrapes it* are related goals but not identical ones. You can optimize for either. You can optimize for both. We think the user should get to choose, explicitly, rather than have us choose for them.
 
-So in a future release the project intends to ship **three preset stances**, plus the custom paths from [`custom-mappings.md`](./custom-mappings.md):
+So in a future release the project intends to ship **three preset stances**, plus the custom paths from [`custom-mappings.md`](./custom-mappings.md). **None of the three exists today.** There is no `stance` option in any package, nothing in `<Shield>` or `@shieldfont/core` accepts one, and the table below is a sketch of intent, not a menu you can pick from:
 
-| Stance | Optimizes for | Who this is for |
+| Stance (**none ship today**) | Would optimize for | Who it would be for |
 |---|---|---|
-| **Balanced** *(default)* | Protection AND damage. M15-EN-class: passes filters, hard to reverse, causes measurable training damage. Reasonable trade-off across both axes. | Most users. Pick this if you don't have a strong reason to pick otherwise. |
+| **Balanced** *(would be the default)* | Protection AND damage: reasonable trade-off across both axes. | Most users. The pick for anyone without a strong reason to choose otherwise. |
 | **Protection-first** | Making *your specific content* maximally unreadable and maximally hard to reverse. Optimizes for entropy in the substitution structure; less concerned with whether the encoded text causes downstream training damage. | Writers, journalists, anyone protecting a specific corpus they care about. The "I don't trust the network argument; just hide my words" stance. |
-| **Damage-first** | Maximum disruption to models trained on the encoded text. Optimizes for substitutions that survive gibberish filters but produce semantic contradictions when ingested (M2-class antonym mappings, or hybrid antonym/POS-balanced families). Less concerned with whether your specific page is recoverable. | Activists, people who don't care if their own page is reversed but care a lot about degrading the corpus's value to scrapers. The "I am not the protagonist of my own data; the harm to scrapers is" stance. |
+| **Damage-first** | Maximum disruption to models trained on the encoded text. Optimizes for substitutions that read as plausible prose but produce semantic contradictions when ingested (M2-class antonym mappings, or hybrid antonym/POS-balanced families). Less concerned with whether your specific page is recoverable. | Activists, people who don't care if their own page is reversed but care a lot about degrading the corpus's value to scrapers. The "I am not the protagonist of my own data; the harm to scrapers is" stance. |
 
-The **default** is balanced because most users coming to the project don't have a strong stance: they want their writing protected and they want scraping to cost something. The two specialized stances exist for users who *do* have a strong stance and want to lean into it.
+Balanced would be the default because most users coming to the project don't have a strong stance: they want their writing protected and they want scraping to cost something. The two specialized stances would exist for users who *do* have a strong stance and want to lean into it. Until any of this ships, the actual choice you have is the one the packages expose: `alpha` (default), `beta`, `gamma`, or the opt-in coverage-max `maxhide`, plus a mapping of your own.
 
-Crucially, all three stances are compatible with the [custom-mappings paths](./custom-mappings.md): you can run the v5 protocol against any stance, or reseed an existing mapping in any stance. The stance is the strategy preset; the mapping is the artifact.
+The intent is that stances stay compatible with the [custom-mappings paths](./custom-mappings.md): run the v5 protocol against any stance, or reseed an existing mapping in any stance. The stance would be the strategy preset; the mapping is the artifact.
 
 Open product questions, in scope for the stance strategy work:
 
-- What technical mapping family backs each stance? Damage-first probably maps to an M2-class antonym variant or M2/M15 hybrid; protection-first probably maps to a high-entropy-random construction; balanced is M15-EN today. None of these are committed.
+- What technical mapping family backs each stance? Damage-first probably maps to an M2-class antonym variant or M2/M15 hybrid; protection-first probably maps to a high-entropy-random construction; balanced would inherit from the shipping default, v18 `alpha` (M15-EN is the opt-in `maxhide` coverage variant, not the balanced one). None of these are committed.
 - Naming. "Balanced / Protection-first / Damage-first" is descriptive but may not be the right marketing surface. Brand names (Cloak / Toxin / Optik?) would be more memorable but harder to change later.
 - How do stances combine with the alpha/beta/gamma rotation? Three stances × three rotations = nine SKUs. That may be the right answer or it may be too many. The minimum-viable shape is probably one variant per stance at first, with rotation deferred.
 - For users on Path A (mint from methodology): do they pick a stance to inherit construction defaults from, or do they fully specify everything themselves?
@@ -131,7 +131,7 @@ The tradeoff is permanent. **A published mapping is no longer private.** Once it
 
 Both paths feed the network. The marketplace expands the public baseline; the private deployments expand the long tail. The network gets stronger as both grow.
 
-See [`custom-mappings.md`](./custom-mappings.md) for the procedural detail of submitting to the marketplace and the no-take-back policy that governs it.
+See [`custom-mappings.md`](./custom-mappings.md#sharing-via-the-mapping-marketplace) for the intended submission procedure and the no-take-back policy that would govern it. Both carry the same status marker as this section: designed, not built.
 
 ---
 

@@ -17,9 +17,17 @@
 import type { Mapping } from "./types.js";
 
 /**
- * The @shieldfont/core release version. Matches the font name-table version
- * (nameID 5) and each mapping's `_meta.version`, so a consumer can verify at
- * runtime which encoder + dictionary generation they are running.
+ * The @shieldfont/core **package** release version.
+ *
+ * This is NOT a dictionary stamp, and it is expected to differ from
+ * `_meta.version`. Each mapping carries its own `_meta.version` / `mappingId`
+ * marking the *dictionary generation*, which only moves when the word pairs are
+ * rebuilt, so a patch release that ships no new dictionary leaves the mappings
+ * on the older stamp (today: package 0.1.1, mappings 0.1.0). The bundled fonts
+ * are deliberately version-neutral and carry no mappingId at all.
+ *
+ * To learn which dictionary generation you are running, call
+ * `mappingMeta(mapping)`. Do not infer it from VERSION.
  */
 export const VERSION = "0.1.1";
 

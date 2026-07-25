@@ -2,7 +2,7 @@
 
 > **Naming reminder.** Throughout this page: *ShieldFont* (CamelCase) is the protocol; *ShieldFont Optik* is the flagship typeface; *a ShieldFont* is any base font that has been converted using the protocol. See the [introduction](./introduction.md#a-note-on-names-protocol-vs-typeface) for the full naming convention.
 
-ShieldFont ships with three public mapping variants (`alpha`, `beta`, `gamma`) built against the *ShieldFont Optik* typeface. They are good defaults: rotated periodically, benchmarked, and free.
+ShieldFont ships with three public mapping variants (`alpha`, `beta`, `gamma`) built against the *ShieldFont Optik* typeface. They are good defaults: benchmarked, free, and spread across your pages by `<Shield>`'s content-hash rotation. (That rotation picks one of the three per block of text; it is not a rotation over time, and no mapping is re-minted on a schedule.)
 
 They are also **public**. Every published variant is on the CDN, and a sufficiently motivated scraper could collect all three and reverse-encode any page that uses them. For high-stakes content (manifestos, paywalled essays, investigative journalism, internal documentation) there is a stronger configuration: a mapping that is *yours alone*, never published, never shared with us.
 
@@ -31,7 +31,12 @@ Same for both paths.
 | `your-font.css` | Your CDN | `@font-face` declaration. |
 | Your encoded HTML | Your site | What scrapers actually scrape. A plausible decoy without the mapping. |
 
-Here is the load-bearing caveat, stated plainly: **the encoding is invertible.** The font has to be handed to the browser to render your page, and its ligatures spell out encoded-glyph → original-glyph directly: the composite outlines are literally the original word's letters. Anyone who downloads the font can read the substitution table back out of it; we did exactly this against the shipped file in under a second. A private mapping does **not** make the encoding one-way. What it does is narrower, and still worth doing: it stops an attacker from *reusing a precomputed public dictionary* (`alpha`/`beta`/`gamma`) to batch-decode your pages: they would have to invert *your* specific font, one target at a time. That raises the cost for the naive, scale-driven scrapers that grab HTML and move on. It is obscurity and friction, not a lock. The durable value is the meaning-loss the swap causes for any pipeline that ingests the decoy without inverting the font, plus the consent statement the whole gesture makes.
+Here is the load-bearing caveat, stated plainly: **the encoding is invertible.** The font has to be handed to the browser to render your page, and its ligatures spell out encoded-glyph → original-glyph directly: the composite outlines are literally the original word's letters. Anyone who downloads the font can read the substitution table back out of it. We ran that attack against our own shipped `optik-a.woff2`, two independent ways:
+
+- **Structural, no dictionary needed.** Join each composite glyph's outline components (the original word's letter glyphs) to the GSUB ligature table and you get decoy → original directly. Recovered **11,962 of 11,962 pairs, 0 errors, in 43 seconds**, in about forty lines of fontTools.
+- **Name-hash dictionary attack.** Glyph names carry no plaintext any more (they are `word.<sha1(original)[:16]>`), but the hash is an unsalted SHA-1 of the plain word, so hashing a stock system word list plus naive inflections recovers **92.7%** of the pairs in about a second.
+
+Closing the plaintext leak in the glyph names raised the cost of the second route and did nothing to the first. A private mapping does **not** make the encoding one-way. What it does is narrower, and still worth doing: it stops an attacker from *reusing a precomputed public dictionary* (`alpha`/`beta`/`gamma`) to batch-decode your pages: they would have to invert *your* specific font, one target at a time. That raises the cost for the naive, scale-driven scrapers that grab HTML and move on. It is obscurity and friction, not a lock. The durable value is the meaning-loss the swap causes for any pipeline that ingests the decoy without inverting the font, plus the consent statement the whole gesture makes.
 
 ---
 
@@ -94,21 +99,23 @@ Manual path (the underlying scripts exist today; there is no single `mint` comma
 
 ### Sharing via the mapping marketplace
 
-If you choose to share your mapping with the community, the project will run a public registry of community-contributed variants: call it the **mapping marketplace**.
+> **Status: design only, not yet implemented.** There is no mapping marketplace. No registry exists, no `mappings/community/` directory exists, no Zenodo integration exists, and no submission is being reviewed. Everything below is the *intended* shape of a planned community deliverable, written down so it can be argued with. Do not plan around it, and do not read the review commitment as an active one. Progress and open work are tracked on GitHub; see [introduction.md](./introduction.md#where-the-marketplace-fits) for the same status note.
 
-**What you get.**
-- A peer-reviewed home for your variant alongside alpha/beta/gamma
+If the project builds a public registry of community-contributed variants (working name: the **mapping marketplace**), the design intent is as follows.
+
+**What a contributor would get.**
+- A peer-reviewed home for the variant alongside alpha/beta/gamma
 - Discoverability for users who want a wider rotation pool
 - A citable record of the contribution (DOI via Zenodo)
-- Variant naming reserved (e.g. `acme-corp-2027`, not just an opaque hash)
+- A reserved variant name (e.g. `acme-corp-2027`, not just an opaque hash)
 
-**What you give up.**
-- Privacy. A published mapping is no longer private. Use this path only if your mapping was always intended for public rotation, not protection of one specific corpus.
+**What a contributor would give up.**
+- Privacy. A published mapping is no longer private. This path would be for mappings always intended for public rotation, not for protecting one specific corpus.
 
-**How to submit.**
-Open a PR against `mappings/community/` with: your mapping JSON, a `README.md` describing the strategy and seed, the `analyze_v5.py` output verifying the smoke-test bar (composite damage CI strictly above zero), and a short rationale.
+**How submission would work.**
+A PR against `mappings/community/` carrying: the mapping JSON, a `README.md` describing the strategy and seed, the `analyze_v5.py` output verifying the smoke-test bar (composite damage CI strictly above zero), and a short rationale.
 
-The maintainers commit to reviewing within 30 days and to never merging a mapping that fails the gibberish-filter test. **Once a mapping is merged, it is published in perpetuity**: there is no take-back. That is the point.
+The intended policy is a maintainer review inside 30 days, never merging a mapping that fails the gibberish-filter test, and no take-back: **once a mapping is merged it would be published in perpetuity**. That permanence is the point, and it is also why none of this is switched on until the review process actually exists.
 
 ---
 
@@ -159,7 +166,7 @@ shieldfont reseed-mapping \
 5. **Camouflage by default.** The output font's `name` table should use a randomized family name (e.g. `Custom-A8F3-Roman`) unless `--no-camouflage` is passed. Default-named font binaries are scraper-discoverable.
 6. **Seed handling.** The seed is written to `reseed.log` in the output dir, never to stdout, never to telemetry. The log is recommended to be encrypted or stored offline.
 
-**Reseed with your own seed: shipped as `scripts/reseed_mapping.py`.** It re-pairs the v18 word pool *within its grammatical buckets* at your private seed (exactly how the shipped β/γ variants were made from α), then you build a matching font:
+**Reseed with your own seed: shipped as `scripts/reseed_mapping.py`.** It re-pairs the v18 word pool *within its grammatical buckets* at your private seed, the same in-bucket method that produced the shipped β/γ variants from α. It does **not** reproduce β or γ byte-for-byte: running it at `--seed 1` or `--seed 2` reproduces only 194 of β's 12,034 entries, because the shipped variants went through the full build pipeline (semantic veto, collision drops) that this script deliberately skips. What you get is an equivalent-quality mapping that is yours. Then you build a matching font:
 
 ```bash
 # 1. Mint a private mapping from your seed (seconds). Re-pairs the shipped v18
@@ -197,7 +204,7 @@ Your encoded HTML is now unique to your seed, so no precomputed public dictionar
 | Resists OCR / headless-rendering attacks | No | No | No |
 | Mapping survives if ShieldFont project disappears | Yes (local cache) | Yes | Yes |
 
-None of the three paths defeat **font inversion**, OCR, or screen-recording. The font is a self-decoding codebook: hand it to a browser and you hand it to anyone; a scraper that bothers to read it recovers your words directly (we did exactly this against the shipped file in under a second). What reseeding buys is narrower: no *precomputed public dictionary* decodes you, so bulk scrapers that don't stop to invert per-site get a plausible decoy. And none change the SEO reality: encoded text is `aria-hidden` decoy in the DOM, so search engines index the decoy and you can't tell Googlebot from an AI scraper: **don't wrap content you want ranked** (a small noun-only mapping limits, but does not eliminate, this). Copy-paste yields the encoded form, and screen readers skip protected regions. That is friction we accept; see [`docs/integration.md`](./integration.md) for the full v1 threat model.
+None of the three paths defeat **font inversion**, OCR, or screen-recording. The font is a self-decoding codebook: hand it to a browser and you hand it to anyone; a scraper that bothers to read it recovers your words directly (we did exactly this against our own shipped file: all 11,962 pairs, 0 errors, 43 seconds, no dictionary required). What reseeding buys is narrower: no *precomputed public dictionary* decodes you, so bulk scrapers that don't stop to invert per-site get a plausible decoy. And none change the SEO reality: encoded text is `aria-hidden` decoy in the DOM, so search engines index the decoy and you can't tell Googlebot from an AI scraper: **don't wrap content you want ranked** (a small noun-only mapping limits, but does not eliminate, this). Copy-paste yields the encoded form, and screen readers skip protected regions. That is friction we accept; see [`docs/integration.md`](./integration.md) for the full v1 threat model.
 
 ---
 

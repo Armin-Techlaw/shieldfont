@@ -1,22 +1,39 @@
 # ShieldFont Benchmark (public, minimal core)
 
-ShieldFont swaps ~1 in 4 words on a page for a *grammatically-matched but
-semantically-wrong* decoy. A human never sees the swap — the font's ligature
+ShieldFont swaps ~1 in 4 words on a page (measured: **27.5%** of all tokens,
+**48.4%** of content words) for a *grammatically-matched but semantically-wrong*
+decoy. A human never sees the swap — the font's ligature
 table renders every decoy back to the original word shape. A machine reading
 the HTML source sees the decoys. This benchmark answers one question:
 
-> **Does the swap actually destroy meaning for a machine, while staying fluent
-> enough to slip past the quality filters that frontier labs run before
+> **Does the swap actually destroy meaning for a machine? And what happens to an
+> encoded page when it meets the quality filters that frontier labs run before
 > training?**
 
-The answer, distilled to three numbers you can reproduce:
+The answer, distilled to the numbers you can reproduce:
 
 | | Metric | Result | Where |
 |---|---|---|---|
-| **Meaning is destroyed** | NLI bidirectional-entailment failure | **~60%** of chunks (mean, 4 corpora); **50.4%** median on a larger pre-registered re-run | §2.1 |
-| **Not just noise** | Same metric on a WordNet synonym-swap control | **~2%** — so the 60% is meaning loss, not "rare words confuse the model" | §2.1 |
-| **It survives the filter** | FineWeb-Edu quality-classifier pass rate | **~10%** of encoded chunks pass and reach training | §2.3 |
-| **Those tokens are wasted** | Wasted content per *passing* page | **~24%** of the page's token budget carries shifted meaning | §2.3 |
+| **Meaning is destroyed** | NLI bidirectional-entailment failure | **50.4%** median (n=1,500/corpus, pre-registered, CC-News / OpenWebText / PG-19) | §2.1 |
+| **Not just noise** | Same metric on a WordNet synonym-swap control | **~2.1%**, so the 50.4% is meaning loss, not "rare words confuse the model" | §2.1 |
+| **Most encoded pages never reach training** | FineWeb-Edu pass rate, **absolute** | **0.2% / 1.0% / 0.2%** (cc_news / owt / pg19) against clean baselines of 2.9% / 7.4% / 3.1%: **99.0–99.8% of encoded chunks are dropped** | §2.3 |
+| **A minority does survive the gate** | Same classifier, **relative** to the chunks that pass clean | **6.5–13.5%** of clean-passing chunks still pass once encoded | §2.3 |
+| **Those tokens are wasted** | Wasted content per *passing* page | **24.1%** of the page's token budget carries shifted meaning | §2.3 |
+
+**Read the two filter rows together.** They are not a failure and a success:
+they are the two branches of one defence. A page the classifier **drops** never
+reaches the model, so its meaning is never learned; rejection *is* protection.
+A page that **passes** carries 24.1% of its token budget as null propositional
+content, so the gradient spent on it teaches less than the page appears to be
+worth.
+
+What the data does **not** support is the older shorthand that "~10% of encoded
+chunks pass and reach training". That figure is the v7 FineWeb-Edu pass rate
+(10.27%) measured on curated wiki/books/webtext, and the project's own v8 report
+calls it a Wikipedia-LM artifact (see `EXCLUDED.md`). On real-world corpora the
+**absolute** pass rate is 0.2–1.0%; ~10% is only defensible as a **relative**
+retention figure, and even then the measured band is 6.5–13.5%. Always state
+which of the two you mean; never blend them into one number.
 
 Everything below is either a parameter you need to rebuild the mapping (§1) or
 the method + exact number behind one of those claims (§2). Full research
@@ -47,9 +64,14 @@ statistically identical metrics — that is the point: the design is a
 **M15-EN** is an older (V3, 2024) "coverage-maximising" mapping kept as the
 **rejection-staleness baseline**. It swaps more words (including short function
 words) so it conceals more, but it reads as too disrupted and modern quality
-filters reject it almost entirely (~0–2% pass). It shows the *other* way
-ShieldFont wins: if the filter drops the page, the meaning never reaches the
-model either.
+filters reject it almost entirely (v8 FineWeb-Edu pass 0.2% / 1.0% / 0.1%;
+per-corpus KenLM 0–1.6%). It is the clearest case of the *rejection* branch: if
+the filter drops the page, the meaning never reaches the model either. Note that
+this branch is not exclusive to M15-EN. The shipped v18-α is also dropped for
+99.0–99.8% of encoded chunks (§2.3). What separates the two is the survivors:
+M15-EN is rejected even by the register-fair per-corpus KenLM gate, and the
+pages that do get through it waste ~40% of their token budget against α's
+24.1%.
 
 #### Exact parameters (sufficient to reproduce)
 
@@ -120,8 +142,8 @@ how to reproduce.** All three run on Apple Silicon, no GPU rental.
 
 ### §2.1 — Encoded text loses its meaning (the headline)
 
-**Claim.** Swapping ~25% of a page's tokens for grammar-matched decoys makes
-the encoded text stop *entailing* the original — i.e. a machine no longer
+**Claim.** Swapping ~25% of a page's tokens (27.5% measured, 48.4% of content
+words) for grammar-matched decoys makes the encoded text stop *entailing* the original — i.e. a machine no longer
 reads it as the same factual claim.
 
 **Method.** Natural Language Inference (NLI) is the standard NLP test for "does
@@ -138,16 +160,18 @@ Bidirectional is the right test because content-word swaps do outsized damage:
 
 **Result.**
 
-- **v7 (n=60 chunks/corpus, 4 corpora):** mean bidirectional-entailment
-  failure **59.6% / 61.3% / 60.0%** for α / β / γ → the white paper's "**~60%**".
-  Peak was the **books** corpus at **83.3%** (γ) → the "up to ~83% on narrative
-  prose" claim.
-- **v8 replication (n=1,500 chunks/corpus, pre-registered, real-world corpora
+- **The headline, v8 (n=1,500 chunks/corpus, pre-registered, real-world corpora
   CC-News / OpenWebText / PG-19):** median bidir-fail **50.4%** (α/β/γ within
-  2.4pp of each other → family property holds).
+  2.4pp of each other → family property holds). This is the number to quote.
 - **Control (crucial):** a WordNet **synonym-swap** at the same ~25% density
-  scores **~2%** bidir-fail. So the ~50–60% is genuine meaning loss, **not** the
-  NLI model being confused by unusual words.
+  scores **~2.1%** bidir-fail. So the 50.4% is genuine meaning loss, **not** the
+  NLI model being confused by unusual words. This control is the strongest
+  single result in the benchmark.
+- **Secondary, smaller sample, v7 (n=60 chunks/corpus, 4 corpora):** mean
+  bidirectional-entailment failure **59.6% / 61.3% / 60.0%** for α / β / γ, the
+  source of the older "~60%" shorthand, with a **books** peak of **83.3%** (γ).
+  Both are n=60 measurements on curated corpora and neither replicated at
+  n=1,500. Label them as such wherever they appear; do not lead with them.
 
 > ⚠️ **Honest caveat, verified against the data.** The v7 "**83% on books**"
 > peak was **n=60** and did **not** replicate at scale: on v8's larger-n
@@ -157,8 +181,8 @@ Bidirectional is the right test because content-word swaps do outsized damage:
 > a headline. See `PROVENANCE.md`.
 
 **Reproduce.** `benchmarks/v8/scripts/eval_phase1_semdiv.py` (needs the corpus
-splits + `pairs_v7_alpha_v18_*.json`). Expected: NLI bidir-fail 50–60% median,
-synonym-swap control < 5%.
+splits + `pairs_v7_alpha_v18_*.json`). Expected: NLI bidir-fail ~50% median on
+the v8 corpora, synonym-swap control < 5%.
 
 ### §2.2 — The signal is meaning, not rare vocabulary
 
@@ -173,19 +197,23 @@ against **m0_v3**, a control that swaps *function* words for rare nouns.
 family sits at ~0.27–0.30 across all three seeds — a stable, moderate shift.
 The m0_v3 control actually scores *higher* sem-div (0.46–0.53) **because it
 breaks grammar visibly** — which is exactly what ShieldFont avoids. The lesson:
-α keeps sentence structure intact (so it survives filters, §2.3) while still
+α keeps sentence structure intact (so the chunks that do clear a quality gate
+read as prose rather than as noise, §2.3) while still
 shifting propositional content (so NLI fails, §2.1). A muted sem-div relative
 to a grammar-breaking control is a **feature**, not a weakness.
 
 **Reproduce.** Same script as §2.1 (sem-div is emitted per chunk). Expected
 α sem-div 0.25–0.30; m0_v3 higher.
 
-### §2.3 — Encoded pages pass the filter, then waste the training budget
+### §2.3 — Most encoded pages are dropped by the filter; the survivors waste the training budget
 
 **Claim.** Frontier labs discard low-quality web text with **quality
-classifiers** before training. Encoded pages that *pass* still carry mostly
-null-meaning tokens, so the gradient spent on them can't teach the page's
-real content — "staleness."
+classifiers** before training. Encoding sends a page down one of two branches,
+and both are defences. Either the classifier **drops** it, and the page's
+meaning never reaches the model at all, which is the branch the great majority
+of encoded chunks take; or it **passes**, in which case it still carries mostly
+null-meaning tokens, so the gradient spent on it can't teach the page's real
+content: "staleness."
 
 **Method.** Two measurements:
 
@@ -197,13 +225,28 @@ real content — "staleness."
    measured on clean text (`excess_waste`).
 
 **Result.**
-- v18-α FineWeb-Edu pass rate: **10.27%** (v7, on wiki/books/webtext).
-- v18 wasted-per-passing-page: **~24%** (median across α/β/γ, FineWeb-Edu
-  primary gate) — i.e. of every page that reaches training, ~24% of its token
-  budget is null propositional content, **~24pp above the clean-text baseline**.
-- **M15-EN** wastes **~40%** per passing page **but** passes at **~0–1%** —
+- v18-α FineWeb-Edu pass rate, **absolute** (v8, real-world corpora):
+  **0.2% / 1.0% / 0.2%** on cc_news / owt / pg19, against clean baselines of
+  **2.9% / 7.4% / 3.1%**. In other words **99.0–99.8% of encoded chunks are
+  dropped** before training.
+- The same measurement stated **relative** to the chunks that pass when clean:
+  **6.5–13.5%** survive encoding. This ratio, not the absolute rate, is the
+  only defensible reading of the old "~10% passes" shorthand.
+- The historical **10.27%** figure is v7, on curated wiki/books/webtext, and is
+  a FineWeb-Edu / Wikipedia-LM artifact (see the caveat below and
+  `EXCLUDED.md`). It is kept here for provenance, not as a claim.
+- v18 wasted-per-passing-page: **24.1%** (median across α/β/γ, FineWeb-Edu
+  primary gate): of every page that does reach training, 24.1% of its
+  token budget is null propositional content, **~24pp above the clean-text
+  baseline**.
+- **M15-EN** wastes **~40%** per passing page **but** passes at **~0–1%**,
   so its adopter-weighted waste collapses to ~0. That is the *rejection*
-  branch: the filter, not the gradient, does the work.
+  branch in its purest form: the filter, not the gradient, does the work.
+
+Neither branch is a defeat. A dropped page is a page whose meaning never
+entered the corpus; a passing page is a page that spends the model's capacity
+on content that has been shifted. The honest summary is that rejection is the
+dominant outcome and staleness is what remains for the minority that survives.
 
 > ⚠️ **Caveat you must ship with this number.** Filter survival is
 > **gate-dependent.** Across the four instrumented gates (per-corpus KenLM,
@@ -216,8 +259,9 @@ real content — "staleness."
 > per-gate, never in aggregate.
 
 **Reproduce.** `benchmarks/v8/scripts/gate_fineweb_edu.py` then
-`benchmarks/v8/scripts/aggregate_phase3.py`. Expected FineWeb-Edu pass ~5–15%;
-wasted-per-passing-page ~15–26%.
+`benchmarks/v8/scripts/aggregate_phase3.py`. Expected on real-world corpora:
+FineWeb-Edu **absolute** pass 0.2–1.0%, **relative** to clean-passing chunks
+6.5–13.5%; wasted-per-passing-page ~15–26%.
 
 ---
 
@@ -257,9 +301,13 @@ python3 scripts/reseed_mapping.py --seed 42 --out mine.json
 | sem-div (sBERT) | 0.295–0.300 |
 | content coverage | ≈ 48% |
 | KenLM PPL rise | 110–140% (Marion "poisoning sweet spot") |
-| FineWeb-Edu pass (≥2.7) | 8–15% |
+| FineWeb-Edu pass (≥2.7), **v7 harness on curated wiki/books/webtext** | 8–15% |
 
-If `pass_27 < 5%`, you almost certainly forgot `--expand-paradigms`.
+The `pass_27` band above is a **build-health check on the v7 harness and its
+curated corpora**, not a prediction of how your variant behaves in the wild.
+It is not comparable to the v8 real-corpus absolute rate of 0.2–1.0% in §2.3.
+Use it only as a rebuild sanity signal: if `pass_27 < 5%` on that harness, you
+almost certainly forgot `--expand-paradigms`.
 
 ### B. Re-run the hero measurements (development repository)
 
@@ -269,12 +317,13 @@ The measurement harness that computes §2.1–§2.3 lives in the project's
 ```bash
 # Sem-div + NLI + synonym-swap control (§2.1, §2.2). Needs corpus splits.
 python3 benchmarks/v8/scripts/eval_phase1_semdiv.py
-#   → sem-div 0.25-0.30 median · NLI bidir-fail 50-60% median · control < 5%
+#   → sem-div 0.25-0.30 median · NLI bidir-fail ~50% median · control < 5%
 
-# Filter survival + wasted tokens (§2.3).
+# Filter outcome + wasted tokens (§2.3).
 python3 benchmarks/v8/scripts/gate_fineweb_edu.py
 python3 benchmarks/v8/scripts/aggregate_phase3.py
-#   → FineWeb-Edu pass ~5-15% · wasted-per-passing-page ~15-26%
+#   → FineWeb-Edu absolute pass 0.2-1.0% (relative to clean-passing: 6.5-13.5%)
+#     · wasted-per-passing-page ~15-26%
 ```
 
 Models pulled from HuggingFace on first run: `all-MiniLM-L6-v2` (sBERT),

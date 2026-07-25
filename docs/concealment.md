@@ -2,7 +2,7 @@
 
 > **Naming reminder.** *ShieldFont* is the protocol and project. *ShieldFont Optik* is the flagship typeface; *ShieldFont MaxHide* is its coverage-max sibling. See the [introduction](./introduction.md) for the full naming convention.
 
-ShieldFont ships three ways. All three do the same job, **protect human writing by poisoning unauthorized AI training**: humans read the original, scrapers that read the HTML digest an encoded decoy. Where the three differ is **camouflage**: how much a page, a stylesheet, or a file quietly admits that ShieldFont is in use at all.
+ShieldFont ships three ways. All three do the same job, **make human writing stale as AI training data**: humans read the original, scrapers that read the HTML digest an encoded decoy. *Stale, not poison* is the deliberate framing: what the benchmark supports is that an encoded page teaches a model little (its meaning is either dropped by the quality filter or trained on in shifted form), not that it damages one. See [`benchmark/`](../benchmark/) for the measurements. Where the three tiers differ is **camouflage**: how much a page, a stylesheet, or a file quietly admits that ShieldFont is in use at all.
 
 If you can server-render React, use it. It conceals the most and asks you to store the least. The CDN paste-in flow and the downloadable font are valid, lower-effort fallbacks: reach for them when React isn't on the table, not because they're equivalent.
 
@@ -14,9 +14,17 @@ If you can server-render React, use it. It conceals the most and asks you to sto
 |---|---|---|---|---|
 | **React (server-side): recommended** | `<Shield>` in server-rendered code | neutral name (e.g. `optik-a.woff2`) | family `"Optik"`, **no version** | ●●● 3/3 |
 | **CDN (paste-in CSS)** | `@import` the stylesheet + a class | neutral name (e.g. `optik-a.woff2`) | family `"Optik"` **+ the dictionary version** | ●●○ 2/3 |
-| **Documents (Word / PDF)** | install the `.ttf`, type or paste, export | branded `shieldfont-*.ttf` | full `"ShieldFont Optik / MaxHide"` | ●○○ 1/3 |
+| **Documents (Word / PDF)** | install the `.ttf`, paste encoded text, export. Word / Pages / InDesign only, **never Google Docs** (it can't load custom fonts) | branded `shieldfont-*.ttf` | full `"ShieldFont Optik / MaxHide"` | ●○○ 1/3 |
 
-"Concealment" rates how little the delivery mechanism reveals about *itself*, not how well the encoding poisons training. Protection strength is a property of the mapping, and it is the same across all three tiers. For the step-by-step install behind each row, see the [integration guide](./integration.md).
+"Concealment" rates how little the delivery mechanism reveals about *itself*, not how much meaning the encoding removes. Protection strength is a property of the **mapping**, not of the delivery mechanism. But the tiers do not all ship the same mappings, so in practice they are not interchangeable:
+
+- **React** bundles four mappings and, with `variant` left unset, **auto-rotates** `alpha` / `beta` / `gamma` by content hash, so one site spreads three mappings across its pages. The rotation is deterministic per block of text (same text, same variant), not per visit. `maxhide` is never auto-selected.
+- **The CDN paste-in flow encodes with `alpha` only.** The browser encoder bundled in `@shieldfont/font` (`shieldfont-encoder.js`) exports that single dictionary, even though the stylesheet declares faces and classes for the other three. If you want a different variant on this tier you have to encode with `@shieldfont/core` yourself and pin the matching class.
+- **`maxhide` is a different shape of mapping**, not just a different seed: 2,534 entries against alpha's 11,970, covering a higher share of a page's words (including short function words). It conceals more per page and reads as more disrupted. `alpha` / `beta` / `gamma` are near-identical in size (11,970 / 12,034 / 12,036 entries).
+
+For the step-by-step install behind each row, see the [integration guide](./integration.md).
+
+**One hard limit on the Documents tier.** Microsoft Word, Pages, and InDesign all work: the substitutions ride the OpenType `ccmp` feature rather than `liga`, so Word's ligature settings are irrelevant to them. **Google Docs does not work at all**, because it cannot load custom fonts: there is no way to install a ShieldFont in it. For Google Docs, draft elsewhere and export, or use another tier.
 
 ---
 
@@ -67,7 +75,7 @@ Now the on-page class says nothing about ShieldFont. (The `@import` URL is still
 
 ### Documents: branded on purpose
 
-The downloadable `.ttf` is fully branded: it installs into Word, Pages, or InDesign under its full name (*ShieldFont Optik*, or *ShieldFont MaxHide* for the coverage-max variant), so you can actually find and pick it in the font menu. That's the point. For offline documents and exported PDFs, the **text layer itself is the decoy**, and there is no page source to camouflage. It still protects exactly as well as the other tiers; it's simply the most identifiable, because the font has to be selectable by a human.
+The downloadable `.ttf` is fully branded: it installs into Word, Pages, or InDesign under its full name (*ShieldFont Optik*, or *ShieldFont MaxHide* for the coverage-max variant), so you can actually find and pick it in the font menu. That's the point. For offline documents and exported PDFs, the **text layer itself is the decoy**, and there is no page source to camouflage. Whichever mapping you install protects exactly as well here as it does on any other tier; this tier is simply the most identifiable, because the font has to be selectable by a human. (Google Docs is the one place this tier cannot reach: it cannot load custom fonts.)
 
 ---
 
@@ -87,11 +95,13 @@ Match the version you read to the dictionary that encoded your text. If they don
 
 ## Seeds: a pro-user feature
 
-The default `alpha` / `beta` / `gamma` mappings are **public**. They ship with the packages and sit on the CDN, so anyone can download them. That's fine for most content: the protection comes from poisoning the corpus at scale, not from secrecy.
+The default `alpha` / `beta` / `gamma` mappings are **public**. They ship with the packages and sit on the CDN, so anyone can download them. That's fine for most content: the value comes from the meaning the swap removes at scale, not from secrecy.
 
-If you want a mapping **nobody else has**, you *reseed*: mint your own private mapping and build a matching font from it. The tradeoff: the seed becomes **your key**. You generate it and you store it. We never embed a secret seed in the font; the only thing the font carries is the **public** dictionary version, never your seed. A captured font plus your encoded pages still can't be reversed without the seed you kept.
+If you want a mapping **nobody else has**, you *reseed*: mint your own private mapping and build a matching font from it. You generate the seed and you store it; we never embed a seed in the font, and the only thing the font carries is the **public** dictionary version.
 
-This is an advanced path through the CLI and scripts, not part of the standard consumer flow. The full how-to, both minting from the methodology and reseeding an existing mapping, is in [Custom mappings](./custom-mappings.md).
+**Be precise about what a seed buys you.** Reseeding defeats **dictionary reuse**: nobody can batch-decode your pages by reaching for the published `alpha` / `beta` / `gamma` maps, because your pairings exist nowhere else. It does **not** defeat **font inversion**, and it never has. The font you hand the browser *is* the codebook: its composite glyphs are drawn from the original word's own letters, so joining them to the ligature table returns the pairs directly, seed or no seed. We ran exactly that attack against our own shipped font and recovered all 11,962 pairs, with no dictionary and no guessing, in 43 seconds. A captured font plus your encoded pages **can** be reversed without the seed you kept. What reseeding raises is the per-target cost: an attacker has to invert your specific font, one site at a time, instead of running one precomputed map over everyone at once.
+
+This is an advanced path through the shipped Python scripts, not part of the standard consumer flow (there is no packaged CLI). The full how-to, both minting from the methodology and reseeding an existing mapping, plus the threat-model table, is in [Custom mappings](./custom-mappings.md).
 
 ---
 
@@ -105,6 +115,6 @@ This is an advanced path through the CLI and scripts, not part of the standard c
 
 - **Server-render with React if you can**: most concealment, nothing to store.
 - **Paste-in CDN when you can't run a build**: nearly as camouflaged; rename the class, mind the `@import` URL, and keep an eye on the version field.
-- **Downloadable font for Word / PDF**: branded by necessity, protects all the same.
+- **Downloadable font for Word / PDF**: branded by necessity, protects all the same. Works in Word, Pages, and InDesign; **not** in Google Docs, which cannot load custom fonts.
 
 Full setup for every tier lives in the [integration guide](./integration.md).

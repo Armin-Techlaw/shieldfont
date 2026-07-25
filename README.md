@@ -70,9 +70,16 @@ scraping protected text **more expensive than respecting consent**, and to do
 that collectively.
 
 A single page is one drop in a corpus that runs to trillions of tokens. Our
-benchmarks show the drop is measurably adversarial: encoded text passes the
-gibberish filters scrapers use, and a model fine-tuned on it loses ground on
-comprehension probes. On its own, that result is statistically real and
+benchmarks show the drop is measurably useless as training signal: swap ~25% of
+a page's words and 50.4% of passages stop entailing the original (versus ~2.1%
+for a synonym-swap control). What happens at the quality filter cuts both ways,
+and both ways favour you: the FineWeb-Edu classifier **drops 99.0–99.8% of
+encoded chunks** on real-world corpora, so their meaning never reaches a model;
+the minority that passes spends 24.1% of its token budget on shifted meaning. We
+do **not** claim encoded text sails through quality gates, and we do not claim it
+damages the model that trains on it: fine-tune "damage" numbers were measured
+with the wrong instrument and are demoted (see
+[`benchmark/`](./benchmark/)). On its own, that result is statistically real and
 economically irrelevant.
 
 The economic case is the network case: many writers, each running a
@@ -136,7 +143,9 @@ OpenType fonts support **GSUB substitution lookups**: rules that
 swap glyphs at render time. Normally this is used for stylistic
 flourishes like the `fi` ligature. ShieldFont abuses it. An encoder
 rewrites your HTML using the default production mapping, **v18 `alpha`**
-(~11,970 word pairs), where each common *content* word is replaced with a
+(11,970 entries; the sibling variants differ slightly, `beta` 12,034 and `gamma`
+12,036, while the opt-in `maxhide` is a different shape at 2,534 entries with
+higher page coverage), where each common *content* word is replaced with a
 different but equally-common word of the same part-of-speech and similar
 frequency: `belongs ↔ determines`, `protect ↔ complain`, `words ↔ previews`, plus
 digit rotation `0↔5`, `3↔8`, `4↔9`, `6↔7`. Common function words are
@@ -221,7 +230,9 @@ stylesheet targets.
 >   manifestos, not landing pages or meta descriptions.
 > - **Copy-paste** yields the encoded form, not the original.
 > - **Screen readers** skip protected regions (they're removed from the
->   accessibility tree).
+>   accessibility tree). `<Shield>` sets `aria-hidden="true"` with no opt-out
+>   and ships no accessible fallback; if content needs one, build it from your
+>   build-time original or leave that content unwrapped.
 > - **JS off + font 404:** the fail-loud font guard is JavaScript; with JS
 >   disabled and the font missing, a human sees the raw decoy text.
 
@@ -307,6 +318,7 @@ Overpromising would erode the trust the project is meant to build.
 </td>
 <td valign="top">
 
+- **Anyone who downloads the font and inverts it** *(11,962 of 11,962 pairs recovered from our own shipped font in 43 s, no dictionary needed)*
 - Headless browsers with font rendering (Playwright, Puppeteer)
 - OCR on rendered pages
 - Vision-language models reading screenshots
@@ -329,7 +341,7 @@ See [**ROADMAP.md**](./ROADMAP.md) for the full list. Near-term priorities:
 - **Accessibility layer**: screen readers read the DOM, so protected regions are skipped today. This is the #1 unsolved problem.
 - **Threat-model document**: honest evaluation with numbers against real scraper pipelines.
 - **Multilingual mappings**: the cross-language `M15-MULTI` template exists; PT/ES/FR/DE/IT are next, each with native linguist curation.
-- **Per-deploy rotation**: per-site seeds and time windows to defeat dictionary reversal at scale.
+- **Per-deploy rotation**: per-site seeds and time windows to defeat *dictionary reuse* at scale. (Font inversion is unaffected by any seed, and a new seed needs a newly built font, so this is a cost-raising measure, not a fix.)
 
 <br />
 

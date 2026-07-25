@@ -27,8 +27,11 @@
 export { Shield, encodeText, setFontHost, setCamouflage } from "./Shield.js";
 export type { ShieldProps, ShieldVariant, CamouflageOptions } from "./Shield.js";
 
-// Re-exported from @shieldfont/core so a React consumer can check which
-// font + dictionary generation they are running at runtime:
-//   import { VERSION } from "@shieldfont/react";  // e.g. "0.1.0"
-// Matches the font name-table version and every mapping's `_meta.version`.
+// Re-exported from @shieldfont/core so a React consumer can check which encoder
+// they are running at runtime:
+//   import { VERSION } from "@shieldfont/react";  // e.g. "0.1.1"
+// This is the PACKAGE version, not a dictionary stamp. The bundled fonts are
+// deliberately version-neutral, and each mapping carries its own
+// `_meta.version` for the dictionary generation (currently 0.1.0, i.e. behind
+// the package). Read that with `mappingMeta()` from @shieldfont/core.
 export { VERSION } from "@shieldfont/core";
