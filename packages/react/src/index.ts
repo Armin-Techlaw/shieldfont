@@ -24,12 +24,50 @@
  * see the encoded form.
  */
 
-export { Shield, encodeText, setFontHost, setCamouflage } from "./Shield.js";
-export type { ShieldProps, ShieldVariant, CamouflageOptions } from "./Shield.js";
+export {
+  Shield,
+  encodeText,
+  setFontHost,
+  setCamouflage,
+  // The weights for which a real bundled Optik cut exists: all six of
+  // Playtype's upright cuts (regular 400 through black 900), each shipped as
+  // a real shielded build per mapping variant. The a/b/c/m prefixes remain
+  // mapping variants; weight is the orthogonal axis in the filename suffix.
+  OPTIK_WEIGHTS,
+  // What the `weight` prop does to its argument, as a standalone function: a
+  // name becomes its numeric value, and a number snaps to the nearest cut in
+  // OPTIK_WEIGHTS (470 -> 500), midpoints rounding up. Exported so consumers
+  // and tests can see what a number resolves to without rendering.
+  resolveOptikWeight,
+  // Time-based variant rotation. Read setRotation()'s doc comment before using
+  // it — what rotation buys is narrow (a scraper's CACHED substitution table
+  // decays silently) and it does not defeat font inversion at all.
+  // periodIndex/variantFor are exported so an archive-rebuild script can pin a
+  // past period and reproduce that period's output exactly.
+  setRotation,
+  periodIndex,
+  variantFor,
+  // Opt-in asset de-duplication for SYNCHRONOUS server renderers. React Server
+  // Components de-duplicate automatically (React's cache() scopes state to the
+  // render pass); renderToString/renderToStaticMarkup install no cache
+  // dispatcher, so they need this wrapper to emit one @font-face block and one
+  // guard per page instead of one per <Shield>.
+  withShieldRenderPass,
+} from "./Shield.js";
+export type {
+  ShieldProps,
+  ShieldVariant,
+  ShieldWeight,
+  OptikWeightName,
+  CamouflageOptions,
+  RotatePeriod,
+  RotateConfig,
+  ShieldA11y,
+} from "./Shield.js";
 
 // Re-exported from @shieldfont/core so a React consumer can check which encoder
 // they are running at runtime:
-//   import { VERSION } from "@shieldfont/react";  // e.g. "0.1.1"
+//   import { VERSION } from "@shieldfont/react";  // e.g. "0.2.0"
 // This is the PACKAGE version, not a dictionary stamp. The bundled fonts are
 // deliberately version-neutral, and each mapping carries its own
 // `_meta.version` for the dictionary generation (currently 0.1.0, i.e. behind

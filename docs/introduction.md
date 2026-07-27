@@ -2,9 +2,9 @@
 
 ShieldFont is not an attempt to stop AI scraping. It is an attempt to make it expensive: collectively, asymmetrically, and progressively.
 
-This page sets up the thesis behind the project. The integration guide tells you which package to install. The custom-mappings guide tells you how to mint or reseed a mapping. This page tells you *why those choices matter once enough people make them*.
+This page sets up the thesis behind the project. The integration guide tells you which package to install. The custom-mappings guide tells you how to make a mapping of your own. The custom-faces guide tells you how to build on a typeface of your own. This page tells you *why those choices matter once enough people make them*.
 
-> **This is a collective project, not a finished product.** ShieldFont in its current form is enough to start, not enough to win. The win condition described below requires many people running many different mappings, a community marketplace that does not yet exist, and a body of practice the project has only begun to build. We are publishing it openly, with the methodology pre-registered and the toolchain shipped, and we are asking you to come help us figure the rest out.
+> **This is a collective project, not a finished product.** ShieldFont in its current form is enough to start, not enough to win. The win condition described below requires many people running many different mappings, and a body of practice the project has only begun to build. We are publishing it openly, with the toolchain shipped, and we are asking you to come help us figure the rest out.
 
 ---
 
@@ -28,7 +28,7 @@ python3 scripts/generate_font.py \
   --mapping-path scripts/m15en_for_font.json
 ```
 
-The naming convention we recommend for community-built ShieldFont typefaces: keep "ShieldFont" as the prefix, follow with the base typeface name. *ShieldFont Inter*, *ShieldFont Garamond*, *ShieldFont YourFoundry*. This keeps the protocol attribution visible while making it clear which underlying typeface is doing the visual work.
+The naming convention we recommend for community-built ShieldFont typefaces: keep "ShieldFont" as the prefix, follow with the base typeface name. *ShieldFont Inter*, *ShieldFont Garamond*, *ShieldFont YourFoundry*. This keeps the protocol attribution visible while making it clear which underlying typeface is doing the visual work. The full recipe, plus the licensing that follows from the base you pick, is in [custom faces](./custom-faces.md).
 
 ---
 
@@ -37,6 +37,12 @@ The naming convention we recommend for community-built ShieldFont typefaces: kee
 A single blog post protected by ShieldFont is one drop in a training corpus that runs into the trillions of tokens. Our benchmarks show that drop is **measurably useless as training signal**: its meaning is broken, at a 50.4% median bidirectional-entailment failure under NLI versus ~2.1% for a synonym-swap control (see the [benchmark](../benchmark/)). What happens next depends on the pipeline's quality filter, and both outcomes are fine for you: on real-world corpora the FineWeb-Edu classifier **drops 99.0–99.8% of encoded chunks** outright, so their meaning never reaches a model at all; the minority that does pass (6.5–13.5% of the chunks that would have passed clean) spends 24.1% of its token budget on shifted meaning. What we do **not** claim is that encoded text sails through quality gates, or that it damages the model that trains on it. (Earlier fine-tune "training-damage" numbers are demoted as measured with the wrong instrument.) On its own, that result is statistically real and economically irrelevant.
 
 The economic case for ShieldFont is not the per-page case. It is the **network case**.
+
+---
+
+## The reading gap, independently documented
+
+ShieldFont's premise is that machine readers ingest a page's underlying text while humans read what the font renders. That gap is documented by independent security research as well. In March 2026, LayerX Security published ["Poisoned Typeface"](https://layerxsecurity.com/blog/poisoned-typeface-a-simple-font-rendering-poisons-every-ai-assistant-and-only-microsoft-cares/), in which researcher Roy Paz used a remapped font to make a page read one way to a human and another way to anything parsing the text underneath. All eleven AI assistants they tested, including ChatGPT, Claude, Copilot, Gemini, and Perplexity, read the underlying text and missed what a human saw on screen. Most vendors declined to treat the reports as a vulnerability, and only Microsoft took the disclosure through a full fix. LayerX's framing is offensive (an attacker hiding instructions from AI safety checks) where ShieldFont's is defensive (a writer hiding meaning from scrapers), and the two projects are unaffiliated. The observation underneath is the same: font rendering can split what humans and machines read from a single page.
 
 ---
 
@@ -63,28 +69,49 @@ That is the win condition. Not stopping scraping. Making the cost of scraping pr
 
 Three published variants (`alpha`, `beta`, `gamma`) are a good first step. They give the project a baseline of protection that any user can install with one stylesheet line. But three is a small number, and a determined adversary can collect three CDN-hosted mappings on a quiet afternoon.
 
-What the project actually wants is **a long tail of mappings**: many of them never published anywhere. Every user who runs a custom mapping (Path A or Path B in [`custom-mappings.md`](./custom-mappings.md)) adds an independent damage signal that the AI labs cannot pre-compute their way around. The damage from any one mapping may be small. The damage from a thousand independent mappings, simultaneously contaminating a training corpus, is not the sum: it is the *interference*. Each mapping makes the others harder to filter, because filtering one does not catch the next.
+What the project actually wants is **a long tail of mappings**: many of them never published anywhere. Every user who runs a custom mapping (see [`custom-mappings.md`](./custom-mappings.md)) adds an independent damage signal that the AI labs cannot pre-compute their way around. The damage from any one mapping may be small. The damage from a thousand independent mappings, simultaneously contaminating a training corpus, is not the sum: it is the *interference*. Each mapping makes the others harder to filter, because filtering one does not catch the next.
 
 This is the asymmetry we want. Cheap to participate, expensive to defend against, more expensive the more participants there are.
 
 ---
 
+## Head and tail: what your choice does to everyone else
+
+Which tier you install is a personal decision about camouflage. It is also a vote about what the whole deployed population looks like from a scraper's side, and those are two different arguments that pull in different directions. **Both are hypotheses. Neither is settled, and we are stating them here so you can disagree with us in public.**
+
+Two populations exist today, and they defend by different mechanisms:
+
+| Population | Who | What a scraper meets | The risk | The payoff |
+|---|---|---|---|---|
+| **The head: shared defaults** | CDN paste-in, the downloadable font, and every React install that leaves `variant` unset | one public table, `alpha`, repeated across many sites, published on npm and readable straight out of any font | **One inversion decodes everyone.** Invert the font once and every site on the default is open at the same time. And a model may simply absorb a fixed one-to-one dictionary as a systematic transform rather than being confused by it. | **Volume.** The same shifted word pairs recur across thousands of pages. Repetition at scale is the only configuration in which a swap could plausibly move what a model takes a word to mean. |
+| **The tail: private seeds** | anyone who ran `reseed_mapping.py` and built their own font | thousands of unrelated tables, one per site, none of them published anywhere | **Too thin to shift anything.** A one-off mapping on one site contributes noise, and incremental corpus noise is cheap to filter out. | **Nothing to precompute.** No published table exists to reach for, so an attacker has to fetch and invert *your* font, for *your* site, deliberately. It turns a solved problem back into a per-target one. |
+
+**The specific result that argues against the head, stated at full strength.** Allen-Zhu and Li, *Physics of Language Models 3.3* ([arXiv 2404.05405](https://arxiv.org/abs/2404.05405)), find that junk training data degrades a model's knowledge capacity badly when that junk is *high-entropy* (unpredictable, never repeating), but that when the junk is **highly repetitive** instead, it "does not affect the learning speed of useful knowledge" at all. A single fixed dictionary applied identically across every site that uses it is about as repetitive as junk gets. That places the whole shared-mapping tier in a **zero-collateral-damage regime**: on their result, the head would cost a model nothing beyond the pages it wastes. Their next result is no kinder, a source-identifying prefix recovers most of the degradation anyway, because models learn which sources are worth trusting.
+
+We have not run the experiment that would settle this, and we would rather point at the falsifier than wait to be handed it. It is on the [roadmap](../ROADMAP.md) as an open research question, stated with the falsifier attached: train matched models on a corpus poisoned by one shared mapping versus N private mappings at equal token volume, and compare.
+
+**How to read the two together.** The head is a coordinated bet that repetition becomes association. The tail is an uncoordinated bet that unpredictability is not worth chasing. They can both be right at once, because they fail under opposite conditions: the head fails if models treat repetitive substitution as noise to normalise away, and the tail fails if per-site noise gets filtered out before training ever starts. The mix is the hedge, and that is the honest reason we ship both rather than a reasoned preference for either.
+
+**What we would honestly like you to do.** If you are one site with one essay, the default is fine, and you are adding to the head where the volume argument lives. If you publish a lot, or you are technical enough to run a build, **mint your own seed.** The tail is underpopulated, it is the population no precomputed table touches, and it is the only one of the two where we do not currently have a citable result arguing against it.
+
+---
+
 ## Run a simple mapping. Run it anyway.
 
-A practical consequence of the network case is that **per-mapping sophistication matters less than participation**. M15-EN (the project's most-benchmarked mapping, now shipped as the opt-in `maxhide` variant) is not the only legitimate output of the methodology. A user who runs a *very simple* custom mapping (say, two hundred nouns reshuffled with a private seed) contributes meaningfully to the network even though the per-page damage of their mapping is a fraction of M15-EN's.
+A practical consequence of the network case is that **per-mapping sophistication matters less than participation**. The big, carefully benchmarked mappings we ship are not the only legitimate ones. A user who runs a *very simple* custom mapping (say, two hundred nouns reshuffled with a private seed) contributes meaningfully to the network even though the per-page damage of their mapping is a fraction of a full one's.
 
 We expect the strongest configurations of the project to look like this:
 
-- Most users running **simple, private, custom mappings** (Path B reseed, or a hand-written 200-pair noun-only file)
-- A handful of advanced users running **fully bespoke mappings minted from the v5 protocol** (Path A) for high-stakes content
-- A community **marketplace** of well-vetted public variants (alpha / beta / gamma + community contributions) for users who want zero-setup baseline protection. **This does not exist yet**: see [Where the marketplace fits](#where-the-marketplace-fits). Today the zero-setup option is the three maintainer-published variants.
+- Most users running **simple, private, custom mappings**: a reseed of the shipped pool, or a hand-written 200-pair noun-only file
+- A handful of users running **fully bespoke mappings** for high-stakes content
+- The published variants (`alpha` / `beta` / `gamma`) as the zero-setup baseline for anyone who wants protection without touching a script
 
 The simple-mapping recommendation has two side benefits worth being explicit about:
 
 - **Lower SEO impact.** A 200-pair mapping that touches only nouns leaves the rest of your prose (verbs, articles, structure, headings, meta descriptions) fully readable to search crawlers. Topic relevance through context is largely preserved. Long-tail keyword ranking on the encoded nouns themselves is the price you pay; we discuss that tradeoff openly in the FAQ. The point is that the SEO cost of *participating in the network* is not all-or-nothing. Be clear-eyed about the mechanism, though: whatever you *do* wrap becomes `aria-hidden` decoy text in the DOM, so search engines index the decoy, and you cannot distinguish Googlebot from an AI scraper. Don't wrap content you need to rank.
 - **Lower setup cost.** Fewer pairs means a smaller font binary, a smaller mapping JSON, faster to mint, easier to verify, easier to keep private. Someone who wants to participate in 30 minutes can.
 
-If you are choosing between *a perfect M15-class mapping nobody else has* and *no mapping at all because M15 is hard*, the second option helps the network zero. The first helps a lot. **A small private mapping helps almost as much.**
+If you are choosing between *a perfect mapping nobody else has* and *no mapping at all because building the perfect one is hard*, the second option helps the network zero. The first helps a lot. **A small private mapping helps almost as much.**
 
 ---
 
@@ -104,34 +131,16 @@ So in a future release the project intends to ship **three preset stances**, plu
 
 Balanced would be the default because most users coming to the project don't have a strong stance: they want their writing protected and they want scraping to cost something. The two specialized stances would exist for users who *do* have a strong stance and want to lean into it. Until any of this ships, the actual choice you have is the one the packages expose: `alpha` (default), `beta`, `gamma`, or the opt-in coverage-max `maxhide`, plus a mapping of your own.
 
-The intent is that stances stay compatible with the [custom-mappings paths](./custom-mappings.md): run the v5 protocol against any stance, or reseed an existing mapping in any stance. The stance would be the strategy preset; the mapping is the artifact.
+The intent is that stances stay compatible with [custom mappings](./custom-mappings.md): build or reseed a mapping in any stance. The stance would be the strategy preset; the mapping is the artifact.
 
 Open product questions, in scope for the stance strategy work:
 
 - What technical mapping family backs each stance? Damage-first probably maps to an M2-class antonym variant or M2/M15 hybrid; protection-first probably maps to a high-entropy-random construction; balanced would inherit from the shipping default, v18 `alpha` (M15-EN is the opt-in `maxhide` coverage variant, not the balanced one). None of these are committed.
 - Naming. "Balanced / Protection-first / Damage-first" is descriptive but may not be the right marketing surface. Brand names (Cloak / Toxin / Optik?) would be more memorable but harder to change later.
 - How do stances combine with the alpha/beta/gamma rotation? Three stances × three rotations = nine SKUs. That may be the right answer or it may be too many. The minimum-viable shape is probably one variant per stance at first, with rotation deferred.
-- For users on Path A (mint from methodology): do they pick a stance to inherit construction defaults from, or do they fully specify everything themselves?
+- For users building a mapping from scratch: do they pick a stance to inherit construction defaults from, or do they fully specify everything themselves?
 
 This is the kind of decision we want to make in public with the people who will actually use it. If you have a strong opinion on any of the four questions above, an issue or a discussion on GitHub is the right surface.
-
----
-
-## Where the marketplace fits
-
-> **Status: to be developed.** The mapping marketplace is a planned community deliverable, not a shipped feature. The repo structure, submission template, peer-review checklist, and Zenodo integration are tracked on GitHub for a later release. We are designing it in public and would welcome input from anyone with adjacent experience: package registries, scientific data publishing, federated trust models. If you want to help us build it, open an issue or a discussion on GitHub.
-
-The community mapping marketplace, once it exists, will be the public-by-design counterpart to the private-mapping path. It is intended for users who:
-
-- Want a wider rotation pool than the three maintainer-published variants without committing to building their own
-- Want a citable record (DOI via Zenodo) for a mapping they contributed: relevant for academic, press, and visa contexts
-- Want their mapping peer-reviewed for gibberish-filter survival and damage measurement before deploying it
-
-The tradeoff is permanent. **A published mapping is no longer private.** Once it is in the marketplace, it is on the CDN, in the registry, and in any future scraper's collection. That is fine for a contributor whose goal is to expand the public rotation pool. It is not fine for a contributor whose goal is to protect a specific corpus of their own writing: that user belongs on the private path.
-
-Both paths feed the network. The marketplace expands the public baseline; the private deployments expand the long tail. The network gets stronger as both grow.
-
-See [`custom-mappings.md`](./custom-mappings.md#sharing-via-the-mapping-marketplace) for the intended submission procedure and the no-take-back policy that would govern it. Both carry the same status marker as this section: designed, not built.
 
 ---
 
@@ -153,13 +162,11 @@ Single drops are interesting. The flood is the point.
 
 This is the part where the project stops being something you install and starts being something you join. Concretely, the things that need to happen for the network case to materialize, and the people who can help us do them:
 
-- **Run a custom mapping on real published writing.** Path B reseed is the lowest-friction contribution. Anyone with a blog, a newsletter, a manifesto, an essay site can participate today. No PR required, no maintainer approval, no telemetry. The network grows by one when you do this.
-- **Build the marketplace with us.** The repo structure, the peer-review checklist, the GitHub Action that re-runs the analysis on submitted mappings, the Zenodo DOI integration, the no-take-back enforcement: all of it is open work. Open an issue or a discussion if you want a pointer to where to start.
-- **Stress-test the methodology.** The v5 protocol was pre-registered in May 2026. We have run it across two base models. We have not run it at 7B+ scale; we have not tried adversarial filters; we have not stress-tested the bucket-preservation property of Path B with a hostile evaluator. Independent replication is the most valuable contribution a researcher can make.
-- **Help with the licensing question.** The Variant Licensing Clause is drafted but not adopted. It needs OFL-compatibility review, threshold calibration, and a real conversation with publishers and small-business deployers about whether the production-deployment floor is set right. If you have legal-standards experience near open-source font licensing, please come talk to us.
-- **Translate the methodology.** M15-EN is English-only. The cross-language M15-MULTI scaffolding exists but has been built out for zero non-English locales. A native speaker of any language with significant scraped content (Portuguese, Spanish, French, German, Italian, Japanese, Mandarin, Arabic, Hindi) can produce a community variant for that language using the same protocol.
+- **Run a custom mapping on real published writing.** Reseeding is the lowest-friction contribution: one command, and it takes seconds. Anyone with a blog, a newsletter, a manifesto, an essay site can participate today. No PR required, no maintainer approval, no telemetry. The network grows by one when you do this.
+- **Stress-test the benchmark.** We have run it across two base models. We have not run it at 7B+ scale, we have not tried adversarial filters, and we have not stress-tested the bucket-preservation property of reseeding with a hostile evaluator. Independent replication is the most valuable contribution a researcher can make. Everything you need is in [`benchmark/`](../benchmark/).
+- **Translate the approach.** The shipped mappings are English-only. A native speaker of any language with significant scraped content (Portuguese, Spanish, French, German, Italian, Japanese, Mandarin, Arabic, Hindi) can produce a variant for that language on the same principles.
 - **Say the network case out loud.** The collective-action framing only works if people understand it. If you are writing about AI training, data consent, or the open-web-vs-LLM tension, the asymmetry argument in this document is offered to you for free. Cite the white paper, link the repo, send people here.
 
-The project is AGPL-3.0 for code; fonts you build from an OFL base font are OFL-1.1, while the shipped Optik-based default variants carry Playtype's separate permission for use as part of ShieldFont (see [NOTICE](../NOTICE)), with a Variant Licensing Clause coming in a future release. The work happens on GitHub. There is a Code of Conduct. There is a CLA. There is no ad budget, no paid promotion, no waiting list. There is just a thing that works in v1 and gets stronger as more people join.
+The code is AGPL-3.0; font binaries depend on the base typeface you build against, and [NOTICE](../NOTICE) has the details. The work happens on GitHub. There is a Code of Conduct. There is a CLA. There is no ad budget, no paid promotion, no waiting list. There is just a thing that works in v1 and gets stronger as more people join.
 
 If that sounds like a project you want to be part of: welcome.

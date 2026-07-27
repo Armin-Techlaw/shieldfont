@@ -9,7 +9,7 @@ step: anywhere the encoding runs **before the bytes reach the browser**.
 > **Two tools, don't confuse them.** The **Encoder** (`@shieldfont/core`, JS) turns
 > text into encoded decoys. The **Font Builder** (`scripts/generate_font.py`,
 > Python) turns a `.ttf` into a shielded font. This page is about the Encoder. To
-> make your own font, see [Custom mappings](./custom-mappings.md).
+> make your own font, see [Custom faces](./custom-faces.md).
 
 ## The one rule
 
@@ -34,7 +34,8 @@ import { encode, alpha } from "@shieldfont/core";
 
 const original = "The future of writing belongs to those who write it.";
 const encoded  = encode(original, alpha);
-// → "The future for watching belongs to these who write him."
+// → "The future of writing determines to those who sell it."
+//   Only `belongs` and `write` are in alpha; the rest passes through.
 
 // decode is the same operation — the mapping is bidirectional
 import { decode } from "@shieldfont/core";
@@ -54,6 +55,36 @@ entries covering a higher share of a page's words, including short function
 words). Import whichever you pin: a page must be rendered by the font that
 matches the dictionary that encoded it.
 
+### Edge cases the encoder handles
+
+*(Every row below was verified against the shipped `alpha` dictionary. The text
+rows go through `encode()`; the two HTML rows go through the HTML pipeline
+(`encodeHtml` / `buildHtml`), which is where tag-skipping lives: plain `encode()`
+treats its whole input as text. Other variants map different words, so the
+specific decoys change; the rules don't.)*
+
+| Input | Encoded | Why |
+|---|---|---|
+| `world's, author's` | `lake's, teen's` | Apostrophe + suffix passes through; the base word is what gets looked up |
+| `page's, it's` | unchanged | Not every word is in the dictionary: `page` and `it` have no `alpha` pair, so they stay put. Partial coverage is by design |
+| `v3` | `v3` | A digit flanked by a letter is preserved (letter-adjacent) |
+| `M15-EN`, `iPhone15` | `M10-EN`, `iPhone10` | Only the letter-adjacent digit is preserved; non-adjacent digits rotate (`5→0`) |
+| `1568` | `1073` | Standalone digit run rotates (`0↔5`, `3↔8`, `4↔9`, `6↔7`; `1`,`2` unchanged) |
+| `don't`, `I'm`, `they're` | unchanged | No mapped base |
+| `café`, `naïve` | unchanged | Accented forms are not in the dictionary and pass through untouched |
+| `<code>let x = 1;</code>` | unchanged | In the HTML pipeline, `script`/`style`/`code`/`pre`/`textarea`/`svg`/`math`/`noscript` contents are never encoded |
+| `<a href="/about">About</a>` | href untouched | In the HTML pipeline, attributes are never modified |
+
+The tokenisation rules behind these rows (plus a few more, like letter-flanked
+digits in chemical formulas) are in the
+[`@shieldfont/core` README](../packages/core/README.md#what-gets-encoded-and-what-doesnt).
+
+Encoding is its own inverse: the mapping is bidirectional, so `decode(text, m)`
+is the same operation as `encode(text, m)`. That also means a *double* encode
+returns the original. Re-running the build over already-encoded output is safe
+via `buildHtml()` (it is idempotent), but calling `encode()` twice on the same
+string by hand un-encodes it.
+
 ## 3. Load the font once (`@font-face`)
 
 `@shieldfont/core` does **not** touch your CSS: you load the font yourself. Two
@@ -70,17 +101,20 @@ cp node_modules/@shieldfont/font/optik-a.woff2 public/fonts/
 @font-face {
   font-family: 'Optik';
   src: url('/fonts/optik-a.woff2') format('woff2');
-  font-weight: 1 999;
+  font-weight: 400;    /* Regular is the only weight this package ships */
   font-style: normal;
   font-display: block; /* block, not swap — no decoy flash before the font loads */
 }
-.tk9 { font-family: 'Optik', system-ui, sans-serif; }
+.tk9 {
+  font-family: 'Optik', system-ui, sans-serif;
+  font-synthesis: none; /* never let the browser fake a bold: see below */
+}
 ```
 
 **Or CDN (zero setup, version-pinned):**
 
 ```css
-@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css');
+@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css');
 ```
 
 The CDN bundle already declares `@font-face` for `'Optik'` and ships the `.tk9`
@@ -89,6 +123,37 @@ silently break existing encoded pages.
 
 > Filenames map to dictionaries: `optik-a` = alpha, `optik-b` = beta,
 > `optik-c` = gamma, `optik-m` = maxhide. The names are deliberately neutral, and nothing in your served bytes says "ShieldFont."
+
+### `@shieldfont/font` is Regular only
+
+Those four files are the four *mapping variants* at one weight: **Regular,
+`font-weight: 400`**. The letter picks the dictionary, not the cut. There is no
+Medium, DemiBold, Bold, ExtraBold or Black in this package, and no italic, which
+is why the `@font-face` above declares `400` and the class sets
+`font-synthesis: none`. Without that, asking for `font-weight: bold` inside a
+`.tk9` element makes the browser draw a synthetic bold, and a synthesised weight
+distorts the composite glyphs enough to give away that decoys are in play. Style
+headings and emphasis in an ordinary font instead, and keep the shielded
+paragraphs at Regular.
+
+**Six real weights ship, but only in `@shieldfont/react`.** That package bundles
+genuine Playtype static cuts for every mapping variant:
+
+| Weight name | CSS `font-weight` | Playtype cut |
+|---|---|---|
+| `regular` | 400 | Optik Regular |
+| `medium` | 500 | Optik Medium |
+| `demibold` | 600 | Optik DemiBold |
+| `bold` | 700 | Optik Bold |
+| `extrabold` | 800 | Optik ExtraBold |
+| `black` | 900 | Optik Black |
+
+The encoding is identical at every weight: for a given variant the word
+substitutions and digit rules are byte-identical across all six cuts, so a weight
+changes how the text looks and never what it encodes. Nothing is interpolated,
+there is no variable font, and a numeric weight snaps to the nearest real cut
+(`470` resolves to Medium 500). Details in the
+[integration guide](./integration.md#weights-the-six-cuts-tier-a-only).
 
 ---
 
@@ -113,7 +178,7 @@ Author your HTML with the plain English in the comment; `buildHtml` regenerates
 the visible decoy every run (idempotent), so the visible text never drifts:
 
 ```html
-<!-- shield: The future of writing -->The future for watching<!-- /shield -->
+<!-- shield: The future of writing belongs to those who write it. -->The future of writing determines to those who sell it.<!-- /shield -->
 ```
 
 First-time setup: wrap a region with block markers and run `buildHtml` once: it
@@ -163,8 +228,11 @@ the SSR + font-load-guard pattern worth copying.
 - **The font is the codebook.** It has to reach the browser to render the page,
   and its composite glyphs are drawn from the original words' own letters, so
   anyone who downloads it can read the substitution table straight back out. We
-  recovered all 11,962 pairs from our own shipped font in 43 seconds, with no
-  dictionary. A private mapping raises the per-site cost; nothing removes it.
+  recovered all 11,962 pairs from our own shipped font in under a second, with
+  no dictionary. The real barrier is the one-time engineering to build the
+  inverter (one to three engineer-weeks), not the run, and a per-site inversion
+  set against per-page scraping amortises away above roughly 25 pages. A
+  private mapping raises the per-site cost; nothing removes it.
 - **The default dictionaries are public**, by design: `alpha`/`beta`/`gamma`/`m15en`
   ship as plaintext JSON in `@shieldfont/core`, and `@shieldfont/font` publishes a
   browser encoder with all 11,970 `alpha` pairs inlined.
@@ -176,5 +244,6 @@ the SSR + font-load-guard pattern worth copying.
 
 - [Integration guide](./integration.md), the React path and the CDN/download tiers
 - [`@shieldfont/core` README](../packages/core/README.md), full API
-- [Custom mappings](./custom-mappings.md): bring your own mapping / build your own font
+- [Custom mappings](./custom-mappings.md): bring your own mapping
+- [Custom faces](./custom-faces.md): build your own font
 - [AI co-pilot conventions](./CLAUDE.md) · [`AGENTS.md`](../AGENTS.md)

@@ -4,23 +4,24 @@
 
 ShieldFont ships three ways. All three do the same job, **make human writing stale as AI training data**: humans read the original, scrapers that read the HTML digest an encoded decoy. *Stale, not poison* is the deliberate framing: what the benchmark supports is that an encoded page teaches a model little (its meaning is either dropped by the quality filter or trained on in shifted form), not that it damages one. See [`benchmark/`](../benchmark/) for the measurements. Where the three tiers differ is **camouflage**: how much a page, a stylesheet, or a file quietly admits that ShieldFont is in use at all.
 
-If you can server-render React, use it. It conceals the most and asks you to store the least. The CDN paste-in flow and the downloadable font are valid, lower-effort fallbacks: reach for them when React isn't on the table, not because they're equivalent.
+If you can render React in Node, use it. It conceals the most and asks you to store the least. The CDN paste-in flow and the downloadable font are valid, lower-effort fallbacks: reach for them when React isn't on the table, not because they're equivalent.
 
 ---
 
 ## The three tiers at a glance
 
-| Tier | How you use it | Font file | Font's own metadata | Concealment |
-|---|---|---|---|---|
-| **React (server-side): recommended** | `<Shield>` in server-rendered code | neutral name (e.g. `optik-a.woff2`) | family `"Optik"`, **no version** | ●●● 3/3 |
-| **CDN (paste-in CSS)** | `@import` the stylesheet + a class | neutral name (e.g. `optik-a.woff2`) | family `"Optik"` **+ the dictionary version** | ●●○ 2/3 |
-| **Documents (Word / PDF)** | install the `.ttf`, paste encoded text, export. Word / Pages / InDesign only, **never Google Docs** (it can't load custom fonts) | branded `shieldfont-*.ttf` | full `"ShieldFont Optik / MaxHide"` | ●○○ 1/3 |
+| Tier | How you use it | Font file | Font's own metadata | Weights | Concealment |
+|---|---|---|---|---|---|
+| **React: recommended** | `<Shield>` in a Server Component (static export or server render) | neutral name (e.g. `optik-a.woff2`) | family `"Optik"`, **no version** | **six real cuts, 400 to 900** | ●●● 3/3 |
+| **CDN (paste-in CSS): for experimenting** | `@import` the stylesheet + a class | neutral name (e.g. `optik-a.woff2`) | family `"Optik"` **+ the dictionary version** | Regular (400) only | ●●○ 2/3 |
+| **Documents (Word / PDF)** | install the `.ttf`, paste encoded text, export. Word / Pages / InDesign only, **never Google Docs** (it can't load custom fonts) | branded `shieldfont-*.ttf` | full `"ShieldFont Optik / MaxHide"` | Regular (400) only | ●○○ 1/3 |
 
-"Concealment" rates how little the delivery mechanism reveals about *itself*, not how much meaning the encoding removes. Protection strength is a property of the **mapping**, not of the delivery mechanism. But the tiers do not all ship the same mappings, so in practice they are not interchangeable:
+"Concealment" rates how little the delivery mechanism reveals about *itself*, not how much meaning the encoding removes. Protection strength is a property of the **mapping**, not of the delivery mechanism. But the tiers do not all ship the same mappings, or the same number of font weights, so in practice they are not interchangeable:
 
 - **React** bundles four mappings and, with `variant` left unset, **auto-rotates** `alpha` / `beta` / `gamma` by content hash, so one site spreads three mappings across its pages. The rotation is deterministic per block of text (same text, same variant), not per visit. `maxhide` is never auto-selected.
 - **The CDN paste-in flow encodes with `alpha` only.** The browser encoder bundled in `@shieldfont/font` (`shieldfont-encoder.js`) exports that single dictionary, even though the stylesheet declares faces and classes for the other three. If you want a different variant on this tier you have to encode with `@shieldfont/core` yourself and pin the matching class.
-- **`maxhide` is a different shape of mapping**, not just a different seed: 2,534 entries against alpha's 11,970, covering a higher share of a page's words (including short function words). It conceals more per page and reads as more disrupted. `alpha` / `beta` / `gamma` are near-identical in size (11,970 / 12,034 / 12,036 entries).
+- **`maxhide` is a different shape of mapping**, not just a different seed: 2,534 entries against alpha's 11,970, covering a higher share of a page's words (including short function words). It conceals more per page and reads as more disrupted, which is a real trade and not a free upgrade: see [MaxHide, and what it costs you](#maxhide-and-what-it-costs-you). `alpha` / `beta` / `gamma` are near-identical in size (11,970 / 12,034 / 12,036 entries).
+- **Font weights are a React-tier feature, and only a React-tier feature.** `@shieldfont/react` bundles six real static cuts of Optik for each of its four mapping variants: Regular 400, Medium 500, DemiBold 600, Bold 700, ExtraBold 800 and Black 900. The CDN paste-in tier and the downloadable font are **Regular (400) only**, so on those two tiers there is no heavier cut to switch to: asking for bold gets a synthetic one that distorts the composite glyphs. The weight never changes the encoding: for a given variant, the substitutions are byte-identical across all six cuts. Nothing here is a variable font, and no italics ship. The full listing is in the [integration guide](./integration.md#weights-the-six-cuts-tier-a-only).
 
 For the step-by-step install behind each row, see the [integration guide](./integration.md).
 
@@ -28,13 +29,13 @@ For the step-by-step install behind each row, see the [integration guide](./inte
 
 ---
 
-## Why React (server-side) is the recommendation
+## Why React is the recommendation
 
-**It renders on your server.** By the time anything reaches a browser, the text is already encoded and the font already carries a neutral name. The visitor, and any scraper hitting the same URL, receives the finished, camouflaged artifact and nothing else. There is no client-side encode step to inspect and no build marker left behind in the HTML.
+**It encodes in Node, never in the browser.** `<Shield>` runs at build time or during server render (a static export needs no runtime server at all), so by the time anything reaches a browser the text is already encoded and the font already carries a neutral name. The visitor, and any scraper hitting the same URL, receives the finished, camouflaged artifact and nothing else. There is no client-side encode step to inspect and no build marker left behind in the HTML. There are two ways to lose this: putting `<Shield>` in a `"use client"` file, or passing unencoded text into a client component as a prop. Both are covered in [Where the encoding happens](./where-encoding-happens.md).
 
 **You store nothing.** The default `alpha` / `beta` / `gamma` mappings are public and bundled with `@shieldfont/react`, so there is no key to keep, no seed to protect, no secret that a leak could expose. Encoding is deterministic from public inputs.
 
-That combination (server-only rendering, neutral font metadata, zero secrets to manage) makes React both the easiest tier to operate and the one that leaks the fewest tells. Treat CDN and Documents as easier-to-adopt fallbacks for stacks that can't server-render, not as equals.
+That combination (encoding that never runs in the browser, neutral font metadata, zero secrets to manage) makes React both the easiest tier to operate and the one that leaks the fewest tells. Treat CDN and Documents as easier-to-adopt fallbacks for stacks that can't run the encode in Node, not as equals.
 
 ---
 
@@ -46,18 +47,18 @@ The camouflage story, tier by tier.
 
 Neutral font family (`"Optik"`), neutral filename, no version hint. Nothing on the page announces that the text is protected: no class name you didn't choose, no package URL, no `"ShieldFont"` string anywhere in the served bytes. This is the most camouflaged tier and the reason it's the recommendation.
 
-### CDN: one deliberate tell, the dictionary version
+### CDN: the least concealed way to run this, and that is on purpose
 
-The font family and filename are just as neutral as React's (`"Optik"`, `optik-a.woff2`). One field differs, **on purpose**: the font's **version** carries the **dictionary generation** that encoded your text.
+Use this tier to try ShieldFont, to show someone what it does, or because your platform genuinely has no build step. Do not use it as your permanent setup if you have any alternative. It is the least concealed tier we ship, and the gap is not subtle:
 
-That's a feature, not a leak. Newer dictionary versions ship over time, and encoded text only reads back correctly under a **matching** font. Stamping the dictionary generation into the version field lets you, or a collaborator re-rendering your page later, confirm which dictionary a page was encoded with, and pair it with the right font. See [Checking your font version](#checking-your-font-version).
+- **The font comes from our npm package, over a public CDN.** The `@shieldfont/font` URL sits in your stylesheet where anyone can read it. That single line says "this page is shielded, with ShieldFont, at this dictionary version" more loudly than everything else on the page combined. There is no version of this tier where that is not true: the URL *is* the delivery mechanism.
+- **Everyone on this tier shares one dictionary.** The browser encoder bundled in `@shieldfont/font` emits `alpha` and only `alpha`. One precomputed table decodes every paste-in site on the web at once.
+- **The default `.tk9` class is shared too.** It is a neutral token, but it is the *same* neutral token on every paste-in site.
+- **No rotation.** There is no component to run it, so a page pinned to one class stays on one mapping forever.
 
-Two residual tells you should know about on this tier:
+The font family and filename are as neutral here as on React (`"Optik"`, `optik-a.woff2`), and the font's **version** field carries the dictionary generation it was built for. We keep that on purpose and we are not going to hide it. Encoded text only reads back correctly under a matching font, so stamping the generation into the version is what lets you, or a collaborator re-rendering your page in two years, pair the page with the right dictionary. See [Checking your font version](#checking-your-font-version). On a tier whose stylesheet already names the package, hiding the version would buy nothing anyway.
 
-- **The `@shieldfont/font` package URL** in your `@import` line. Anyone who reads your stylesheet can see it.
-- **The default `.tk9` CSS class.** It's a neutral token, but it's a shared default: every paste-in site ships the same one.
-
-The class name is yours to change. We ship `.tk9` as a convenient default (variants `.tk9-b` / `.tk9-c` / `.tk9-m`), but nothing requires it: alias it to any string you like in your own stylesheet:
+**One thing you can and should fix.** The class name is yours to change. We ship `.tk9` as a convenient default (variants `.tk9-b` / `.tk9-c` / `.tk9-m`), but nothing requires it: alias it to any string you like in your own stylesheet.
 
 ```css
 /* After the @import, in your own CSS.
@@ -71,7 +72,9 @@ The class name is yours to change. We ship `.tk9` as a convenient default (varia
 <p class="reading-copy">…encoded text from the encoder…</p>
 ```
 
-Now the on-page class says nothing about ShieldFont. (The `@import` URL is still visible in the stylesheet itself; renaming the class removes the more obvious of the two tells.)
+Now the on-page class says nothing about ShieldFont. The `@import` URL is still there in the stylesheet, and it is the bigger of the two tells, which is the whole reason this tier sits second.
+
+**When you outgrow it:** move to React if you can render in Node, or call `@shieldfont/core` in whatever build step you have and self-host the font. Either one removes the package URL, and either one lets you mint a seed nobody else holds. That is the upgrade path, and it is short.
 
 ### Documents: branded on purpose
 
@@ -81,7 +84,7 @@ The downloadable `.ttf` is fully branded: it installs into Word, Pages, or InDes
 
 ## Checking your font version
 
-Relevant to the **CDN** and **Documents** tiers (React never exposes a version: it renders and pairs both sides server-side, so there is nothing to reconcile).
+Relevant to the **CDN** and **Documents** tiers (React never exposes a version: it encodes the text and selects the matching font in the same step, so there is nothing to reconcile).
 
 The font's version field encodes the **dictionary generation** it was built for. You can read it with any font tool:
 
@@ -99,22 +102,38 @@ The default `alpha` / `beta` / `gamma` mappings are **public**. They ship with t
 
 If you want a mapping **nobody else has**, you *reseed*: mint your own private mapping and build a matching font from it. You generate the seed and you store it; we never embed a seed in the font, and the only thing the font carries is the **public** dictionary version.
 
-**Be precise about what a seed buys you.** Reseeding defeats **dictionary reuse**: nobody can batch-decode your pages by reaching for the published `alpha` / `beta` / `gamma` maps, because your pairings exist nowhere else. It does **not** defeat **font inversion**, and it never has. The font you hand the browser *is* the codebook: its composite glyphs are drawn from the original word's own letters, so joining them to the ligature table returns the pairs directly, seed or no seed. We ran exactly that attack against our own shipped font and recovered all 11,962 pairs, with no dictionary and no guessing, in 43 seconds. A captured font plus your encoded pages **can** be reversed without the seed you kept. What reseeding raises is the per-target cost: an attacker has to invert your specific font, one site at a time, instead of running one precomputed map over everyone at once.
+**Be precise about what a seed buys you.** Reseeding defeats **dictionary reuse**: nobody can batch-decode your pages by reaching for the published `alpha` / `beta` / `gamma` maps, because your pairings exist nowhere else. It does **not** defeat **font inversion**, and it never has. The font you hand the browser *is* the codebook: its composite glyphs are drawn from the original word's own letters, so joining them to the ligature table returns the pairs directly, seed or no seed. We ran exactly that attack against our own shipped font and recovered all 11,962 pairs, with no dictionary and no guessing, in **under a second** on one CPU core. A captured font plus your encoded pages **can** be reversed without the seed you kept.
 
-This is an advanced path through the shipped Python scripts, not part of the standard consumer flow (there is no packaged CLI). The full how-to, both minting from the methodology and reseeding an existing mapping, plus the threat-model table, is in [Custom mappings](./custom-mappings.md).
+**Be equally precise about where the attacker's cost actually sits, because it is not compute.** Inverting one font takes roughly half a second and a fraction of a cent. It is a **per-site** cost paid for a **per-page** benefit, which means it amortises to nothing: it is worth about what scraping 25 pages of that same site costs, so on a site of any real size it vanishes into the noise (at 10,000 pages it is 0.25% of the job). The barrier that is real is **engineering**: someone has to write the inverter, and that is one to three engineer-weeks of work by a person who understands OpenType. Paid once, it is never paid again.
+
+What reseeding raises is the per-target cost after that: an attacker has to invert your specific font, one site at a time, instead of running one precomputed map over everyone at once. That is the one cost in this picture that grows with adoption, which is why it is the thing worth doing.
+
+This runs through the shipped Python scripts rather than a package API: one command mints the mapping from your seed, one builds the matching font, one audits the round-trip. The full how-to, plus the threat-model table, is in [Custom mappings](./custom-mappings.md).
 
 ---
 
-## MaxHide
+## MaxHide, and what it costs you
 
-**ShieldFont MaxHide** is the opt-in, coverage-max variant: it swaps the most words, so it hides more of your text, at some cost to readability, versus the default `alpha`. Select it wherever you choose a variant: the [integration guide](./integration.md) (`variant="maxhide"`), with the roadmap context in the [introduction](./introduction.md).
+**ShieldFont MaxHide** (the `maxhide` variant, mapping M15-EN) is the opt-in coverage-max option. It is not "alpha but stronger". It is a different trade, and it gives up the thing the rest of this project is built on.
+
+**What you gain: concealment.** MaxHide encodes roughly **half the words on a page**, against roughly a quarter for `alpha`. It reaches into short function words (`at↔by`, `is↔was`, `on↔in`) that `alpha` deliberately leaves alone, and its decoys sit **further from the original in meaning**, including outright antonyms. More of your page is hidden, and less of the original shows through the gaps.
+
+**What you give up: the staleness claim.** ShieldFont's actual claim is that encoded text is *stale* training data (see the top of this page). MaxHide mostly doesn't get to make it. Because it reads as visibly disrupted, modern quality classifiers reject it almost entirely: **0.2% / 1.0% / 0.1%** FineWeb-Edu pass rate across the three v8 corpora, and 0–1.6% on the register-fair per-corpus KenLM gate. The rare page that does survive wastes ~40% of its token budget on shifted meaning, which sounds great until you weight it by how seldom that happens: adopter-weighted, it collapses to roughly zero. A filter dropping your page is a real defence, and it is the only one MaxHide reliably delivers.
+
+**Why `alpha` is the default.** `alpha` buys its lower coverage back as plausibility. It pairs words at random inside grammar buckets (part of speech, inflection, concreteness) with a semantic veto that only blocks decoys meaning the *same* thing, so the output stays grammatical and reads as ordinary English. The decoys are still divergent, which is the point, just not so far out that the page stops looking like prose. That is what gives it a genuine, if small, chance of getting *into* a corpus and spending **24.1%** of a passing page's token budget on meaning that isn't yours: **6.5–13.5%** of the chunks that would have passed clean still pass encoded.
+
+**So pick on intent.** Want the page maximally hidden from a human or a naive scrape, and content with "the filter throws it away"? `maxhide`. Want a shot at the training corpus itself, where the shifted meaning actually costs a model something? Stay on the default. Most people want the default.
+
+Two caveats on the numbers above. The coverage figures come from different studies (`maxhide`'s ~53% is a V3-era Wikipedia measurement, `alpha`'s ~25% a v7/v8 measurement on CC-News/OpenWebText/PG-19), so read them as *about double*, not as a precise gap. And filter survival is **gate-dependent**: pass rates barely correlate across gates, so quote them per-gate, never in aggregate. Full context in [`benchmark/`](../benchmark/).
+
+Select the variant wherever you choose one: the [integration guide](./integration.md) (`variant="maxhide"`), with the roadmap context in the [introduction](./introduction.md).
 
 ---
 
 ## In short
 
-- **Server-render with React if you can**: most concealment, nothing to store.
-- **Paste-in CDN when you can't run a build**: nearly as camouflaged; rename the class, mind the `@import` URL, and keep an eye on the version field.
+- **Encode with React in Node if you can** (static export or server render): most concealment, nothing to store.
+- **Paste-in CDN for trying things out, or when you genuinely can't run a build**: the least concealed tier, because the package URL sits in your stylesheet and everyone here shares one dictionary. Rename the class, and move to React or your own build step when you can.
 - **Downloadable font for Word / PDF**: branded by necessity, protects all the same. Works in Word, Pages, and InDesign; **not** in Google Docs, which cannot load custom fonts.
 
 Full setup for every tier lives in the [integration guide](./integration.md).

@@ -41,10 +41,13 @@ omit" vs "kept out deliberately."
 
 ## Deliberately demoted (mentioned as caveat, not headline)
 
-- **Wikipedia-KenLM perplexity numbers** (the historical 10.27% pass_27 is a
-  Wiki-LM/FineWeb-Edu artifact; Kendall τ≈0 shows gates disagree). Kept **only**
-  as an explicit caveat in §2.3 per the "don't lead with Wiki-KenLM" guidance —
-  never as a standalone hero stat.
+- **Wikipedia-KenLM perplexity numbers** (the `kenlm_pct` Marion-band figures).
+  A Wikipedia-trained n-gram model mis-references every non-wiki register, so
+  those percentages say more about the reference corpus than about the encoded
+  text; Kendall τ≈0 across the four instrumented gates shows they barely agree
+  with the classifier gates anyway. Kept **only** as an explicit caveat in §2.3
+  per the "don't lead with Wiki-KenLM" guidance, never as a standalone hero
+  stat.
 - **Fine-tune damage / "poisoning" numbers** (the V3 +0.130 composite damage,
   M2 diffuse damage, etc.). The white paper itself demotes these: small-model
   fine-tunes were "the wrong instrument," and v8 Phase-5's eval is stubbed
@@ -59,16 +62,28 @@ omit" vs "kept out deliberately."
   = weakest register, 31–35%). See `PROVENANCE.md` flag F-B. **This is the one
   exclusion most likely to be contentious; it is demoted deliberately, to lead
   with results that replicate at scale.**
-- **The "~2.4× amplification" figure.** Asserted in white-paper prose with no
-  computed source found; README mentions it only as white-paper framing and
-  builds no claim on it. See flag F-C.
 
 ## Not carried over — superseded docs
 
-- **`MAPPINGS.md`** as a "what ships" reference — it predates v7 and still names
-  M15-EN as production (flag F-A). Its M0→M15 taxonomy is fine as history.
+- **`MAPPINGS.md`** as a "what ships" reference. Its header now states the
+  shipping default correctly (v18 `alpha`, with M15-EN as the opt-in
+  `maxhide`), but the body below it is the M0→M15 research journey, which is
+  history rather than a spec. For "what ships," read this benchmark and each
+  mapping's `_meta` block.
 - **v2/v4/v5/v6 benchmark trees** and the top-level `benchmarks/results/`
-  (mapping_a–d, the original 400-word A/B/C/D study). Pre-v7; superseded.
+  (mapping_a–d, the original 400-word A/B/C/D study). Pre-v7; superseded. None
+  of them ship here.
+- **The v2 results are formally retracted, not merely superseded.**
+  `benchmarks/v2/results/audit_comprehension.json:6` reads
+  `"RESULTS INVALID - DO NOT PUBLISH"`: the encoded condition returned 100%
+  empty API responses (25 of 25), so what the run measured was an API failure,
+  not encoding effectiveness. `audit_cloze.json:5` is marked
+  `"RESULTS UNRELIABLE"` for the same round. No number anywhere in this public
+  core, the white paper, or the site descends from v2. In the development
+  repository the tree is **kept, not deleted**: `benchmarks/v2/shared.py` is
+  imported by 16 scripts across v3, v4 and v7, two of which generate
+  white-paper data and back a pre-registered re-run the paper publicly
+  promises. Retract the results; do not remove the module.
 
 ## Corpora / data not shipped (repro dependencies, not results)
 

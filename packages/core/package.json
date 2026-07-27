@@ -1,6 +1,6 @@
 {
   "name": "@shieldfont/core",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "Core encoding/decoding logic for ShieldFont, the AI-scraping-resistant web font",
   "type": "module",
   "main": "./dist/index.js",
@@ -45,7 +45,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node ../../scripts/copy-mappings.mjs",
     "test": "vitest run",
-    "prepublishOnly": "npm run build"
+    "prepack": "npm run build"
   },
   "keywords": [
     "shieldfont",

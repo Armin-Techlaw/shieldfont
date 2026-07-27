@@ -37,6 +37,19 @@ jobs:
           TMPDIR: /tmp
         run: npm test
 
+      # Never publish a font whose composites have broken side bearings: it
+      # renders the last letter of every word shaved and no JS test can see it.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Check composite metrics on every shipped font
+        run: |
+          pip install "fonttools[woff]" brotli
+          python3 scripts/fix_composite_lsb.py --check \
+            packages/font/optik-*.woff2 \
+            packages/react/fonts/optik-*.woff2
+
       - name: Publish @shieldfont/core
         if: ${{ github.event_name == 'push' || !inputs.dry-run }}
         env:

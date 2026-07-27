@@ -1,7 +1,7 @@
 {
   "name": "@shieldfont/font",
-  "version": "0.1.1",
-  "description": "ShieldFont web fonts + paste-in CSS + browser encoder: the no-build / CDN distribution. Serve via jsDelivr from npm: https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css",
+  "version": "0.2.1",
+  "description": "ShieldFont web fonts + paste-in CSS + browser encoder: the no-build / CDN distribution. Serve via jsDelivr from npm: https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css",
   "type": "module",
   "main": "./shieldfont-encoder.js",
   "exports": {

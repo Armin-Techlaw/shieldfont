@@ -23,13 +23,13 @@ import type { Mapping } from "./types.js";
  * `_meta.version`. Each mapping carries its own `_meta.version` / `mappingId`
  * marking the *dictionary generation*, which only moves when the word pairs are
  * rebuilt, so a patch release that ships no new dictionary leaves the mappings
- * on the older stamp (today: package 0.1.1, mappings 0.1.0). The bundled fonts
+ * on the older stamp (today: package 0.2.0, mappings 0.1.0). The bundled fonts
  * are deliberately version-neutral and carry no mappingId at all.
  *
  * To learn which dictionary generation you are running, call
  * `mappingMeta(mapping)`. Do not infer it from VERSION.
  */
-export const VERSION = "0.1.1";
+export const VERSION = "0.2.1";
 
 export { encode, decode } from "./encode.js";
 export { encodeHtml, decodeHtml } from "./html.js";

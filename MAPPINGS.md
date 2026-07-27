@@ -26,7 +26,9 @@ details, charts, and reproducible numbers see the [white paper](https://shieldfo
 >
 > "Dict entries" counts every `{source: target}` key in the shipped mapping, i.e. `a→b` and `b→a` separately. That is the number `_meta.pairs` and `MANIFEST.json` report; halve it for logical pairs (`maxhide` = 2,534 entries = 1,267 logical pairs). The tables further down this page count **logical pairs**, so the two do not line up on their face.
 >
-> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; entry counts differ slightly, so protection strength varies a little by which variant a block hashes to. **M15-EN is retained as the opt-in maximum-coverage `maxhide` variant**: it encodes a higher share of common words than `alpha`, at some cost to how plausible the decoy reads.
+> `alpha`/`beta`/`gamma` are independent re-seeds of the same v18 construction; entry counts differ slightly, so protection strength varies a little by which variant a block hashes to.
+>
+> **v18 `alpha` is the balanced shipping mapping. M15-EN is the maximum-coverage opt-in B-side, and it is rejected by every fluency gate we instrumented.** It encodes a higher share of common words than `alpha`, at real cost to how plausible the decoy reads. The two are not interchangeable and should never be mixed inside one statistic: every headline number the project publishes is v18-α. The gate-by-gate comparison is below.
 >
 > **Everything below is the M0 → M15 research journey that produced M15-EN (now `maxhide`).** It is kept as history: v18 `alpha` descends from this line. When this document and a shipped mapping's `_meta` / `MANIFEST.json` disagree, the shipped artifacts win.
 
@@ -45,12 +47,46 @@ same mapping written out bidirectionally as 2,534 entries.)*
 
 > **On "passes the filter."** M15-EN cleared the lenient Wikipedia-KenLM
 > threshold this study used, and that is all the ~1,874 figure says. Against
-> the modern classifier gates measured in v8 it is rejected almost entirely
-> (FineWeb-Edu 0.2% / 1.0% / 0.1%; per-corpus KenLM 0–1.6%). That is the
-> *rejection* branch, and it is a defence in its own right, because a page the
-> classifier drops never teaches the model anything. It is not, however, the
-> same claim as "survives the filter." See
-> [`benchmark/README.md`](./benchmark/README.md) §1.
+> the modern classifier gates measured in v8 it is rejected almost entirely.
+> That is the *rejection* branch, and it is a defence in its own right,
+> because a page the classifier drops never teaches the model anything. It is
+> not, however, the same claim as "survives the filter."
+
+### v18-α vs M15-EN, gate by gate
+
+As **conditional retention**: of the chunks that passed a gate when clean, the
+share that still passes once encoded.
+
+| Gate | v18-α (ships as `alpha`) | M15-EN (ships as `maxhide`) |
+|---|---|---|
+| **Per-corpus KenLM** (register-fair: each corpus scored by a model trained on that corpus) | **28.11%** | **2.07%** |
+| FineWeb-Edu ≥ 2.7 | 9.70% (13/134) | 9.70% (13/134) |
+| FineWeb-Edu ≥ 3.0 | 6.52% | 2.17% |
+| Pythia-160M | 11.07% | 4.57% |
+| Wiki-KenLM | 26.11% | 8.32% |
+| **All three fluency gates at once** | **24 of 4,000 chunks** | **0 of 4,000** |
+
+**The FineWeb-Edu tie is a small-denominator artifact, not a finding.** The
+Wilson 95% interval on 13/134 is **[5.8%, 15.9%]**, wide enough that the gate
+cannot resolve a 2× difference between two mappings, let alone establish a tie.
+It also holds only at the 2.7 threshold, only for the α seed, and not even on
+the same chunks (survivor-set overlap is 0.00 on PG-19 and BookCorpus).
+
+**Why the gap.** M15-EN rewrites 53.4% of running tokens to v18-α's 24.4%, and
+94 of its source keys are NLTK stopwords (`and→but`, `of→for`, `is→was`). An
+n-gram language model keeps most of its probability mass in function-word
+transitions, so M15-EN detonates exactly what those gates score hardest, at
+over twice the volume.
+
+> ⚠️ **"Maximum concealment" is only half true.** M15-EN leads on coverage, on
+> NLI meaning loss, and on waste per surviving page (~40% against α's 24.1%).
+> It **loses** on embedding semantic divergence: **0.217 / 0.228 / 0.186**
+> against v18-α's **0.268 / 0.287 / 0.211** on CC-News / OpenWebText / PG-19.
+> The accurate phrase is "maximum coverage and maximum measured meaning
+> destruction," not "maximum concealment."
+
+Full sourcing in [`benchmark/README.md`](./benchmark/README.md) §1 and
+[`benchmark/PROVENANCE.md`](./benchmark/PROVENANCE.md) rows 57 to 62.
 
 > **Caveat on the "H2 damage" column (here and in the comparison table
 > below).** These small-model fine-tune scores were the ranking metric

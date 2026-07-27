@@ -32,29 +32,27 @@ encoded : guilty visa wise logistic rabbit currency geared quantity took cruised
 | `<Shield>` in a client-only app (Vite, CRA) | empty shell | **leaks** | **no** |
 | Server Component passing plain text **as a prop** to a client component | **leaks** | **leaks** | **no** |
 
-## Why "server side" is the wrong way to say it
+## Don't call it "server side"
 
-We used to say ShieldFont encodes "server side." That phrasing is wrong in three
-ways, and each one hides a real failure:
+What matters is *where the encoding runs*, not whether you own a server:
 
-**It suggests you need a server.** You do not. A static export has no server at
-all, and it was the cleanest result in the table. This site is a static export.
+> `<Shield>` encodes in Node, at build time or during server render, so the
+> browser only ever downloads the encoded version.
 
-**It suggests a Server Component is automatically safe.** It is not. Look at the
-last row: that page *is* a server component. It hands your unencoded text to a
-client component as a prop, and the plaintext lands in the served HTML while the
-element on screen shows the encoded version. It looks right in DevTools and is
-fully exposed in view-source.
+"Server side" is the tempting shorthand, and it hides three real failures:
+
+**You do not need a server.** A static export has none at all, and it was the
+cleanest result in the table. This site is a static export.
+
+**A Server Component is not automatically safe.** The last row above *is* a
+server component. It hands unencoded text to a client component as a prop, so the
+plaintext lands in the served HTML while the element on screen shows the encoded
+version. It looks right in DevTools and is fully exposed in view-source.
 
 **It points you at the check that passes.** In Next.js, client components are
 still rendered on the server, so their HTML comes out encoded and clean. You view
 source, see decoys, and conclude you are protected. The plaintext is sitting one
 `<script src>` away in the bundle.
-
-So say what actually matters:
-
-> `<Shield>` encodes in Node, at build time or during server render, so the
-> browser only ever downloads the encoded version.
 
 ## The part that surprised us
 

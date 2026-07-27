@@ -22,7 +22,8 @@ consent/provenance statement*, never as "protection" or "un-scrapeable."
 | **Font Builder**: `scripts/generate_font.py` | A repo script | Python | Turns any `.ttf` into a *shielded* font whose ligatures reverse a given mapping. You only need this to make your own font from your own typeface. |
 
 Most projects only ever touch the **Encoder**. The **Font Builder** is advanced
-/ bring-your-own-font territory: see `docs/custom-mappings.md`.
+/ bring-your-own-font territory: see `docs/custom-faces.md` and, for the
+private-mapping side, `docs/custom-mappings.md`.
 
 ## The one rule you must never break
 
@@ -75,6 +76,28 @@ const html = `<p class="tk9">${encode(userText, alpha)}</p>`;
 // then load the font once via @font-face — see docs/use-anywhere.md
 ```
 
+## Font weight is a React-tier feature only
+
+`@shieldfont/react` ships six real Playtype cuts per mapping variant: `regular`
+400, `medium` 500, `demibold` 600, `bold` 700, `extrabold` 800 and `black` 900.
+Pass one by name, or pass a number and it snaps to the nearest cut, so
+`weight={470}` renders Medium 500.
+
+```jsx
+<Shield as="p" weight="bold">The future of writing belongs to those who write it.</Shield>
+```
+
+`@shieldfont/font`, the CSS and CDN tier, ships Regular only. Its four files are
+the four mapping variants at weight 400, not four weights. If a user on that tier
+asks for bold, tell them it requires the React package rather than reaching for
+CSS `font-weight`, because a browser would draw a faux bold that distorts the
+ligatures and can expose the decoy text underneath. That is why the shipped CSS
+sets `font-synthesis: none`.
+
+Weight changes appearance only. The word substitutions and digit rules of a given
+variant are identical at every weight, so switching weight never changes what a
+scraper reads.
+
 ## The user writes plain English. Always.
 
 - **Edit the plain-English source**: the JSX literal inside `<Shield>`, or the
@@ -104,7 +127,7 @@ pin the version: never `@latest` (a silent mapping update would break existing
 encoded content):
 
 ```html
-<!-- GOOD --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css">
+<!-- GOOD --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">
 <!-- BAD  --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@latest/shieldfont.css">
 ```
 
@@ -120,5 +143,6 @@ does not affect using the packages in your own project.
 - Use anywhere (any framework): `docs/use-anywhere.md`
 - React component: `@shieldfont/react` README
 - Encoder engine: `@shieldfont/core` README
-- Build your own font / bring your own mapping: `docs/custom-mappings.md`
+- Bring your own mapping: `docs/custom-mappings.md`
+- Build your own font: `docs/custom-faces.md`
 - Full docs: https://shieldfont.org/docs

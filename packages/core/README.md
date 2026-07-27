@@ -31,7 +31,8 @@ const back = decode(encoded, alpha);
 import { encodeHtml, buildHtml, shipHtml, checkHtml, alpha } from "@shieldfont/core";
 
 // Encode a whole HTML document — preserves tags, skips <script>/<style>/<code>/<pre>/etc.
-const html = encodeHtml("<p>The future of writing</p>", alpha);
+const html = encodeHtml("<p>The future of writing belongs to those who write it.</p>", alpha);
+// → <p>The future of writing determines to those who sell it.</p>
 
 // For HTML using the comment-marker convention (source-of-truth in <!-- shield: ... -->):
 const built = buildHtml(rawHtml, alpha);
@@ -50,8 +51,9 @@ The encoder matches **Unicode-letter words** and **digits**. Apostrophes, punctu
 
 | Input | What happens | Rule |
 |---|---|---|
-| `the future of writing` | mapped words swap, others pass through | alphabetic words |
-| `page's, it's, world's` | base word swaps, `'s` passes through | apostrophe splits the token |
+| `belongs to those who write` → `determines to those who sell` | mapped words swap, others pass through | alphabetic words |
+| `world's, author's` → `lake's, teen's` | base word swaps, `'s` passes through | apostrophe splits the token |
+| `page's, it's` | unchanged: `page` and `it` have no alpha pair | partial coverage is by design |
 | `café`, `résumé` | pass through unchanged | Unicode words tokenise whole (**P1**) |
 | `1568` | digits permute (→ `1073`) | standalone digit run |
 | `M15-EN` → `M10-EN`, `iPhone15` → `iPhone10` | only the letter-adjacent digit is preserved; the rest swap | mixed letter/digit run |
@@ -66,7 +68,7 @@ Inside HTML, anything in `<script>`, `<style>`, `<code>`, `<pre>`, `<textarea>`,
 For maintaining editable copy across builds, use the comment-marker convention in your HTML:
 
 ```html
-<!-- shield: The future of writing -->The future for watching<!-- /shield -->
+<!-- shield: The future of writing belongs to those who write it. -->The future of writing determines to those who sell it.<!-- /shield -->
 ```
 
 The opening comment carries the source-of-truth (plain English). The text between the markers is what's displayed (encoded). `buildHtml` re-derives the visible text from the comment every time, so the visible text never drifts from the source. To edit copy, change the comment and re-run `build`.
@@ -88,7 +90,7 @@ Every bundled mapping carries a `_meta` block, and the package exports its versi
 
 ```ts
 import { VERSION, alpha, mappingMeta } from "@shieldfont/core";
-VERSION;                        // "0.1.1"  (the npm package version)
+VERSION;                        // "0.2.1"  (the npm package version)
 mappingMeta(alpha)?.mappingId;  // "shieldfont-en-v18-alpha@0.1.0"  (the dictionary generation)
 ```
 

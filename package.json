@@ -10,7 +10,7 @@
   ],
   "scripts": {
     "build": "npm run -w @shieldfont/core build && npm run -w @shieldfont/react build",
-    "test": "npm run -w @shieldfont/core test",
+    "test": "npm run -w @shieldfont/core test && npm run -w @shieldfont/react test",
     "generate-inter": "python3 scripts/generate_font.py --base-url https://raw.githubusercontent.com/rsms/inter/v4.1/fonts/ttf/Inter-Regular.ttf --cache-name Inter-Regular.ttf --name 'ShieldFont' --prefix shieldfont"
   },
   "keywords": ["font", "ai", "protection", "privacy", "scraping", "agpl"],

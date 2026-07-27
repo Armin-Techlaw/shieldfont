@@ -1,10 +1,9 @@
 import { encode, alpha, beta, gamma, m15en } from "@shieldfont/core";
+import * as React from "react";
 import {
-  cloneElement,
   isValidElement,
   type CSSProperties,
   type ElementType,
-  type ReactElement,
   type ReactNode,
 } from "react";
 
@@ -15,6 +14,113 @@ import {
  * fingerprinting harder for adversarial scrapers.
  */
 export type ShieldVariant = "alpha" | "beta" | "gamma" | "maxhide";
+
+/** Rotation period length. `"monthly"` is CALENDAR-aligned, not 30 days. */
+export type RotatePeriod = "monthly" | "weekly" | "daily";
+
+// ---- Weights ----------------------------------------------------------------
+//
+// Do not confuse the mapping variants with weights. optik-a/b/c/m are MAPPING
+// variants (alpha/beta/gamma/maxhide); the WEIGHT axis is orthogonal: each
+// variant ships six real static cuts of Optik (Playtype's own uprights,
+// Regular through Black), encoded through the same pipeline. There is no
+// variable font and no synthesised weight anywhere: every file is built from
+// one genuine master, and browsers never fake a bold because the six
+// @font-face declarations tile the whole 1..1000 weight range (see
+// WEIGHT_BANDS) and the rendered element sets `font-synthesis: none`. A
+// smeared faux bold of a licensed Playtype typeface would also distort the
+// word-ligature composites badly enough to expose that decoys are in play.
+//
+// The registry names are Playtype's own cut names, lowercased. Adding a
+// weight means: build the cut through scripts/generate_font.py (per mapping
+// variant), drop it in `fonts/` under the `<prefix>-<weight>.woff2` naming
+// rule, and add one entry here plus its band in WEIGHT_BANDS —
+// fontFaceCss() picks it up from the registry.
+
+/**
+ * The weights for which a real bundled Optik cut exists — all six of
+ * Playtype's upright cuts, one shielded build per mapping variant.
+ */
+export const OPTIK_WEIGHTS = {
+  regular: 400,
+  medium: 500,
+  demibold: 600,
+  bold: 700,
+  extrabold: 800,
+  black: 900,
+} as const;
+
+/** A named weight with a real bundled Optik face. */
+export type OptikWeightName = keyof typeof OPTIK_WEIGHTS;
+
+/**
+ * What the `weight` prop accepts: a bundled weight name, or a numeric CSS
+ * font-weight (1..1000), which SNAPS to the nearest real cut before it is
+ * written to the rendered element's style. See {@link resolveOptikWeight}.
+ */
+export type ShieldWeight = OptikWeightName | number;
+
+/**
+ * Configuration for time-based variant rotation. Every field has a default, so
+ * `rotate` / `setRotation({})` is a complete configuration.
+ */
+export interface RotateConfig {
+  /** Period length. Calendar-aligned for `"monthly"`. Default `"monthly"`. */
+  period?: RotatePeriod;
+  /** UTC period-0 anchor, ISO date. Default `"2026-01-01T00:00:00Z"`. */
+  epoch?: string;
+  /** Per-site string mixed into the period hash. Default `""`. */
+  salt?: string;
+  /**
+   * Variants to rotate through. Default `["alpha", "beta", "gamma"]`.
+   * `"maxhide"` is always filtered out — see {@link setRotation}.
+   */
+  pool?: ShieldVariant[];
+  /**
+   * Pin the clock. A `Date` or ISO string is an instant (its period index is
+   * computed); a number IS the period index. Use it to rebuild a past period
+   * byte-for-byte. Default: render time.
+   */
+  at?: Date | string | number;
+}
+
+/**
+ * The accessible alternative rendered next to (never inside) a shielded block.
+ *
+ * `"audio"` — a build-time-synthesised recording of the ORIGINAL words.
+ * `"text"`  — a URL serving the original words as plain text.
+ * `"none"`  — an explicit, auditable opt-out; renders nothing and warns not at all.
+ */
+export type ShieldA11y =
+  | {
+      mode: "audio";
+      /** URL of the audio file. Synthesise it AT BUILD TIME — see the docs. */
+      src: string;
+      /** Optional URL of a text transcript, rendered as a second link. */
+      transcript?: string;
+      /** Overrides the default explanatory sentence for this block. */
+      note?: string;
+      /** Accessible name for the transcript link. Default "Transcript". */
+      label?: string;
+      /**
+       * Hide the control visually while keeping it in the accessibility tree
+       * (clip-path, never `display:none` — that would remove it from the tree,
+       * which is the exact bug this prop exists to fix). Default `false`.
+       */
+      visualHidden?: boolean;
+    }
+  | {
+      mode: "text";
+      /** URL of the plain-text version. */
+      href: string;
+      /** Link text. Default "Plain-text version". */
+      label?: string;
+      /** Overrides the default explanatory sentence for this block. */
+      note?: string;
+      /** See the note on the audio variant. Default `false`. */
+      visualHidden?: boolean;
+    }
+  | { mode: "none" };
 
 /**
  * Props for the <Shield> server component.
@@ -35,12 +141,27 @@ export interface ShieldProps {
    * M15 maximum-coverage dictionary (encodes a higher share of common words).
    *
    * Note: mixing variants on one page loads one font per variant used
-   * (~1 MB each). Pin a single variant if you want just one font per page.
+   * (roughly 825 KB each). Pin a single variant if you want just one font per page.
    */
   variant?: ShieldVariant;
 
-  /** Font weight (variable axis on the bundled ShieldFont base). 100..900. */
-  weight?: number;
+  /**
+   * Font weight. Accepts a bundled weight name (`"regular"` | `"medium"` |
+   * `"demibold"` | `"bold"` | `"extrabold"` | `"black"` — Playtype's six
+   * upright cuts, all of which ship as real shielded builds; see
+   * {@link OPTIK_WEIGHTS}) or a numeric CSS font-weight (1..1000). Default:
+   * unset (the element inherits its `font-weight`).
+   *
+   * These are six static cuts, not a variable font, so a number that is not
+   * one of them SNAPS to the nearest cut and the element is given that
+   * resolved value: `weight={470}` emits `font-weight:500`, `weight={620}`
+   * emits `600`. Exact midpoints round UP (`450` -> `500`). Nothing is ever
+   * synthesised, so the strokes on screen are always Playtype's own.
+   *
+   * {@link resolveOptikWeight} is the same resolution as a standalone
+   * function, for code that wants to know what a number will become.
+   */
+  weight?: ShieldWeight;
 
   /** Line-height passthrough. */
   lineHeight?: number | string;
@@ -55,29 +176,44 @@ export interface ShieldProps {
   style?: CSSProperties;
 
   /**
-   * The content to encode.
+   * Time-based variant rotation. Omitted, or `false`, keeps today's behaviour
+   * (content-hash auto-rotation). `true` uses the defaults; pass a
+   * {@link RotateConfig} to tune period, epoch, salt or pool.
    *
-   * Two modes, decided by `as`:
+   * Precedence, highest first: an explicit `variant` prop (always pins), then
+   * this prop, then module-level {@link setRotation}, then the content hash.
    *
-   * 1. **Text mode (default)** — `as` is unset or one of the leaf text
-   *    elements (div / p / span / blockquote / h1–h6). `children` MUST
-   *    be a plain string. The string is encoded and rendered.
-   *
-   * 2. **Container mode** — `as="article"` (or `section`, `main`, `aside`).
-   *    `children` may be a tree of JSX. Shield recursively walks built-in
-   *    HTML elements (anything where `typeof element.type === "string"`)
-   *    and encodes their text. Custom React components are opaque and pass
-   *    through unchanged — wrap them in their own <Shield> if you want
-   *    their content protected.
+   * ONLY SAFE WHERE THE `@font-face` TRAVELS WITH THE HTML — which is exactly
+   * what `<Shield>` does. See {@link setRotation} for the full honesty note and
+   * for why the CDN paste-in tier does not get this feature.
    */
-  children: ReactNode;
-}
+  rotate?: boolean | RotateConfig;
 
-/**
- * Tags that switch <Shield> into container mode (recursive descend).
- * Any other `as` value treats children as a single text string.
- */
-const CONTAINER_TAGS = new Set(["article", "section", "main", "aside", "blockquote"]);
+  /**
+   * The accessible alternative for this block: an audio version or a
+   * plain-text URL. Rendered OUTSIDE the `aria-hidden` region and BEFORE it in
+   * DOM order, so a screen-reader user reaches it before the silence.
+   *
+   * `{ mode: "none" }` is an explicit, auditable opt-out. Omitting `a11y`
+   * entirely logs one development-time warning per process.
+   *
+   * @example
+   *   <Shield a11y={{ mode: "audio", src: "/audio/post-1.mp3" }}>{body}</Shield>
+   *   <Shield a11y={{ mode: "text", href: "/posts/1/plain" }}>{body}</Shield>
+   */
+  a11y?: ShieldA11y;
+
+  /**
+   * The content to encode. MUST be a plain string.
+   *
+   * Anything else throws. Nested JSX is rejected rather than walked, because
+   * a walk cannot see inside your own components: their text would ship to
+   * the browser unencoded inside a block that still looks protected. That is
+   * a silent leak, so <Shield> fails loud instead. Split mixed content into
+   * separate <Shield> instances.
+   */
+  children: string;
+}
 
 // Each variant maps to its own injective mapping AND its own font file.
 // alpha/beta/gamma are independent re-seeds of the v18 pool (the auto-rotation
@@ -239,16 +375,131 @@ export function setCamouflage(opts: CamouflageOptions): void {
   if (opts.logPrefix) camo.logPrefix = opts.logPrefix;
 }
 
+// ---- Per-render-pass emission registry --------------------------------------
+//
+// The @font-face <style> and the font-load guard <script> are PAGE-level
+// assets, but <Shield> is a leaf component, so N shields on a page emit N
+// identical copies of both (~3.7 kB a pair). De-duplicating them needs the one
+// thing React does not hand a server component for free: state scoped to the
+// current render pass and to nothing wider.
+//
+// There are exactly two places to get that safely:
+//
+//   1. React's `cache()`. Under React Server Components the renderer installs a
+//      cache dispatcher, so a cache()d factory returns ONE object per render
+//      pass, isolated per request and safe under concurrency. That covers the
+//      Next.js App Router, this package's primary target.
+//   2. {@link withShieldRenderPass}, an explicit opt-in wrapper for the
+//      synchronous SSR renderers. `renderToString` / `renderToStaticMarkup`
+//      install no cache dispatcher (verified on React 18 AND 19 — cache()
+//      silently stops memoising and returns a fresh value per call), so RSC's
+//      automatic path cannot help them.
+//
+// A bare module-level Set is NOT one of them, and neither is a
+// microtask-scoped one. A static export that renders page after page in a
+// single synchronous loop would emit the assets on the first page only and
+// ship every later page with no @font-face and no guard: invisible in the
+// HTML, catastrophic on screen, since the reader then sees the raw decoy text
+// in a fallback font. So when neither scope above is available, <Shield> falls
+// back to emitting per instance exactly as it always has. Bigger, never broken.
+
+interface PassRegistry {
+  /** Families whose @font-face <style> this pass has already emitted. */
+  styles: Set<string>;
+  /** Families whose guard bootstrap <script> this pass has already emitted. */
+  guards: Set<string>;
+  /** `family|weight` pairs already seeded into this pass's guard. */
+  weights: Set<string>;
+}
+
+function newPassRegistry(): PassRegistry {
+  return { styles: new Set(), guards: new Set(), weights: new Set() };
+}
+
+/** The scope opened by {@link withShieldRenderPass}, if one is open. */
+let explicitPass: PassRegistry | null = null;
+
+type CacheFn = <T>(fn: () => T) => () => T;
+
 /**
- * Tracks which variants we've already declared @font-face for in the
- * current SSR pass, so we only emit each <style> once per page render.
- *
- * Note: this is per-process state, fine for SSR where each request gets
- * its own module instance in Node, but resets between requests via
- * React's RSC streaming model. The first <Shield variant="alpha"> on a
- * page emits the @font-face; subsequent ones reuse it.
+ * React's `cache`, when the running React exports it (React 19 and the RSC
+ * canaries). Read defensively rather than imported by name: a static
+ * `import { cache } from "react"` is a hard module-resolution error on React
+ * 18, which this package still supports.
  */
-const declaredVariants = new WeakSet<object>();
+const reactCache: CacheFn | undefined = (() => {
+  const mod = React as unknown as { cache?: CacheFn; default?: { cache?: CacheFn } };
+  if (typeof mod.cache === "function") return mod.cache;
+  const viaDefault = mod.default?.cache;
+  return typeof viaDefault === "function" ? viaDefault : undefined;
+})();
+
+const cachedPass: (() => PassRegistry) | undefined = reactCache
+  ? reactCache(newPassRegistry)
+  : undefined;
+
+/**
+ * The registry for the render pass in flight, or `null` when there is no pass
+ * scope and every <Shield> must therefore emit its own assets.
+ */
+function currentPass(): PassRegistry | null {
+  if (explicitPass) return explicitPass;
+  if (cachedPass) {
+    // React's cache() documents itself as falling through to the raw factory
+    // when no cache dispatcher is installed, so two calls in a row return the
+    // SAME object only while a real RSC render pass is in flight. Comparing
+    // identity is the only reliable way to tell the two situations apart —
+    // `typeof cache === "function"` is true in both.
+    const first = cachedPass();
+    if (first === cachedPass()) return first;
+  }
+  return null;
+}
+
+/**
+ * Claim `key` in one of the registry's buckets for this render pass. Returns
+ * `true` when the caller owns the claim and should emit the markup, which is
+ * unconditionally the case when no pass scope is active.
+ */
+function claim(bucket: keyof PassRegistry, key: string): boolean {
+  const pass = currentPass();
+  if (!pass) return true;
+  if (pass[bucket].has(key)) return false;
+  pass[bucket].add(key);
+  return true;
+}
+
+/**
+ * Give a SYNCHRONOUS server render one shared <Shield> asset scope, so the
+ * @font-face <style> and the font-load guard <script> are emitted once for the
+ * page instead of once per <Shield>.
+ *
+ * React Server Components get this automatically (see the note above), so
+ * Next.js App Router users never need this function. It exists for the
+ * renderers that install no React cache dispatcher:
+ *
+ * @example
+ *   import { renderToString } from "react-dom/server";
+ *   import { withShieldRenderPass } from "@shieldfont/react";
+ *
+ *   const html = withShieldRenderPass(() => renderToString(<App />));
+ *
+ * Wrap ONE render call, and only a synchronous one. `renderToPipeableStream`
+ * and friends return before the tree has finished rendering, so the scope
+ * closes early and later shields fall back to emitting their own assets. That
+ * costs bytes and never correctness, which is the trade this whole mechanism
+ * is built around: a shield that emits its assets twice is merely large, a
+ * shield that emits none is a page of visible decoy text.
+ */
+export function withShieldRenderPass<T>(render: () => T): T {
+  const outer = explicitPass;
+  explicitPass = newPassRegistry();
+  try {
+    return render();
+  } finally {
+    explicitPass = outer;
+  }
+}
 
 /**
  * Where the @font-face URLs point. SELF-HOSTED ONLY by design.
@@ -299,56 +550,286 @@ export function setFontHost(url: string): void {
 }
 
 /**
- * Build the @font-face CSS for a given variant. Lives in a <style> tag
- * inserted into the JSX; React de-dupes identical <style> nodes in the
- * SSR output.
+ * The `font-weight` band each real cut claims in its @font-face.
+ *
+ * The bands tile 1..1000 with no gaps, so ANY numeric CSS weight matches
+ * exactly one declared face and no browser can be tempted to synthesise a
+ * weight. Synthetic bolding is never acceptable here: beyond smearing a
+ * licensed Playtype typeface, it would distort the word-ligature composite
+ * glyphs and visibly expose that decoys are in play. `font-synthesis: none` on
+ * the rendered element is the belt-and-braces for the same rule (and covers
+ * faux italic too).
+ *
+ * These bands and {@link resolveOptikWeight} say the same thing twice, on
+ * purpose. The component now snaps a number to a real cut BEFORE it writes
+ * `font-weight`, so in practice every value that reaches the CSS is already
+ * the exact centre of its band. The bands still matter for the weights
+ * <Shield> never sees: one that arrives by inheritance or from the host
+ * project's own stylesheet. Keep the two in step when editing either;
+ * test/weight.test.ts asserts they agree on every integer in 1..1000.
+ */
+const WEIGHT_BANDS: Record<number, string> = {
+  400: "1 449",
+  500: "450 549",
+  600: "550 649",
+  700: "650 749",
+  800: "750 849",
+  900: "850 1000",
+};
+
+/**
+ * The real cuts, ascending. Derived from {@link OPTIK_WEIGHTS} rather than
+ * written out again, so adding a cut to the registry changes the snapping with
+ * it and there is no second list to forget.
+ */
+const OPTIK_CUTS: readonly number[] = Object.values(OPTIK_WEIGHTS)
+  .slice()
+  .sort((a, b) => a - b);
+
+/**
+ * The nearest real cut to `value`, with exact midpoints rounding UP.
+ *
+ * The tie-break is not a free choice: the @font-face bands above already round
+ * midpoints up (450 sits in the 500 band, 550 in the 600 band, and so on), and
+ * the two resolutions have to agree exactly or the number <Shield> emits would
+ * render as a different cut than the number an author typed used to. Iterating
+ * ascending and accepting a later cut on `<=` is what implements that.
+ *
+ * The `Math.round` is the same agreement rule applied to FRACTIONAL input, and
+ * it is load-bearing rather than tidy-up. The bands are integer-delimited, so a
+ * value like 449.5 falls in the one-unit gap between "1 449" and "450 549" and
+ * no band contains it. Browsers resolve that gap by rounding to the nearest
+ * integer first (verified in Chrome: 449.2 matches the 400 face, 449.5 and
+ * 449.9 match the 500 face), whereas raw nearest-cut arithmetic would send all
+ * three to 400 because 449.5 is 49.5 away from 400 and 50.5 away from 500.
+ * Rounding first reproduces what the browser already did.
+ */
+function nearestCut(value: number): number {
+  // Half-up, matching both the band midpoints and the browser's own rounding.
+  const target = Math.round(value);
+  let best = OPTIK_CUTS[0] as number;
+  let bestDistance = Math.abs(best - target);
+  for (const cut of OPTIK_CUTS) {
+    const distance = Math.abs(cut - target);
+    // `<=`, not `<`: the cuts are ascending, so taking the later one on a tie
+    // is what rounds an exact midpoint up.
+    if (distance <= bestDistance) {
+      best = cut;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+/**
+ * The bundled filename for one variant at one weight. The Regular (400) file
+ * keeps the historical bare name (`optik-a.woff2`); every other cut carries a
+ * numeric suffix (`optik-a-700.woff2`). Same rule for camouflaged prefixes.
+ */
+function weightFile(prefix: string, numeric: number): string {
+  return numeric === 400 ? `${prefix}.woff2` : `${prefix}-${numeric}.woff2`;
+}
+
+/**
+ * Build the @font-face CSS for a given variant: one face per bundled weight,
+ * all under the variant's single family name. Lives in a <style> tag inserted
+ * into the JSX.
+ *
+ * React does NOT de-dupe identical <style> tags in SSR output — not under
+ * React 18, and not under React 19 without the `precedence` prop that hoists
+ * them into <head>. The de-duplication is ours, per render pass, and it is
+ * best-effort by design: see the PassRegistry note above.
+ *
+ * Browsers only download a face when text actually resolves to its band, so
+ * declaring six faces costs no extra bytes on a single-weight page. That holds
+ * only as long as nothing else asks for a band nobody uses, which is exactly
+ * the mistake the font-load guard used to make (it probed a bare `1em` font
+ * shorthand, i.e. weight 400, and pulled Regular onto every page).
  */
 function fontFaceCss(variant: ShieldVariant): string {
   const file = camo.file[variant];
   const family = camo.family[variant];
   // woff2 only — universally supported and keeps the bundled package small
-  // (~1 MB/variant vs ~5 MB for the TTF).
+  // (~1 MB/cut vs ~5 MB for the TTF).
   //
   // font-display:block (NOT swap): with swap the browser paints the encoded
   // decoy text in a fallback font first, so readers see gibberish until the
   // ShieldFont face loads (FOUT). block keeps the text invisible during the
   // short block period, matching the CDN path — no gibberish flash. The 4s
   // font-load guard below covers the case where the face never loads.
-  return `@font-face{font-family:'${family}';src:url('${fontHost}/${file}.woff2') format('woff2');font-weight:1 999;font-style:normal;font-display:block;}`;
+  //
+  // Each face claims its WEIGHT_BANDS range so arbitrary numeric weights snap
+  // to the nearest real cut; nothing is ever synthesised (see WEIGHT_BANDS).
+  return Object.values(OPTIK_WEIGHTS)
+    .slice()
+    .sort((a, b) => a - b)
+    .map(
+      (numeric) =>
+        `@font-face{font-family:'${family}';src:url('${fontHost}/${weightFile(file, numeric)}') format('woff2');font-weight:${WEIGHT_BANDS[numeric]};font-style:normal;font-display:block;}`,
+    )
+    .join("");
+}
+
+/**
+ * Resolve a `weight` prop value to the real cut it will render as.
+ *
+ * This is the whole weight contract in one function, exported so a consumer or
+ * a test can ask what a number becomes without rendering anything:
+ *
+ * ```js
+ * resolveOptikWeight("demibold"); // 600
+ * resolveOptikWeight(470);        // 500
+ * resolveOptikWeight(450);        // 500  (exact midpoints round UP)
+ * ```
+ *
+ * A NAME must be a key of {@link OPTIK_WEIGHTS} (Playtype's six upright cut
+ * names, lowercased) and resolves to its numeric value.
+ *
+ * A NUMBER must be a valid CSS font-weight (1..1000) and snaps to the nearest
+ * cut in {@link OPTIK_WEIGHTS}, so the value <Shield> writes into
+ * `font-weight` is always a weight a real bundled file exists for. Six static
+ * cuts cannot honour 470, and pretending otherwise was the old behaviour's
+ * only real flaw: the number went out untouched and the snapping happened
+ * invisibly, inside the browser's font matching, where an author could not see
+ * it. Resolving here makes it a property of the component instead.
+ *
+ * Anything else throws a RangeError rather than emitting invalid or misleading
+ * CSS: same fail-loud treatment as the rotation config. Snapping is a
+ * convenience for real weight values, NOT a reason to accept garbage, so NaN,
+ * Infinity and anything outside 1..1000 still throw. `470` is imprecise and
+ * gets helped; `NaN` is a bug and gets reported.
+ */
+export function resolveOptikWeight(weight: ShieldWeight): number {
+  if (typeof weight === "string") {
+    // Widened lookup: the type system only admits OPTIK_WEIGHTS keys, but a
+    // plain-JS caller can pass any string, so validate at runtime too.
+    const numeric = (OPTIK_WEIGHTS as Record<string, number>)[weight];
+    if (numeric === undefined) {
+      throw new RangeError(
+        `${camo.logPrefix} unknown weight name ${JSON.stringify(weight)}. Bundled Optik ` +
+          `weights: ${Object.keys(OPTIK_WEIGHTS).join(", ")}. Numeric CSS weights ` +
+          `(1..1000) are also accepted, and snap to the nearest bundled cut.`,
+      );
+    }
+    return numeric;
+  }
+  if (typeof weight !== "number" || !Number.isFinite(weight) || weight < 1 || weight > 1000) {
+    throw new RangeError(
+      `${camo.logPrefix} weight must be a bundled weight name ` +
+        `(${Object.keys(OPTIK_WEIGHTS).join(", ")}) or a number in 1..1000, ` +
+        `got ${String(weight)}.`,
+    );
+  }
+  return nearestCut(weight);
+}
+
+/**
+ * The `undefined`-tolerant form used by the render path: an omitted prop stays
+ * omitted, so the element inherits its `font-weight` exactly as before.
+ */
+function resolveWeight(weight: ShieldWeight | undefined): number | undefined {
+  return weight === undefined ? undefined : resolveOptikWeight(weight);
 }
 
 /**
  * The font-load guard. Inlined into the page so it runs the moment the
  * browser parses it, with no React hydration dependency.
  *
- * Watches `document.fonts` for the ShieldFont family. If the font does not
- * register and load within 4 seconds, it visibly replaces every element
- * carrying `[data-typeface]` (the default camo attr) with a "Content
- * unavailable" message and
- * logs a clear console error pointing at the configured fontHost.
+ * Watches `document.fonts` for the ShieldFont family AT EVERY WEIGHT THE PAGE
+ * ACTUALLY USES. If any of those faces fails to register and load within 4
+ * seconds, it visibly replaces every element carrying `[data-typeface]` (the
+ * default camo attr) with a "Content unavailable" message and logs a clear
+ * console error pointing at the configured fontHost. The replacement is a
+ * stylesheet rather than a DOM rewrite, so React hydration cannot put the
+ * decoy back (see `fail()`).
  *
  * This is the difference between "silently leaking your decoys to readers"
  * and "obviously broken in a way that the page owner notices on day one."
  *
- * Idempotent — guarded by a window-level flag so multiple Shield instances
- * on the same page only set up the watcher once.
+ * The weight set is what makes this correct, and it used to be the bug. The
+ * guard probed `document.fonts.load('1em "' + FAMILY + '"')`: a CSS font
+ * shorthand with no weight defaults to 400, so it only ever asked about the
+ * Regular face. A page whose only shielded block was bold therefore (a) passed
+ * the guard while painting raw decoy text in the fallback font, because a
+ * missing `optik-a-700.woff2` was never probed, and (b) downloaded Regular for
+ * nothing. `checkDescendants()` does not cover it either: it only walks
+ * descendants, and it compares font-family, which still says "Optik". With six
+ * cuts per variant a deploy now has 24 files to get right instead of 4, so the
+ * blind spot was 6x more reachable than the day it was written.
+ *
+ * Weights come from two places, deliberately overlapping:
+ *   - the SSR seed(s), emitted from the `weight` prop <Shield> resolved, so the
+ *     real download starts immediately rather than at DOMContentLoaded;
+ *   - a DOM sweep of every `[ATTR]` element's COMPUTED font-weight, which is
+ *     the only way to catch weights that come from inheritance or a stylesheet
+ *     rather than from the prop.
+ *
+ * Per family, not per instance: the window flag holds a registry keyed by
+ * family name, so a page mixing variants gets one live watcher per family
+ * instead of one watcher total that only ever checked whichever variant
+ * happened to render first. A second bootstrap for a family already being
+ * watched hands over its seed weight and stands down; a seed script that beat
+ * its bootstrap out of a streamed response parks its weight in a queue the
+ * bootstrap drains.
+ *
+ * Notes on the emitted source, which carries no comments of its own (they
+ * would be bytes on every page, and prose about decoys is exactly the
+ * signature `setCamouflage` exists to erase):
+ *
+ * - `probe(w)` puts the weight in front of the size, `'700 1em "Optik"'`.
+ *   Omit it and the shorthand means 400, which was the whole bug. The
+ *   disjoint WEIGHT_BANDS mean one weight matches exactly one real cut, so a
+ *   probe downloads that cut and no other. Engines disagree about a failed
+ *   face — some reject the promise, some resolve with the FontFace parked in
+ *   `status: "error"` — so both are treated as failure, and `anyErrored()`
+ *   sweeps the whole set afterwards for a face that failed outside any weight
+ *   probed.
+ * - `sweepDom()` matches the FIRST family in each element's computed
+ *   font-family exactly rather than by substring, so the "Optik" watcher does
+ *   not adopt weights belonging to "Optik Beta" and pull down cuts of its own
+ *   that nobody asked for.
+ * - `settle()` starts the 4s clock, NOT the parse. The sweep waits for the
+ *   DOM, and a page slow to reach DOMContentLoaded with a perfectly good font
+ *   must not be declared broken. If it finds no shielded element and had no
+ *   SSR seed, it falls back to probing Regular, this guard's historical
+ *   behaviour.
+ * - `fail()` blanks the page with a STYLESHEET rather than by rewriting text.
+ *   Rewriting looked simpler and did not survive contact with hydration: the
+ *   script runs while the document is still parsing, React hydrates a moment
+ *   later, finds text it did not render, throws hydration error #418 and puts
+ *   the decoy straight back on screen — the guard then logs a failure the
+ *   reader never sees, which is the precise outcome it exists to prevent
+ *   (observed in a real Next.js App Router page, not deduced). A rule keyed on
+ *   the data attribute is invisible to reconciliation, covers shields streamed
+ *   in after it ran, and cannot be undone by a re-render.
+ * - `checkDescendants()` is the success-path warning: it walks each protected
+ *   region and reports any descendant rendering in a font-family that is not
+ *   ours, since an override font has no GSUB ligature table and will show the
+ *   encoded text on screen.
  */
-function fontGuardScript(family: string, host: string): string {
+function fontGuardScript(family: string, host: string, seedWeight: number | null): string {
   const flag = camo.guardFlag;
   const attr = camo.attrName;
   const failedAttr = `${attr}-failed`;
   const prefix = camo.logPrefix;
   return `(function(){
-if (typeof window === 'undefined' || window[${JSON.stringify(flag)}]) return;
-window[${JSON.stringify(flag)}] = true;
+if (typeof window === 'undefined' || typeof document === 'undefined') return;
+var FLAG   = ${JSON.stringify(flag)};
 var FAMILY = ${JSON.stringify(family)};
 var HOST   = ${JSON.stringify(host)};
 var ATTR   = ${JSON.stringify(attr)};
 var FAILED = ${JSON.stringify(failedAttr)};
 var PFX    = ${JSON.stringify(prefix)};
+var SEED   = ${seedWeight === null ? "null" : String(seedWeight)};
 var TIMEOUT_MS = 4000;
 var FALLBACK = 'Content unavailable — the font failed to load.';
+var reg = window[FLAG] || (window[FLAG] = {});
+var prev = reg[FAMILY];
+if (prev && prev.seed) { if (SEED !== null) prev.seed(SEED); return; }
+reg[FAMILY] = { seed: seed, queued: null };
 var done = false;
+var probes = [];
+var seen = {};
 function fail(reason){
   if (done) return; done = true;
   console.error(
@@ -356,21 +837,21 @@ function fail(reason){
     'Replacing every [' + ATTR + '] element with a fallback message. ' +
     'Verify the font is reachable at ' + HOST + '/.'
   );
+  var css =
+    '[' + ATTR + ']{font-size:0!important;line-height:0!important;}' +
+    '[' + ATTR + ']::before{content:' + JSON.stringify(FALLBACK) + ';' +
+    'display:inline-block;font:italic 1rem/1.5 system-ui,sans-serif;opacity:0.65;}';
+  var sheet = document.createElement('style');
+  sheet.setAttribute(FAILED, '1');
+  sheet.appendChild(document.createTextNode(css));
+  (document.head || document.documentElement).appendChild(sheet);
   var els = document.querySelectorAll('[' + ATTR + ']');
   for (var i = 0; i < els.length; i++) {
     var el = els[i];
     el.setAttribute('aria-label', FALLBACK);
     el.setAttribute(FAILED, '1');
-    el.textContent = FALLBACK;
-    el.style.fontFamily = 'system-ui, sans-serif';
-    el.style.fontStyle = 'italic';
-    el.style.opacity = '0.65';
   }
 }
-/* On font load success, walk every Shield element's descendants and warn if
-   any descendant is rendering with a font-family that DOES NOT include our
-   family. Such descendants will display the encoded gibberish on screen
-   because the override font has no GSUB ligature table to reverse it. */
 function checkDescendants(){
   var roots = document.querySelectorAll('[' + ATTR + ']:not([' + FAILED + '])');
   var warnings = 0;
@@ -404,61 +885,78 @@ function pass(){
   if (done) return; done = true;
   setTimeout(checkDescendants, 50);
 }
+function probe(w){
+  probes.push(document.fonts.load(w + ' 1em "' + FAMILY + '"').then(function(faces){
+    if (!faces || faces.length === 0) throw new Error('no @font-face declared for weight ' + w);
+    for (var i = 0; i < faces.length; i++) {
+      if (faces[i].status === 'error') throw new Error('the weight-' + w + ' face failed to load');
+    }
+  }));
+}
+function seed(w){
+  w = Math.round(Number(w));
+  if (!isFinite(w) || w < 1 || w > 1000 || seen[w]) return;
+  seen[w] = true;
+  probe(w);
+}
+function firstFamily(value){
+  return String(value || '').split(',')[0].trim().replace(/^["']|["']$/g, '');
+}
+function sweepDom(){
+  var els = document.querySelectorAll('[' + ATTR + ']');
+  for (var i = 0; i < els.length; i++) {
+    var cs = window.getComputedStyle(els[i]);
+    if (firstFamily(cs.fontFamily) !== FAMILY) continue;
+    seed(cs.fontWeight);
+  }
+}
+function anyErrored(){
+  var bad = false;
+  try {
+    document.fonts.forEach(function(ff){
+      if (!bad && firstFamily(ff.family) === FAMILY && ff.status === 'error') bad = true;
+    });
+  } catch (e) {}
+  return bad;
+}
+function settle(){
+  sweepDom();
+  if (!probes.length) seed(400);
+  Promise.all(probes).then(function(){
+    if (anyErrored()) fail('a declared face for this family is in error state');
+    else pass();
+  }, function(e){ fail(String((e && e.message) || e)); });
+  setTimeout(function(){ if (!done) fail('timeout after ' + TIMEOUT_MS + 'ms'); }, TIMEOUT_MS);
+}
 if (!document.fonts || !document.fonts.load) {
   fail('document.fonts API not supported');
   return;
 }
-document.fonts.load('1em "' + FAMILY + '"').then(function(faces){
-  if (faces && faces.length > 0) pass();
-  else fail('font face not registered');
-}).catch(function(e){ fail(String(e && e.message || e)); });
-setTimeout(function(){ if (!done) fail('timeout after ' + TIMEOUT_MS + 'ms'); }, TIMEOUT_MS);
+if (prev && prev.queued) { for (var q = 0; q < prev.queued.length; q++) seed(prev.queued[q]); }
+if (SEED !== null) seed(SEED);
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', settle);
+else settle();
 })();`;
 }
 
 /**
- * Recursively walk a React tree and encode text inside built-in HTML
- * elements. Used by Shield's "container mode" (when `as` is article/section/etc).
+ * The companion to the guard bootstrap: registers ONE more weight with a
+ * watcher that some earlier <Shield> already started for this family.
  *
- * Behavior:
- *  - Strings are encoded with the given mapping
- *  - Arrays are mapped recursively
- *  - HTML elements (typeof element.type === "string") get their children walked
- *    and re-rendered via cloneElement. The element type itself is preserved.
- *  - Custom React components (functions, classes, lazy, forwardRef) pass through
- *    unchanged. We can't see inside them at server-construction time. Users who
- *    want their children encoded should wrap them in <Shield> separately.
- *  - Numbers / booleans / null / undefined pass through.
+ * Only reachable when a render pass scope is active (RSC, or
+ * {@link withShieldRenderPass}), because that is the only time a second
+ * <Shield> skips emitting a bootstrap of its own. Kept deliberately tiny —
+ * a few hundred bytes against the bootstrap's few kilobytes — and it parks the
+ * weight in a queue if it somehow runs first, which streamed-out-of-order
+ * Suspense boundaries make possible.
  */
-function walkAndEncode(node: ReactNode, mapping: Record<string, string>): ReactNode {
-  if (node == null || typeof node === "boolean") return node;
-  if (typeof node === "number") return node;
-  if (typeof node === "string") return encode(node, mapping);
-  if (Array.isArray(node)) {
-    return node.map((child, i) => {
-      const walked = walkAndEncode(child, mapping);
-      // If the child is a React element it has its own key handling; otherwise
-      // we wrap arrays of mixed primitives so React doesn't whine about keys.
-      if (isValidElement(walked) && walked.key == null) {
-        return cloneElement(walked as ReactElement, { key: i });
-      }
-      return walked;
-    });
-  }
-  if (isValidElement(node)) {
-    if (typeof node.type === "string") {
-      // Built-in HTML element — descend into its children
-      const props = node.props as { children?: ReactNode };
-      return cloneElement(
-        node as ReactElement<{ children?: ReactNode }>,
-        undefined,
-        walkAndEncode(props.children, mapping),
-      );
-    }
-    // Custom component — opaque, can't introspect
-    return node;
-  }
-  return node;
+function fontWeightSeedScript(family: string, weight: number): string {
+  const flag = JSON.stringify(camo.guardFlag);
+  const fam = JSON.stringify(family);
+  return (
+    `(function(){var r=window[${flag}]||(window[${flag}]={});var s=r[${fam}]||(r[${fam}]={});` +
+    `if(s.seed)s.seed(${weight});else (s.queued||(s.queued=[])).push(${weight});})();`
+  );
 }
 
 // ---- Auto-rotation ----------------------------------------------------------
@@ -491,6 +989,236 @@ function collectText(node: ReactNode): string {
     return collectText(props.children);
   }
   return "";
+}
+
+// ---- Time-based rotation ----------------------------------------------------
+//
+// Auto-rotation above spreads the three mappings ACROSS a page. Rotation spreads
+// them across TIME as well, by mixing a period index into the same content hash.
+// Read setRotation()'s doc comment before reaching for this: what it buys is
+// narrow and easy to oversell.
+
+const DEFAULT_EPOCH = "2026-01-01T00:00:00Z";
+const WEEK_MS = 604_800_000;
+const DAY_MS = 86_400_000;
+
+/**
+ * Module-level rotation, set by {@link setRotation}. `false` (the default) means
+ * "no time component" — <Shield> keeps the pure content-hash auto-rotation.
+ */
+let rotation: RotateConfig | false = false;
+
+/**
+ * Parse a Date or ISO string and reject an invalid one LOUDLY.
+ *
+ * An unparseable epoch would otherwise yield `NaN` period indices, which hash
+ * to a stable-but-meaningless variant: every block would look fine and would
+ * silently stop rotating. Same failure class the font-load guard exists to
+ * prevent, so it gets the same treatment.
+ */
+function parseInstant(value: Date | string, field: string): Date {
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) {
+    throw new RangeError(
+      `${camo.logPrefix} rotation \`${field}\` is not a valid date: ${JSON.stringify(value)}. ` +
+        `Pass a Date or an ISO 8601 string (e.g. "2026-03-01T00:00:00Z").`,
+    );
+  }
+  return d;
+}
+
+/**
+ * The period index of an instant, relative to the configured epoch.
+ *
+ * `"monthly"` is CALENDAR-aligned, not 30-day blocks: "the March font" has to
+ * mean March. `"weekly"` / `"daily"` are fixed-length windows measured from the
+ * epoch instant.
+ *
+ * Everything is UTC. A build machine in Sao Paulo and one in Copenhagen must
+ * agree, or two deploys of the same commit emit different HTML.
+ *
+ * @example
+ *   periodIndex(new Date("2026-03-15T00:00:00Z"));            // 2  (monthly)
+ *   periodIndex("2026-03-15", { period: "daily" });           // 73
+ */
+export function periodIndex(at: Date | string = new Date(), cfg: RotateConfig = {}): number {
+  const epoch = parseInstant(cfg.epoch ?? DEFAULT_EPOCH, "epoch");
+  const instant = parseInstant(at, "at");
+  switch (cfg.period ?? "monthly") {
+    case "weekly":
+      return Math.floor((instant.getTime() - epoch.getTime()) / WEEK_MS);
+    case "daily":
+      return Math.floor((instant.getTime() - epoch.getTime()) / DAY_MS);
+    case "monthly":
+    default:
+      return (
+        (instant.getUTCFullYear() - epoch.getUTCFullYear()) * 12 +
+        (instant.getUTCMonth() - epoch.getUTCMonth())
+      );
+  }
+}
+
+/**
+ * The variants a rotation may actually select.
+ *
+ * `"maxhide"` is ALWAYS filtered out, even when a caller passes it explicitly.
+ * It is the M15 maximum-coverage dictionary: a different trade (much higher
+ * swap rate, correspondingly lower readability of the decoy) that an author
+ * opts into per block with `variant="maxhide"`. Rotating INTO it would change
+ * the character of a page's text on a calendar boundary, unannounced. Pinning
+ * it stays available; drifting into it does not.
+ *
+ * Unknown variant names are dropped too, so a plain-JS caller cannot produce an
+ * undefined mapping at render time. An empty result falls back to the default
+ * pool rather than throwing — a misconfigured pool must not take a page down.
+ */
+function rotationPool(pool?: ShieldVariant[]): ShieldVariant[] {
+  const cleaned = (pool ?? AUTO_POOL).filter(
+    (v) => v !== "maxhide" && Object.prototype.hasOwnProperty.call(MAPPINGS, v),
+  );
+  return cleaned.length > 0 ? cleaned : AUTO_POOL;
+}
+
+/**
+ * Resolve `cfg.at` to a period index.
+ *
+ *   - a **number** IS the period index (no clock consulted at all)
+ *   - a **Date or ISO string** is an INSTANT, whose period index is computed
+ *   - **undefined** falls back to `now`
+ *
+ * The number form is what lets an author rebuild a past period: pin the index
+ * and the output is byte-identical however many years later, with no stored
+ * key and no backup.
+ */
+function resolvePeriod(cfg: RotateConfig, now: Date): number {
+  const at = cfg.at;
+  if (typeof at === "number") {
+    if (!Number.isFinite(at)) {
+      throw new RangeError(
+        `${camo.logPrefix} rotation \`at\` must be a finite period index, got ${String(at)}.`,
+      );
+    }
+    // Normalise -0 to 0 so it stringifies into the hash key identically.
+    const p = Math.trunc(at);
+    return p === 0 ? 0 : p;
+  }
+  return periodIndex(at ?? now, cfg);
+}
+
+/**
+ * The variant for one block, given the rotation config and the block's content.
+ *
+ * The period is mixed INTO the content hash, never used instead of it. Flipping
+ * a whole site to one variant per period would be strictly worse than doing
+ * nothing: a scraper fingerprinting by font file would see exactly one font per
+ * site per period, a cleaner signal than three. Mixing keeps the within-page
+ * spread AND reassigns every block at the boundary.
+ *
+ * With the default three-variant pool, `1 - 1/3` — about two thirds — of blocks
+ * change variant at each boundary. That is the honest number; quote it.
+ *
+ * NUL separators, not spaces, so `salt="ab"` + period `1` cannot collide with
+ * `salt="a"` + period `b1`.
+ */
+export function variantFor(
+  content: string,
+  cfg: RotateConfig = {},
+  at: Date = new Date(),
+): ShieldVariant {
+  const pool = rotationPool(cfg.pool);
+  const period = resolvePeriod(cfg, at);
+  const key = `${cfg.salt ?? ""}\u0000${period}\u0000${content}`;
+  return pool[hashString(key) % pool.length] ?? pool[0] ?? "alpha";
+}
+
+/**
+ * Turn on time-based variant rotation for every `<Shield>` in the process.
+ * Call once at module load, from your root layout. Pass `false` to turn it off.
+ *
+ * ### What this does NOT do
+ *
+ * **Rotation does not defeat font inversion, and does not slow it down.** All
+ * three mappings are published in `@shieldfont/core`; all three fonts ship in
+ * this package and on the CDN; and every served block names its own variant
+ * twice, in the `data-typeface` attribute value and in the `@font-face` `src`
+ * filename. An attacker who inverts once holds all three tables forever and can
+ * read straight off the HTML which one a block used. Anyone who re-reads the
+ * variant per crawl is entirely unaffected by this feature.
+ *
+ * ### What it does buy, stated exactly
+ *
+ * **A cached substitution table decays silently.** A scraper that inverted the
+ * font once and stored the table decodes the next period into plausible English
+ * that is wrong. Nothing throws, nothing 404s, nothing looks broken — so there
+ * is no error to trigger a retry, and no signal that the cache went stale. With
+ * the default three-variant pool, about two thirds of blocks change variant at
+ * each boundary.
+ *
+ * The second-order effect is the point: because an outsider cannot tell which
+ * sites rotate, a pipeline that wants to be correct has to re-verify every
+ * shielded site on every crawl instead of solving it once. The cost being added
+ * is recurring attention, not compute. Do not put a dollar figure on it.
+ *
+ * ### Where it is safe
+ *
+ * ONLY where the `@font-face` travels in the same bytes as the encoded text —
+ * which is exactly what `<Shield>` does, and why the CDN paste-in tier does not
+ * get this feature. A Tier B/C page with one hand-written global `@font-face`
+ * would rotate its text away from its stylesheet and paint raw decoys on
+ * screen. Static exports are safe: their HTML is frozen with its own inline
+ * `@font-face`, so a built page renders correctly forever.
+ *
+ * Variant rotation needs no font rebuild — all four fonts already ship. True
+ * per-seed rotation would need one font build per period; that is a roadmap
+ * item, not this.
+ *
+ * ### Rebuilding a past period
+ *
+ * Pin the clock. A number IS the period index, so period 14 rebuilt in 2029 is
+ * byte-identical to period 14 built in 2027 — no stored key, no backup:
+ *
+ * @example
+ *   // app/layout.tsx — rotate monthly, salted per site
+ *   import { setRotation } from "@shieldfont/react";
+ *   setRotation({ period: "monthly", salt: "example.com" });
+ *
+ * @example
+ *   setRotation({ period: "monthly", at: 14 });          // rebuild period 14
+ *   setRotation({ period: "monthly", at: "2026-03-15" }); // rebuild March 2026
+ *   setRotation(false);                                   // back to content hash
+ */
+export function setRotation(config: RotateConfig | false): void {
+  if (config === false) {
+    rotation = false;
+    return;
+  }
+  const next: RotateConfig = { ...config };
+  // Validate NOW, at config time, rather than on the first render: a bad epoch
+  // or a bad `at` is a setup error, and the earliest possible throw is the
+  // cheapest one to debug.
+  resolvePeriod(next, new Date());
+  rotation = next;
+}
+
+/**
+ * Resolve the variant for one block. Precedence, highest first:
+ *
+ *   1. an explicit `variant` prop — always pins, including to `"maxhide"`
+ *   2. the per-instance `rotate` prop (`false` opts this block out of rotation)
+ *   3. module-level {@link setRotation}
+ *   4. the content hash (the original behaviour)
+ */
+function resolveVariant(
+  variant: ShieldVariant | undefined,
+  rotate: boolean | RotateConfig | undefined,
+  content: string,
+): ShieldVariant {
+  if (variant) return variant;
+  if (rotate === true) return variantFor(content);
+  if (rotate === false) return autoVariant(content);
+  if (rotate) return variantFor(content, rotate);
+  if (rotation !== false) return variantFor(content, rotation);
+  return autoVariant(content);
 }
 
 // ---- "use client" footgun guard (fires in production too) -------------------
@@ -532,6 +1260,135 @@ function warnIfClientRender(): void {
   );
 }
 
+// ---- Accessibility ----------------------------------------------------------
+//
+// The encoded block stays `aria-hidden="true"`. That is deliberate and correct:
+// the HTML holds a decoy, so un-hiding it makes a screen reader voice fluent,
+// grammatical, WRONG English with nothing to signal that anything is off — worse
+// than silence, because it does not announce itself as broken.
+//
+// But silence is not a fix either. Either way, what a sighted reader perceives
+// is not programmatically determinable, which fails WCAG 2.2 SC 1.3.1 on any
+// reading. Under the EU Accessibility Act or the ADA Title II web rule that is a
+// procurement blocker, not an ethics question.
+//
+// So the fix is not to un-hide. It is to put a REAL alternative next to the
+// block, outside the hidden subtree and before it in DOM order, so linear
+// navigation reaches the alternative before the silence. That is `a11y`.
+//
+// This is a partial answer and it is worth saying so: an audio track is not a
+// document. It is not navigable by heading, not searchable, not quotable, not
+// skimmable. A blind reader still gets a worse artifact than a sighted one.
+
+/**
+ * Visually-hidden via CLIP-PATH, never `display:none`.
+ *
+ * `display:none` (and `visibility:hidden`) remove a node from the accessibility
+ * tree as well as from the page — which is the exact bug this whole prop exists
+ * to fix. Clipping keeps the control focusable and announced while taking it out
+ * of the visual layout.
+ */
+const VISUALLY_HIDDEN: CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  overflow: "hidden",
+  clipPath: "inset(50%)",
+  whiteSpace: "nowrap",
+  border: 0,
+};
+
+/**
+ * Default explanatory prose. Real sentences, not a label: "Listen" alone tells
+ * a screen-reader user nothing about WHY the article is missing.
+ */
+const A11Y_NOTE = {
+  audio: "This section is hidden from assistive technology because its text is encoded. The same words are available as audio below.",
+  text: "This section is hidden from assistive technology because its text is encoded. The same words are available as plain text below.",
+} as const;
+
+/**
+ * Tags for which `<Shield>` renders an INLINE alternative wrapper. A `<div>` or
+ * `<p>` sibling emitted next to an inline `<Shield as="span">` inside a
+ * paragraph would make the browser close the enclosing `<p>` early and reflow
+ * the document, so phrasing content gets phrasing-content siblings.
+ */
+const INLINE_TAGS = new Set(["span", "a", "em", "strong", "b", "i", "u", "small", "code", "label"]);
+
+let warnedMissingA11y = false;
+
+/** Dev only: bundlers and Node both expose NODE_ENV; neither is guaranteed. */
+function isProduction(): boolean {
+  const g = globalThis as { process?: { env?: Record<string, string | undefined> } };
+  return g.process?.env?.NODE_ENV === "production";
+}
+
+/**
+ * Omitting `a11y` entirely gets ONE development-time warning per process —
+ * deliberately a warning and not an error, because an error would break every
+ * existing install on upgrade. `{ mode: "none" }` silences it: an explicit,
+ * auditable opt-out is a decision someone made, which is all we are asking for.
+ */
+function warnIfNoA11y(): void {
+  if (warnedMissingA11y || isProduction()) return;
+  warnedMissingA11y = true;
+  console.warn(
+    `${camo.logPrefix} <Shield> rendered with no \`a11y\` prop. The encoded block is ` +
+      `aria-hidden, so assistive technology reads NOTHING there — what a sighted reader ` +
+      `perceives is not programmatically available (WCAG 2.2 SC 1.3.1). Pass ` +
+      `a11y={{ mode: "audio", src }} with a file synthesised AT BUILD TIME from your ` +
+      `original words, or a11y={{ mode: "text", href }} pointing at a plain-text copy. ` +
+      `Pass a11y={{ mode: "none" }} to opt out explicitly and silence this. ` +
+      `Do NOT reach for browser speechSynthesis: it needs your original text in the ` +
+      `browser, which is the leak this package exists to prevent.`,
+  );
+}
+
+/**
+ * Build the accessible alternative. Returns `null` for `{ mode: "none" }` and
+ * for an omitted prop (after warning), so the caller can render it or not.
+ *
+ * Native `<audio controls>`, not a custom button: zero JavaScript, keyboard
+ * operable and labelled for free, survives a static export, and hands the user
+ * the download and speed controls they already know. `preload="none"` so it
+ * costs nothing until someone presses play.
+ */
+function renderA11y(a11y: ShieldA11y | undefined, inline: boolean): ReactNode {
+  if (!a11y) {
+    warnIfNoA11y();
+    return null;
+  }
+  if (a11y.mode === "none") return null;
+
+  const Wrap = (inline ? "span" : "div") as ElementType;
+  const Note = (inline ? "span" : "p") as ElementType;
+  const wrapStyle = a11y.visualHidden ? VISUALLY_HIDDEN : undefined;
+  const note = a11y.note ?? A11Y_NOTE[a11y.mode];
+
+  return (
+    <Wrap
+      className={`${camo.attrName}-alt`}
+      role="group"
+      aria-label="Accessible alternative"
+      style={wrapStyle}
+    >
+      <Note className={`${camo.attrName}-alt-note`}>{note}</Note>
+      {a11y.mode === "audio" ? (
+        <>
+          <audio controls preload="none" src={a11y.src} aria-label="Audio version" />
+          {a11y.transcript ? (
+            <a href={a11y.transcript}>{a11y.label ?? "Transcript"}</a>
+          ) : null}
+        </>
+      ) : (
+        <a href={a11y.href}>{a11y.label ?? "Plain-text version"}</a>
+      )}
+    </Wrap>
+  );
+}
+
 /**
  * `<Shield>` — encoder + font scope in one component. Render it from a SERVER
  * component: the plaintext must never reach the browser. Rendering it in a
@@ -547,7 +1404,7 @@ function warnIfClientRender(): void {
  * @example
  *   <Shield>The future of writing belongs to those who write it.</Shield>
  *
- *   <Shield as="h1" weight={700} size="3rem">
+ *   <Shield as="h1" weight="regular" size="3rem">
  *     Manifesto
  *   </Shield>
  */
@@ -559,30 +1416,51 @@ export function Shield({
   size,
   className,
   style,
+  rotate,
+  a11y,
   children,
 }: ShieldProps) {
   // Fail loud in dev if this server component is being rendered on the client
   // (a "use client" boundary or a client-only React app ships the plaintext).
   warnIfClientRender();
 
+  // Children must be a plain string. Anything else (nested JSX, an array from
+  // `{interpolation}`, a number) is rejected rather than encoded best-effort:
+  // the encoder cannot see inside your own components, so their text would
+  // ship unencoded inside a block that still looks protected. Throwing is the
+  // only way that failure is visible.
+  if (typeof children !== "string") {
+    throw new Error(
+      "<Shield> children must be a plain string. Nested JSX would leak unencoded text into the HTML. " +
+        "Split mixed content into separate <Shield> instances.",
+    );
+  }
+
   const Tag = (as ?? "div") as ElementType;
-  // Resolve the variant: an explicit prop wins; otherwise auto-rotate across
-  // alpha/beta/gamma by content hash so a site uses all three mappings.
-  const v: ShieldVariant = variant ?? autoVariant(collectText(children));
+  // Resolve the variant. Precedence, highest first: an explicit `variant` prop
+  // (always pins), then this instance's `rotate`, then module-level
+  // setRotation(), then the content hash — which spreads alpha/beta/gamma across
+  // a page so no single mapping dominates.
+  const v: ShieldVariant = resolveVariant(variant, rotate, collectText(children));
   const mapping = MAPPINGS[v];
 
-  // Always walk: strings get encoded, built-in HTML elements have their children
-  // recursively encoded (so <Shield as="p">text with <em>em</em></Shield> works),
-  // and custom React components pass through opaque (their internal text is not
-  // touched — wrap them in their own <Shield> if you want them encoded).
-  // Plain string children stay the most common case and short-circuit fast.
-  const content: ReactNode = typeof children === "string"
-    ? encode(children, mapping)
-    : walkAndEncode(children, mapping);
+  const content: ReactNode = encode(children, mapping);
+
+  // Resolve the weight prop to a real cut: a bundled weight name becomes its
+  // numeric value ("regular" -> 400), and a number snaps to the nearest cut
+  // (470 -> 500), so what lands in `font-weight` below is always a weight a
+  // bundled file exists for. Undefined stays undefined, so the element
+  // inherits its font-weight (the old behaviour).
+  const fontWeight = resolveWeight(weight);
 
   const finalStyle: CSSProperties = {
     fontFamily: `'${camo.family[v]}', system-ui, sans-serif`,
-    ...(weight !== undefined && { fontWeight: weight }),
+    // Never let the browser fake a weight or an oblique: a synthetic bold
+    // smears the licensed typeface AND distorts the word-ligature composites
+    // enough to expose that decoys are in play. The @font-face weight bands
+    // already leave no gap for weight synthesis; this also covers faux italic.
+    fontSynthesis: "none",
+    ...(fontWeight !== undefined && { fontWeight }),
     ...(lineHeight !== undefined && { lineHeight }),
     ...(size !== undefined && { fontSize: size }),
     ...style,
@@ -594,30 +1472,67 @@ export function Shield({
   // by randomising the attribute *name*.
   const dataAttrProps: Record<string, string> = { [camo.attrName]: v };
 
+  // The accessible alternative. Built here so it lands OUTSIDE the aria-hidden
+  // subtree and BEFORE it in DOM order (see the a11y section above).
+  const alt = renderA11y(a11y, typeof Tag === "string" && INLINE_TAGS.has(Tag));
+
+  // Claim this page's font assets. Inside a render pass scope the first
+  // <Shield> of a family emits them and the rest emit nothing; with no scope
+  // every instance emits its own, which is bigger but never broken. See the
+  // PassRegistry note near the top of this file.
+  const family = camo.family[v];
+  const emitStyle = claim("styles", family);
+  const emitGuard = claim("guards", family);
+  const weightKey = fontWeight === undefined ? null : `${family}|${fontWeight}`;
+
+  // The guard's weight coverage. The bootstrap carries this instance's weight
+  // as its seed; a later instance at a DIFFERENT weight hands its own to the
+  // already-running watcher instead of starting a second one.
+  let seedScript: string | null = null;
+  if (emitGuard) {
+    if (weightKey) claim("weights", weightKey);
+  } else if (weightKey && claim("weights", weightKey)) {
+    seedScript = fontWeightSeedScript(family, fontWeight as number);
+  }
+
   return (
     <>
       {/*
-        Inject @font-face once per render. React de-dupes identical
-        <style> tags in SSR output, so multiple <Shield variant="alpha">
-        on the same page emit one @font-face block.
+        The @font-face declarations, once per family per render pass. React
+        de-dupes NOTHING here on its own, so this is the only thing standing
+        between a six-shield page and six identical copies.
       */}
-      <style dangerouslySetInnerHTML={{ __html: fontFaceCss(v) }} />
+      {emitStyle ? <style dangerouslySetInnerHTML={{ __html: fontFaceCss(v) }} /> : null}
       {/*
-        Font-load guard: replaces protected text with "Content unavailable"
-        if the font fails to load within 4s. Idempotent via a window flag,
-        so multiple Shield instances all share one watcher.
+        Font-load guard: replaces protected text with "Content unavailable" if
+        any weight the page uses fails to load within 4s of the DOM being
+        ready. One watcher per family, keyed on a window-level registry, so
+        instances that share a family share its watcher.
       */}
-      <script
-        dangerouslySetInnerHTML={{
-          __html: fontGuardScript(camo.family[v], fontHost),
-        }}
-      />
+      {emitGuard ? (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: fontGuardScript(family, fontHost, fontWeight ?? null),
+          }}
+        />
+      ) : null}
+      {/* This instance's weight, handed to the watcher an earlier one started. */}
+      {seedScript ? <script dangerouslySetInnerHTML={{ __html: seedScript }} /> : null}
       {/*
-        aria-hidden by default: the encoded text is gibberish to assistive
-        tech, so reading it aloud serves no one. Pair this with a separate
-        "Listen to article" button (browser speechSynthesis API on the
-        ORIGINAL text from build time, not from the rendered HTML) for
-        users who need assistive access.
+        The accessible alternative, OUTSIDE the aria-hidden region and BEFORE
+        it, so linear navigation reaches it before the silence. Null when the
+        author passed `{ mode: "none" }` or omitted `a11y` (which warns in dev).
+      */}
+      {alt}
+      {/*
+        aria-hidden is deliberate: the HTML here holds a decoy, and voicing a
+        decoy is worse than voicing nothing — it is fluent, wrong, and gives the
+        listener no signal that anything is off. The alternative is the `a11y`
+        prop above, whose audio must be synthesised AT BUILD TIME where the
+        plaintext already lives. Browser speechSynthesis is not an option: on
+        the rendered page it would voice the decoy, and on the original it would
+        require shipping your plaintext to the browser — the exact leak this
+        file warns about a hundred lines up.
       */}
       <Tag {...dataAttrProps} className={className} style={finalStyle} aria-hidden="true">
         {content}

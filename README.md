@@ -27,7 +27,7 @@ Same bytes on the wire: two different readers.
 
 <br />
 
-> **Current release: v0.1.1.** Default mapping: v18 `alpha`. Install from
+> **Current release: v0.2.1.** Default mapping: v18 `alpha`. Install from
 > npm (`@shieldfont/react`, `@shieldfont/core`, `@shieldfont/font`) or paste
 > in the [CDN font](#quick-start). Live site at <https://shieldfont.org>.
 
@@ -94,9 +94,9 @@ the network almost as much as a perfect one.** You do not have to beat the
 benchmark. You have to be different from everyone else. A two-hundred-pair,
 noun-only mapping you reseed once and never publish is enough.
 
-Read the full thesis in [`docs/introduction.md`](./docs/introduction.md). The
-two ways to run your own mapping today (reseed a shipped one, or mint one from
-the methodology) are in [`docs/custom-mappings.md`](./docs/custom-mappings.md).
+Read the full thesis in [`docs/introduction.md`](./docs/introduction.md). How to
+run a mapping of your own today (reseed the shipped pool at your own seed, or
+hand-write a small one) is in [`docs/custom-mappings.md`](./docs/custom-mappings.md).
 
 <br />
 
@@ -170,9 +170,13 @@ collision battery.
 
 > **Why the v18 family?** ShieldFont's mappings went through 15 rounds of
 > benchmarked iteration (M0 → M15) under the V3 suite. M15-EN was the
-> empirical champion; the shipped `alpha`/`beta`/`gamma` variants are its
+> champion of that era; the shipped `alpha`/`beta`/`gamma` variants are its
 > re-seeded v18 descendants, and M15-EN itself remains available as the
-> opt-in **`maxhide`** coverage variant. See the
+> opt-in **`maxhide`** coverage variant. `maxhide` is not a stronger `alpha`:
+> it hides about twice as much of the page, but quality filters reject it
+> almost entirely, so it trades the staleness effect for concealment. Read
+> [what it costs you](./docs/concealment.md#maxhide-and-what-it-costs-you)
+> before switching. See the
 > [white paper](https://shieldfont.org/white-paper) for the full journey.
 
 See [`MAPPINGS.md`](./MAPPINGS.md) for the mapping family overview.
@@ -204,10 +208,30 @@ import { Shield } from "@shieldfont/react";
 `@font-face`, encoding, and the font-load guard all happen automatically.
 Anything outside `<Shield>` uses your normal page fonts.
 
+This is also **the only tier with more than one font weight.** Each of the four
+mapping variants ships six real static cuts of Optik, and the `weight` prop
+picks one:
+
+| Weight name | CSS `font-weight` | Playtype cut |
+|---|---|---|
+| `regular` | 400 | Optik Regular |
+| `medium` | 500 | Optik Medium |
+| `demibold` | 600 | Optik DemiBold |
+| `bold` | 700 | Optik Bold |
+| `extrabold` | 800 | Optik ExtraBold |
+| `black` | 900 | Optik Black |
+
+Every one is a genuine Playtype cut run through the same encoding pipeline, so
+the weight changes how the text looks and never what it encodes: the dictionary
+and digit rules of a variant are byte-identical at all six weights. A numeric
+value snaps to the nearest real cut (`470` renders as Medium 500), and
+`font-synthesis` is off, so a browser never fakes a bold. Nothing is
+interpolated: there is no variable font, and no italics ship.
+
 **Blogs / plain HTML / a CMS you don't build**: one CSS line, then a class:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">
 <p class="tk9">…encoded text from the encoder…</p>
 ```
 
@@ -215,6 +239,12 @@ The shipped `shieldfont.css` styles the neutral `.tk9` class (a deliberately
 generic, renamable token: nothing on the page says "shield"). Rename it in
 your own CSS if you like; just keep the class in your HTML matching the one the
 stylesheet targets.
+
+**This tier is Regular only.** `@shieldfont/font`'s four files (`optik-a`,
+`optik-b`, `optik-c`, `optik-m`) are the four *mapping variants* at
+`font-weight: 400`, not four weights. The same goes for the downloadable font
+for Word and PDF. If you need a real bold inside protected text, use
+`@shieldfont/react`.
 
 **A static-site build step**: `npm install @shieldfont/core`, then call
 `buildHtml()` in a small build script to encode comment-marked blocks at CI time
@@ -247,7 +277,8 @@ typeface-agnostic. **ShieldFont Optik** is our
 Playtype. Any font with **TrueType outlines** and the Latin charset can be
 converted into *a ShieldFont*. See the
 [naming convention](./docs/introduction.md#a-note-on-names-protocol-vs-typeface)
-for the full framing.
+for the full framing. The docs guide for this path is
+[`docs/custom-faces.md`](./docs/custom-faces.md).
 
 `scripts/generate_font.py` is a one-command builder: point it at a base TTF,
 give it a name and a mapping, get back a font binary that obeys the protocol:
@@ -332,6 +363,17 @@ A full `THREAT_MODEL.md` with numbers against real scraper pipelines is
 on the roadmap. **If you find a new attack, please** see
 [`SECURITY.md`](./SECURITY.md).
 
+> **Independent corroboration.** In March 2026, LayerX Security published
+> ["Poisoned Typeface"](https://layerxsecurity.com/blog/poisoned-typeface-a-simple-font-rendering-poisons-every-ai-assistant-and-only-microsoft-cares/),
+> offensive research by Roy Paz built on the same observation running in the
+> other direction: a font whose rendering diverges from its underlying text
+> makes humans and AI systems read two different pages at one URL. All eleven
+> AI assistants they tested (ChatGPT, Claude, Copilot, Gemini, and Perplexity
+> among them) read the underlying text and missed what the human saw, and only
+> Microsoft took the disclosure through a full fix. LayerX is not affiliated
+> with ShieldFont. Their work is independent evidence for the reading gap that
+> the left column of the table above depends on.
+
 <br />
 
 ## Roadmap
@@ -413,18 +455,19 @@ Supported by [**Playtype**](https://playtype.com).
 ```
 packages/
   core/    @shieldfont/core — encode/decode + HTML helpers, bundled mappings
-  react/   @shieldfont/react — <Shield> server component (bundles its own version-neutral fonts)
-  font/    @shieldfont/font — no-build CDN font + shieldfont.css
+  react/   @shieldfont/react — <Shield> server component (version-neutral fonts, six weights per variant)
+  font/    @shieldfont/font — no-build CDN font + shieldfont.css (Regular 400 only)
   core/src/mappings/{alpha,beta,gamma,m15en}.json   the shipped mappings
 
 scripts/
   generate_font.py     base font + mapping → a ShieldFont (.ttf / .woff2 / .css)
   reseed_mapping.py    mint a private mapping from your own seed
   audit_font.py        strict HarfBuzz round-trip verifier → public/audit.html
+  fix_composite_lsb.py repairs composite side bearings in an already-built font
   v18{alpha,beta,gamma}_for_font.json, m15en_for_font.json   font-build inputs
 
 benchmarks/            V3 / V4 / V5 — the data and pre-registered methodology
-docs/                  integration · custom-mappings · introduction · CLAUDE.md
+docs/                  integration · custom-mappings · custom-faces · introduction · CLAUDE.md
 legacy/, archive/      historical mappings and the v1 write-up, kept for reference
 
 MAPPINGS.md            mapping family overview (M0 → M15, and the shipped v18 family)

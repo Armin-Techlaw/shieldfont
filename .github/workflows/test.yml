@@ -30,3 +30,25 @@ jobs:
         env:
           TMPDIR: /tmp
         run: npm test
+
+  fonts:
+    # Gate on the shipped font binaries, not just the TS. A composite whose
+    # hmtx left side bearing disagrees with its xMin renders with the last
+    # letter of the word shaved off (see CHANGELOG 0.2.1) — invisible to
+    # shaping, to advance widths and therefore to every JS test we have.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install fontTools
+        run: pip install "fonttools[woff]" brotli
+
+      - name: Check composite metrics on every shipped font
+        run: |
+          python3 scripts/fix_composite_lsb.py --check \
+            packages/font/optik-*.woff2 \
+            packages/react/fonts/optik-*.woff2

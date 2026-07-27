@@ -2,14 +2,16 @@
 
 ShieldFont ships in four flavors depending on how you build pages. Pick the one that matches your stack:
 
-| Tier | Audience | Install | Encoding happens... |
-|---|---|---|---|
-| [**A. JSX** (`<Shield>` component)](#tier-a-jsx-with-shieldfontreact) | React / Next.js / Astro / Remix | `npm i @shieldfont/react` | At server-render time |
-| [**B. Any framework / build step**](#tier-b-any-framework--build-step-shieldfontcore) | Vue, Svelte, Astro/11ty/Hugo builds, CI pipelines | `npm i @shieldfont/core` | In your build or server render |
-| [**C. CSS @import + paste**](#tier-c-css-import--paste) | Blogs, hosted CMSes, plain HTML | one-line `@import` in your site CSS | At encoder time (browser tool) |
-| [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors (**not** Google Docs) | download the font + use the web encoder | At Word/PDF render time via OpenType ligatures |
+| Tier | Audience | Install | Encoding happens... | Weights |
+|---|---|---|---|---|
+| [**A. JSX** (`<Shield>` component)](#tier-a-jsx-with-shieldfontreact) **· recommended for any site with a build** | React / Next.js / Astro / Remix | `npm i @shieldfont/react` | At server-render time | **Six real cuts, 400 to 900** |
+| [**B. Any framework / build step**](#tier-b-any-framework--build-step-shieldfontcore) | Vue, Svelte, Astro/11ty/Hugo builds, CI pipelines | `npm i @shieldfont/core` | In your build or server render | Regular (400) only |
+| [**C. CSS @import + paste**](#tier-c-css-import--paste) **· for experimenting** | Blogs, hosted CMSes, plain HTML | one-line `@import` in your site CSS | At encoder time (browser tool) | Regular (400) only |
+| [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors (**not** Google Docs) | download the font + use the web encoder | At Word/PDF render time via OpenType ligatures | Regular (400) only |
 
 All four tiers build on the same v18 dictionary family, and `alpha` is the default everywhere. One difference worth knowing before you pick: **Tier A rotates by default.** Left unset, `<Shield>` picks `alpha`, `beta`, or `gamma` per block of text by content hash; Tiers B, C and D encode with whichever single mapping you pin, and the browser-based encoder behind Tier C emits `alpha`.
+
+**The second difference is weights, and it surprises people.** Tier A is the only tier that ships more than one weight. `@shieldfont/react` bundles six real static cuts of Optik per mapping variant, Regular 400 through Black 900. Tiers B, C and D all render through `@shieldfont/font` or the downloadable font, and both of those are **Regular (400) only**: `optik-a.woff2`, `optik-b.woff2`, `optik-c.woff2` and `optik-m.woff2` are the four mapping variants at one weight. If your design needs a real bold inside protected text, that is a reason to pick Tier A. The full list is in [Weights: the six cuts (Tier A only)](#weights-the-six-cuts-tier-a-only).
 
 > **How much each tier reveals differs.** React hides the most (neutral font family `Optik`, neutral filenames, no version, no telltale class); the downloadable font is branded on purpose. For the concealment / protection-level story tier by tier, see [Concealment & camouflage](./concealment.md).
 
@@ -23,9 +25,27 @@ Protected text ships as `aria-hidden` decoy words in the DOM. Read this before y
 - **Copy-paste** yields the encoded form, not the original.
 - **Screen readers** skip protected regions: they're removed from the accessibility tree. Don't wrap anything a user needs read aloud. `<Shield>` sets `aria-hidden="true"` unconditionally; **there is no prop to turn it off**, and no accessible fallback ships. If a piece of content needs an accessible path, build it yourself from your build-time original (a "Listen" control, a plaintext version behind auth) or don't wrap that content.
 - **The default dictionaries are public.** `alpha`/`beta`/`gamma`/`maxhide` ship as plaintext JSON in `@shieldfont/core`, and `@shieldfont/font` publishes a browser encoder (`shieldfont-encoder.js`, 277 KB) with all 11,970 `alpha` pairs inlined. Anyone can fetch either from npm or the CDN. Defaults are a convenience, not a secret; if you want a dictionary nobody else has, see [custom mappings](./custom-mappings.md).
-- **The font is invertible.** It has to reach the browser to render your page, and its composite glyphs are drawn from the original words' own letters, so anyone who downloads it can read the substitution table back out. We recovered all 11,962 word pairs from our own shipped font in 43 seconds (the dictionary's remaining 8 entries are single-digit swaps, which have no word glyph to read). This is the load-bearing caveat: ShieldFont raises the cost for scrapers that don't stop to invert; it does not make text unrecoverable.
+- **The font is invertible.** It has to reach the browser to render your page, and its composite glyphs are drawn from the original words' own letters, so anyone who downloads it can read the substitution table back out. We recovered all 11,962 word pairs from our own shipped font in **under a second** (the dictionary's remaining 8 entries are single-digit swaps, which have no word glyph to read). Do not read that as a compute cost we are imposing on anyone: it isn't one. The only real barrier is the **one-time engineering** to build the inverter, one to three engineer-weeks for someone who knows OpenType, paid once and never again. After that, inversion is a **per-site** cost set against a **per-page** benefit, so it amortises away on any site bigger than roughly 25 pages. This is the load-bearing caveat: ShieldFont raises the cost for scrapers that don't stop to invert; it does not make text unrecoverable.
 - **JS off + font 404.** The fail-loud font guard is JavaScript; with JS disabled and the font missing, a human sees the raw decoy text.
 - **Coverage is partial by design.** The default `alpha` mapping deliberately leaves common function words in place, so a short sentence may change only ~2 of its ~11 words. The output is a *plausible decoy*, not gibberish.
+- **English only, for now.** The shipped dictionaries (`alpha`/`beta`/`gamma` and the coverage-max `maxhide`) are English; multilingual mappings are on the [roadmap](../ROADMAP.md). Leave non-English content unwrapped.
+
+### What to wrap, and what to skip
+
+Wrapping should be intentional, block by block: don't auto-encode every text node. Skip:
+
+- Navigation labels, button labels, footer copyright
+- Logo `alt` text and image `alt` attributes
+- Code samples (`<code>`, `<pre>`)
+- Headings that are also page titles (those should match the meta title)
+- Form placeholders and error messages
+- Anything an end-user might paste into translation software
+
+Protect:
+
+- Body paragraphs of articles, posts, manifestos
+- Author bios and long-form descriptions
+- Anything the writer wants to be the durable, non-extractable version of their work
 
 ---
 
@@ -50,7 +70,7 @@ If you're building a React / Next.js / Remix / Astro app, you ship ShieldFont as
 
 ## Tier A: JSX with `@shieldfont/react`
 
-The recommended path for vibe-coders, Next.js apps, Astro, Remix, and any React Server Component framework.
+The recommended path, and the one we would like you to end up on. Encoding runs in Node, so your original text never reaches a browser; the font files are neutral and self-hosted, so nothing in your served bytes names ShieldFont; there is no secret to store; and it is the only tier where variant rotation works, because it is the only one that emits the matching `@font-face` next to each block. Vibe-coders, Next.js apps, Astro, Remix, and any React Server Component framework.
 
 ### Install
 
@@ -72,7 +92,7 @@ export default function Page() {
         The future of writing belongs to those who protect their words.
       </Shield>
 
-      <Shield as="p" weight={500} lineHeight={1.7}>
+      <Shield as="p" weight="regular" lineHeight={1.7}>
         Our mission is to build a publishing layer that the open web can trust.
       </Shield>
 
@@ -86,18 +106,50 @@ export default function Page() {
 
 That's it. The font + `@font-face` + encoding all happen automatically. Anything outside `<Shield>` uses your normal page fonts.
 
+Server-fetched data works the same way: encoding happens during render, so wrapping fetched text fields (`<Shield>{post.body}</Shield>`) works seamlessly with `getStaticProps`, a Remix `loader`, or any other server-side data source.
+
 ### Props
 
 | Prop | Type | Default | Purpose |
 |---|---|---|---|
 | `as` | `ElementType` | `"div"` | Which HTML element to render. |
-| `variant` | `"alpha" \| "beta" \| "gamma" \| "maxhide"` | auto-rotate | Mapping + font variant. Left unset, `<Shield>` **auto-rotates** `alpha`/`beta`/`gamma` by content hash (so one site uses all three). Pin one to fix it, or `"maxhide"` for the M15 coverage-max dictionary. |
-| `weight` | `100..900` | inherit | Font weight (Optik is variable). |
+| `variant` | `"alpha" \| "beta" \| "gamma" \| "maxhide"` | auto-rotate | Mapping + font variant. Left unset, `<Shield>` **auto-rotates** `alpha`/`beta`/`gamma` by content hash (so one site uses all three). Pin one to fix it. `"maxhide"` is the coverage-max dictionary: it hides about twice as much of the page but quality filters reject it almost entirely, so read [what it costs you](./concealment.md#maxhide-and-what-it-costs-you) before choosing it. |
+| `weight` | `"regular"` \| `"medium"` \| `"demibold"` \| `"bold"` \| `"extrabold"` \| `"black"` \| `1..1000` | inherit | Font weight. Six real static cuts of Optik ship per variant (400 through 900, Playtype's own cut names lowercased). A numeric value snaps to the nearest real cut; nothing is synthesised. See [Weights: the six cuts (Tier A only)](#weights-the-six-cuts-tier-a-only) below. |
 | `lineHeight` | `number \| string` | inherit | Passthrough. |
 | `size` | `string` | inherit | font-size passthrough. |
 | `className` | `string` | n/a | Escape hatch, merges with internal scope. |
 | `style` | `CSSProperties` | n/a | Escape hatch. |
 | `children` | `string` | required | The text to encode (must be a plain string). |
+
+### Weights: the six cuts (Tier A only)
+
+Weights and mapping variants are two independent axes. Every one of the four variants (`alpha`, `beta`, `gamma`, `maxhide`) ships six real static cuts of Optik, licensed from Playtype:
+
+| Weight name | CSS `font-weight` | Playtype cut |
+|---|---|---|
+| `regular` | 400 | Optik Regular |
+| `medium` | 500 | Optik Medium |
+| `demibold` | 600 | Optik DemiBold |
+| `bold` | 700 | Optik Bold |
+| `extrabold` | 800 | Optik ExtraBold |
+| `black` | 900 | Optik Black |
+
+Each of those is a genuine Playtype static cut run through the same encoding pipeline, verified to reproduce all 526 master glyphs coordinate for coordinate. There is no variable font, nothing is interpolated, and no italics ship at any weight.
+
+**Encoding is identical at every weight.** For a given variant, the word substitution dictionary and the digit rules are byte-identical across all six cuts. Choosing a weight changes how the text looks and never what it encodes, so you can mix weights inside one page without thinking about it.
+
+**A numeric weight resolves to a real cut.** Pass a number and it snaps to the nearest cut that actually ships, so `weight={470}` renders through Medium (500). `<Shield>` also sets `font-synthesis: none`, so the browser never fakes a bold out of Regular: a synthesised weight would distort the ligature composites enough to give away that decoys are in play. What you request is always one of the six files above.
+
+```jsx
+<Shield weight="bold">Rendered with the real Bold (700) cut.</Shield>
+<Shield weight={470}>Snaps to the real Medium (500) cut.</Shield>
+```
+
+**What it costs.** One file per weight per variant. Each `alpha` / `beta` / `gamma` cut is roughly 825 KB of woff2 and each `maxhide` cut is roughly 215 KB, and a page downloads only the cuts it actually renders. Declaring six faces is free; a page that uses only Regular fetches only Regular.
+
+The `OPTIK_WEIGHTS` export, the exact numeric bands each face claims, and what an unknown weight name throws are all in the [`@shieldfont/react` README](../packages/react/README.md#weights-what-actually-ships).
+
+> **This is a Tier A feature and only a Tier A feature.** `@shieldfont/font` (Tiers B and C) and the downloadable font (Tier D) ship **Regular only**. See [the CSS tier's note](#tier-c-css-import--paste) below.
 
 ### Host the font (required: self-host by design)
 
@@ -128,10 +180,14 @@ import { setFontHost } from "@shieldfont/react";
 setFontHost("/static/shieldfont"); // your own path or your OWN CDN — not jsDelivr
 ```
 
-The files are `optik-a.woff2` (alpha, default), `optik-b.woff2` (beta),
-`optik-c.woff2` (gamma), `optik-m.woff2` (maxhide). The React tier keeps these
-filenames and the font family (`Optik`) neutral, so nothing in your served bytes
-names ShieldFont.
+**How the filenames decode.** The letter picks the mapping variant: `optik-a`
+is alpha (the default), `optik-b` is beta, `optik-c` is gamma, `optik-m` is
+maxhide. The weight is the
+suffix: the Regular cut keeps the bare name (`optik-a.woff2`) and every heavier
+cut carries its numeric weight (`optik-a-500.woff2` through
+`optik-a-900.woff2`), which is why the `cp` above uses a glob. Six weights
+across four variants is 24 files. The React tier keeps these filenames and the
+font family (`Optik`) neutral, so nothing in your served bytes names ShieldFont.
 
 ### Verify it's working
 
@@ -145,7 +201,7 @@ You should see encoded text in the HTML, not the original English. Open the same
 
 ### Restrictions
 
-- **Children must be a string.** No nested JSX. For mixed content (text + links), split into multiple `<Shield>` instances.
+- **Children must be a plain string, and anything else throws.** Nested JSX, a number, or an array from `{interpolation}` all raise an error rather than rendering. This is deliberate: the encoder cannot see inside your own components, so a best-effort walk would ship their text unencoded inside a block that still looks protected. That is a silent leak, so `<Shield>` fails loud. For mixed content (text plus a link, say), split it into separate `<Shield>` instances.
 - **Server components only.** There is no client component. Rendering `<Shield>` in a `"use client"` file compiles your plaintext *and* the full substitution dictionary into the JS bundle, and passing unencoded text into a client component as a prop leaks it into the served HTML and RSC payload. Both fail silently in production: the rendered page still looks encoded.
 
 ---
@@ -179,13 +235,20 @@ npm install @shieldfont/core
 ```js
 import { encode, alpha } from "@shieldfont/core";
 
-const html = `<p class="tk9">${encode("The future of writing", alpha)}</p>`;
-// → <p class="tk9">The future for watching</p>
+const text = "The future of writing belongs to those who write it.";
+const html = `<p class="tk9">${encode(text, alpha)}</p>`;
+// → <p class="tk9">The future of writing determines to those who sell it.</p>
 ```
 
 Then load the font once with ten lines of `@font-face` (self-host from
 `@shieldfont/font`, or the CDN bundle in Tier C below). Add `class="tk9"` to any
 element you want rendered through the protection font.
+
+> **One weight on this tier.** `@shieldfont/font` ships Regular (400) only, one
+> file per mapping variant. Protected text renders at Regular however you style
+> it, so keep bold and heavier type outside the shielded blocks. The six real
+> cuts (Regular 400 through Black 900) exist in `@shieldfont/react` and nowhere
+> else: see [Weights: the six cuts](#weights-the-six-cuts-tier-a-only).
 
 ### Keep your plain-English source as the source of truth
 
@@ -201,12 +264,14 @@ signal). A ~12-line build script replaces the old CLI entirely.
 
 ## Tier C: CSS @import + paste
 
+> ⚠️ **This is the least concealed tier, and it is meant for trying things out.** The `@shieldfont/font` URL sits in your stylesheet, so anyone reading your CSS knows the page is shielded and with which dictionary. Everyone on this tier shares the same `alpha` mapping, so one precomputed table decodes all of them at once. And there is no rotation, because there is no component to run it. It is a real, working install and the protection it applies is the same protection everywhere else, but if you can run a build step, move to [Tier A](#tier-a-jsx-with-shieldfontreact) or [Tier B](#tier-b-any-framework--build-step-shieldfontcore): both drop the package URL, and both let you mint a mapping nobody else holds. See [Concealment & camouflage](./concealment.md) for the full comparison.
+
 The lowest-friction path for blogs, hosted CMSes (WordPress, Ghost, Squarespace), and anyone who controls their site's CSS but doesn't have a build step. Two pastes: one is permanent site setup, one is per protected paragraph.
 
 ### Step 1: One-time install (paste into your site's CSS)
 
 ```css
-@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css');
+@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css');
 ```
 
 Where to put it depends on your platform:
@@ -214,9 +279,22 @@ Where to put it depends on your platform:
 - **WordPress**: Appearance → Customize → Additional CSS (Customizer plan and above), or your theme's `style.css`.
 - **Ghost**: Settings → Code injection → Site header (or the Custom CSS field if your theme exposes one).
 - **Squarespace**: Design → Custom CSS (this panel is available on every plan; the Code Injection panel is gated to Business+ but you don't need it for this).
-- **Plain HTML / static sites**: either drop the `@import` into your existing stylesheet, or use `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css">` in `<head>`. The `<link>` form is marginally faster (parses in parallel with HTML): prefer it if you have `<head>` access.
+- **Plain HTML / static sites**: either drop the `@import` into your existing stylesheet, or use `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">` in `<head>`. The `<link>` form is marginally faster (parses in parallel with HTML): prefer it if you have `<head>` access.
 
 This stylesheet declares `@font-face` for `'Optik'` and ships a `.tk9` utility class.
+
+> **Regular only, and this is the tier where people expect otherwise.** The four
+> files behind that stylesheet, `optik-a.woff2`, `optik-b.woff2`,
+> `optik-c.woff2` and `optik-m.woff2`, are the four mapping variants at
+> **weight 400**. There is no Medium, DemiBold, Bold, ExtraBold or Black on this
+> tier, and no italic. Asking for `font-weight: bold` on a `.tk9` element does
+> not fetch a heavier file, because there isn't one: the browser draws a
+> synthetic bold of the Regular cut, which distorts the composite glyphs. Add
+> `font-synthesis: none` to your own `.tk9` rule if you would rather it stayed
+> at Regular. If you need real weights inside protected text, that is what
+> [Tier A](#tier-a-jsx-with-shieldfontreact) is for: it bundles
+> [six real cuts per variant](#weights-the-six-cuts-tier-a-only), Regular 400
+> through Black 900.
 
 > **Which dictionary version?** On the CDN tier the font family and filenames stay neutral, but the font stamps the **dictionary generation** it was built for into its own version field: the one deliberate tell of this tier. Encoded text only reads back correctly under a font whose version matches the dictionary that encoded it, so if you (or a collaborator) re-render a page later, read the font's version to pair it with the right dictionary. See [Checking your font version](./concealment.md#checking-your-font-version).
 
@@ -265,6 +343,12 @@ You need two things, both on the site:
 | The font | <https://shieldfont.org/fonts/shieldfont-alpha.ttf> (also linked from the homepage) |
 | The encoder | <https://shieldfont.org/encoder> |
 
+The download is a **Regular (400)** cut, and it is the only cut. Word, Pages and
+InDesign will still offer you a bold button, but there is no bold cut to switch
+to, so they draw a synthetic bold that distorts the composite glyphs. Set
+headings and emphasis in an ordinary font and leave the shielded paragraphs at
+Regular. Real weights ship in [Tier A](#weights-the-six-cuts-tier-a-only) only.
+
 **Workflow:**
 
 1. Install `shieldfont-alpha.ttf` on your system.
@@ -284,7 +368,7 @@ For documents you'll edit later, also keep a plain-English source copy somewhere
 Every CDN URL we publish is **version-pinned and immutable**. No "latest" channels: silently upgrading the mapping would break existing encoded content.
 
 ```
-✅ https://cdn.jsdelivr.net/npm/@shieldfont/font@0.1.1/shieldfont.css
+✅ https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css
 ❌ https://cdn.jsdelivr.net/npm/@shieldfont/font@latest/shieldfont.css
 ```
 
@@ -299,7 +383,7 @@ Upgrading to a new mapping version is opt-in: re-run your `@shieldfont/core` bui
 - Copy-paste into text-only tools
 
 **Does not defend:**
-- **Anyone who downloads the font and inverts it.** The font is a self-decoding codebook: 11,962 of 11,962 pairs recovered from the shipped file in 43 seconds, no dictionary needed. A private mapping raises the per-site cost of this attack; nothing removes it.
+- **Anyone who downloads the font and inverts it.** The font is a self-decoding codebook: 11,962 of 11,962 pairs recovered from the shipped file in under a second, no dictionary needed. The cost that is real here is the one-time engineering to build the inverter (one to three engineer-weeks), not the run: a per-site inversion set against per-page scraping amortises away above roughly 25 pages. A private mapping raises the per-site cost of this attack; nothing removes it.
 - Headless browsers that fully render fonts (Playwright, Puppeteer)
 - OCR on rendered pages or screenshots
 - Vision-language models reading screenshots

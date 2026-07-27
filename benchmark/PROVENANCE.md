@@ -78,7 +78,6 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 | # | README claim | Source | Status |
 |---|---|---|---|
 | 34 | "~25% of tokens swapped" framing | `site/app/white-paper/page.tsx:92,302`. Corresponds to α **mass_pct 27.49%** (`v18_variants_eval.json`). "25%" is the rounded surface/mass swap rate, distinct from **content** coverage ≈48% | VERIFIED (mass_pct); rounding ASSUMED |
-| 35 | "~2.4× amplification per swap vs uniform baseline" | `site/app/white-paper/page.tsx:92` **only**. No computing script or result JSON found (grep for `2.4`/`amplif` across `benchmarks/v7,v8` returns no metric). | **ASSUMED — not independently verified.** Flagged; README states it only as white-paper framing and does not rely on it. |
 
 ---
 
@@ -99,9 +98,9 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 
 | # | README claim | Source | Status |
 |---|---|---|---|
-| 42 | α FineWeb-Edu pass **10.27%**: a **v7-harness measurement on curated wiki/books/webtext**, kept for provenance, never quoted as a real-corpus rate | `benchmarks/v7/results/v18_variants_eval.json › [0].pass_27` = 10.27; `V18_FINAL.md:139`. The figure **was** measured; what it is not is generalisable. `benchmarks/v8/results/FINAL_REPORT.md:9,155` calls it "a Wiki-LM artifact" that "over-generalizes", and `EXCLUDED.md:44-47` keeps it as caveat only | VERIFIED **as a v7-harness value**; see flag F-F |
+| 42 | α FineWeb-Edu **conditional retention 10.27%**, v7 harness on curated wiki/books/webtext | `benchmarks/v7/results/v18_variants_eval.json › [0].pass_27` = 10.27; `V18_FINAL.md:139`. `pass_27` is conditional **by construction**: `benchmarks/v7/scripts/eval_v18_variants.py:107-111` sets the denominator to the chunks whose *clean* version already scored ≥2.7. It measures the same quantity as row 42b, on a different corpus set | VERIFIED; see flag F-F |
 | 42a | α FineWeb-Edu pass, **absolute** (v8, real corpora): **0.2% / 1.0% / 0.2%** (cc_news / owt / pg19) against clean baselines **2.9% / 7.4% / 3.1%** → **99.0–99.8% of encoded chunks dropped** | `benchmarks/v8/phase2_filters/results/gate_fineweb_edu.json`; `benchmarks/v8/results/FINAL_REPORT.md:48-55` | VERIFIED |
-| 42b | Same measurement stated **relative** to the chunks that pass clean: **6.5–13.5%**, the only defensible reading of the old "~10% passes" shorthand | Computed from the `FINAL_REPORT.md:48-55` table: 0.2/2.9 = 6.9%, 1.0/7.4 = 13.5%, 0.2/3.1 = 6.5%. `FINAL_REPORT.md:56` states the same band rounded, "closer to 5-15% of clean-passing chunks" | VERIFIED |
+| 42b | Same measurement stated **conditionally**, i.e. relative to the chunks that pass clean: **6.5–13.5%** per corpus, **9.70% pooled** (13 of 134 clean-passing chunks) | Per-corpus computed from the `FINAL_REPORT.md:48-55` table: 0.2/2.9 = 6.9%, 1.0/7.4 = 13.5%, 0.2/3.1 = 6.5%; `FINAL_REPORT.md:56` states the same band rounded, "closer to 5-15% of clean-passing chunks". Pooled 13/134 = 9.70%, which independently reproduces the v7 value in row 42 (10.27%) on three different, uncurated corpora. Wilson 95% CI on 13/134 = **[5.8%, 15.9%]** | VERIFIED (pooled rate + CI recomputed by hand, see flag F-G) |
 | 43 | FineWeb-Edu threshold ≥ **2.7** | `benchmarks/v8/README.md:117`; `eval_phase1` context; FINAL_REPORT.md:56 | VERIFIED |
 | 44 | v18 wasted-per-passing-page **~24%** (median α/β/γ, FineWeb-Edu primary) | `benchmarks/v8/phase3_wasted/results/wasted_tokens.json › wasted.{v18_a,b,c}.*.fineweb_edu.wasted_per_passing_page`; 3-corpus medians 0.2485 / 0.2381 / 0.2411 → cross-variant median **0.2411 = 24.1%**; `FINAL_REPORT.md:92-99` (F3a PASS 24.1%) | VERIFIED |
 | 45 | ~24pp above clean baseline (excess_waste) | `wasted_tokens.json › …fineweb_edu.excess_waste` (clean baseline 0.0, so excess = wasted); `FINAL_REPORT.md:100` (F3b PASS 24.1pp) | VERIFIED |
@@ -109,8 +108,30 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 | 47 | M15-EN ~40% per passing page but ~0–1% pass → adopter waste ~0 | `wasted_tokens.json › wasted.m15_en.*.fineweb_edu.wasted_per_passing_page` (cc 0.4056, owt 0.4001, pg19 0.2841) with `gate_pass_rate` 0.002/0.01/0.001; adopter=0.0008; `FINAL_REPORT.md:95,103` | VERIFIED |
 | 48 | ⚠️ Gate-dependence: Kendall τ ≈ 0 across 4 gates | `FINAL_REPORT.md:74-79` (τ = −0.05…+0.02); `benchmarks/v8/README.md:168` (F2c bar) | VERIFIED |
 | 49 | ⚠️ per-corpus KenLM pass 1.4–33% (register-dependent) | `FINAL_REPORT.md:44-46` (v18_a cc_news 16.0%, owt 1.4%, pg19 29.0%); `INTERIM_REPORT.md:31-36` (up to 33.4% v18_c pg19) | VERIFIED |
+| 49a | ⚠️ Conditional retention across the four gates spans **2.0%–65.3%**, median **12.4%**; per-gate medians per-corpus KenLM **32.1%**, Wiki-KenLM **13.6%**, Pythia-160M **6.9%**, FineWeb-Edu **6.7%** | Recomputed from the per-chunk scores in all four `benchmarks/v8/phase2_filters/results/gate_*.json`, over the v18 variants × 4 corpora | VERIFIED (recomputed by hand, flag F-G) |
 | 50 | ⚠️ Frontier labs gate with classifiers (fastText/DistilRoBERTa/FineWeb-Edu), not Wiki-KenLM | `benchmarks/v8/README.md:121`; `site/app/white-paper/page.tsx:695,702` | VERIFIED |
 | 51 | Marion "poisoning sweet spot" 110–140% KenLM band | `benchmarks/v7/V18_FINAL.md:139`; `BUILDING_VARIANTS.md:259`; ~150% cliff `white-paper:745` | VERIFIED |
+
+---
+
+## §1 — v18-α vs M15-EN, gate by gate
+
+All conditional-retention values below were recomputed from the raw
+per-chunk scores in `benchmarks/v8/phase2_filters/results/gate_*.json`. The
+recomputation reproduces every stored `n_passed` exactly (0 mismatches across
+5 gates × 6 variants × 4 corpora), which is what licenses quoting it. See
+flag F-G: no committed script emits these values.
+
+| # | README claim | Source | Status |
+|---|---|---|---|
+| 57 | Per-corpus KenLM conditional retention: v18-α **28.11%** vs M15-EN **2.07%** (13.6×) | Recomputed from `gate_per_corpus_kenlm.json` per-chunk scores (absolute 19.68% vs 1.45%) | VERIFIED (recomputed by hand, flag F-G) |
+| 58 | All three fluency gates jointly (per-corpus KenLM ∩ Pythia-160M ∩ Wiki-KenLM): v18-α **24 / 4,000** chunks, M15-EN **0 / 4,000** | Recomputed by intersecting the per-chunk pass vectors in `gate_per_corpus_kenlm.json`, `gate_pythia_160m.json`, `gate_wiki_kenlm.json` (4 corpora × 1,000 chunks) | VERIFIED (recomputed by hand, flag F-G) |
+| 59 | FineWeb-Edu ≥2.7 conditional retention **ties** at 9.70%: both keep 13 of 134 clean-passing chunks. Wilson 95% CI **[5.8%, 15.9%]** | `gate_fineweb_edu.json` per-chunk scores; CI computed from 13/134 | VERIFIED (recomputed by hand, flag F-G) |
+| 59a | The tie is fragile three ways: it holds only at the 2.7 threshold (at ≥3.0 it is **6.52%** vs **2.17%**), only for the α seed (β/γ keep 14/134), and it is **not the same chunks** (survivor-set Jaccard 1.00 on cc_news, 0.18 on OpenWebText, **0.00** on PG-19 and BookCorpus) | Same file, rescored at 3.0 and intersected per corpus | VERIFIED (recomputed by hand, flag F-G) |
+| 59b | Adding BookCorpus moves the pooled figure: v18-α 14/155 = **9.03%**, β/γ 16/155 = 10.32%, M15-EN 14/155 = 9.03%. The tie survives; the headline number changes | Same file, four-corpus pool | VERIFIED (recomputed by hand, flag F-G) |
+| 60 | Mechanism: M15-EN rewrites **53.4%** of running tokens to v18-α's **24.4%**, and its source keys include **94 of NLTK's 198 stopwords** (`and→but`, `of→for`, `is→was`, `that→which`) at zipf 6.5–7.4. v18-α includes 10, none core, max zipf 6.25, 0 violations at zipf ≥7 | Computed over the shipped `scripts/m15en_for_font.json` and `scripts/v18alpha_for_font.json` against `nltk.corpus.stopwords` and `wordfreq.zipf_frequency` | VERIFIED (recomputed by hand, flag F-G) |
+| 61 | "Maximum concealment" is **false on embedding semantic divergence**: M15-EN **0.217 / 0.228 / 0.186** vs v18-α **0.268 / 0.287 / 0.211** (cc_news / openwebtext / pg19) | `benchmarks/v8/phase1_semdiv/results/semdiv_extended.json › results.m15_en.*.sem_div_mean` and `…results.v18_a.*.sem_div_mean` | VERIFIED |
+| 62 | Both mappings are equally destroyed on the edu gate: median clean score 3.07 falls to 1.97 (v18-α) / 1.95 (M15-EN) against a 2.7 threshold; survivors average 3.88 clean vs 3.11 for non-survivors, so survival is a property of the **chunk**, not the mapping | Recomputed from `gate_fineweb_edu.json` per-chunk clean and encoded scores | VERIFIED (recomputed by hand, flag F-G) |
 
 ---
 
@@ -128,30 +149,49 @@ Legend for JSON: `file › key.path` means the value lives at that key.
 
 ## Known caveats
 
-- **Doc staleness (F-A).** `MAPPINGS.md` (dated Apr 30, pre-v7) still calls
-  **M15-EN** the "current production mapping"; the current default is v18-α.
-  For "what ships," trust this benchmark and each mapping's `_meta` block, not
-  the older dated docs.
+- **Doc scope (F-A).** `MAPPINGS.md` is the M0→M15 research history, not a
+  "what ships" spec. Its header now states the current default correctly
+  (v18-α, with M15-EN shipping as the opt-in `maxhide`), but the tables below
+  it describe superseded variants and count *logical* pairs where the shipped
+  artifacts count bidirectional entries. For "what ships," trust this benchmark
+  and each mapping's `_meta` block.
 - **83% on books (F-B).** The white paper's "up to ~83% on narrative prose"
   rests on a **v7 n=60** measurement that the **v8 n=1,500** run *inverts* —
   fiction is v8's weakest register (31–35%). The public copy therefore leads
   with the **50.4% median** and footnotes the 83%.
-- **2.4× amplification (F-C).** Asserted in white-paper prose with no computed
-  source located; treated as unverified and not used for any headline claim.
 - **Byte-identity (F-D).** α and its `v18_a` source are **pair-identical**, not
   byte-identical (an overstatement in an internal build doc).
 - **Within-file NLI value (F-E).** One results file carries both a 3-corpus bar
   value (0.504) and a 4-corpus derived value (0.418); the reports publish
   0.504, which is the value used here.
 
-- **The 10.27% pass rate and the 8–15% band (F-F).** Both were genuinely
-  measured, and both are **v7-harness numbers on curated wiki/books/webtext**.
-  The project's own v8 report calls 10.27% "a Wiki-LM artifact" that
-  "over-generalizes" (`FINAL_REPORT.md:9,155`), and `EXCLUDED.md:44-47` keeps
-  Wikipedia-KenLM/FineWeb-Edu perplexity figures **only** as an explicit
-  caveat, never as a standalone stat. On real-world corpora the **absolute**
-  FineWeb-Edu pass rate is **0.2–1.0%** (row 42a); ~10% is defensible only as a
-  **relative** retention figure, and the measured band there is **6.5–13.5%**
-  (row 42b). The 8–15% `pass_27` band in §3 is a rebuild sanity signal on the
-  v7 harness, not a field prediction. Always say which of the two you mean;
-  never blend them into one number.
+- **Absolute vs conditional pass rates (F-F).** These are two different
+  numbers and the docs must always say which one is meant. `pass_27` is
+  **conditional by construction** (`benchmarks/v7/scripts/eval_v18_variants.py:107-111`:
+  the denominator is the chunks whose *clean* version already scored ≥2.7).
+  The v7 harness measured it at **10.27%** on curated wiki/books/webtext; v8
+  measured the same quantity at **9.70%** (13/134) on three uncurated
+  real-world corpora, so the figure replicates across six corpora and three
+  seeds. The **absolute** FineWeb-Edu pass rate is a separate quantity, and on
+  real corpora it is **0.2–1.0%** (row 42a), because the great majority of
+  chunks fail the gate even before encoding. The 8–15% `pass_27` band in §3 is
+  a rebuild sanity signal on the v7 harness, not a field prediction. Never
+  blend the two into one number.
+
+- **Nothing computes the conditional figure (F-G).**
+  `benchmarks/v8/scripts/gate_fineweb_edu.py` emits the per-chunk pass/fail and
+  the absolute rate only. Every conditional retention number published here,
+  including the pooled 9.70% and its Wilson interval, was recomputed by hand
+  from the stored per-chunk scores. The arithmetic is checkable and the inputs
+  are committed, but no committed script re-derives it, so a third party
+  cannot reproduce the headline number by running one command. Tracked on the
+  [roadmap](../ROADMAP.md) as `conditional_retention.py`.
+
+- **The evaluation sample is not deterministic (F-H).**
+  `benchmarks/v8/scripts/phase2_common.py:68` seeds with
+  `random.Random(SEED + hash(corpus) % 1000)`, and Python randomises string
+  hashing per process, so a re-run draws a different sample of chunks. The
+  exact denominators (n=134 here, n=93 in v7, 4,000 for the joint-gate count)
+  cannot be regenerated. Rates are unaffected in expectation; exact counts are
+  not reproducible. One-line fix: replace the builtin `hash` with a stable
+  digest of the corpus name.

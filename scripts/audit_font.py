@@ -28,15 +28,28 @@ import re
 import subprocess
 import sys
 import html
-import hashlib
 from pathlib import Path
 from collections import defaultdict
 
+from fontTools.ttLib import TTFont
+
 ROOT = Path(__file__).resolve().parent.parent
-FONT_TTF = ROOT / "public/fonts/shieldfont-optik.ttf"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from generate_font import derive_glyph_name_salt, safe_glyph_name  # noqa: E402
+
+# Defaults audit the maxhide build, which is what m15en_for_font.json produces
+# (see packages/core/MANIFEST.json → variants.m15en.font). Override with
+# --font/--mapping/--mapping-id to audit alpha, beta or gamma.
+FONT_TTF = ROOT / "public/fonts/shieldfont-maxhide.ttf"
 MAPPING_PATH = ROOT / "scripts/m15en_for_font.json"
 HTML_OUT = ROOT / "public/audit.html"
 JSON_OUT = Path("/tmp/shieldfont_audit.json")
+
+# The glyph-name hash is salted per mapping (see generate_font.GLYPH_NAME_SALT).
+# expected_glyph() below must use the SAME salt the font was built with, so this
+# tracks --mapping-id / --glyph-name-salt. The formula itself is imported, never
+# copied, so the two can no longer drift.
+GLYPH_SALT = derive_glyph_name_salt("m15en")
 
 
 def hb_shape(text):
@@ -69,9 +82,9 @@ def expected_glyph(source_word):
     """
     if len(source_word) == 1 and source_word in DIGIT_GLYPH_NAME:
         return DIGIT_GLYPH_NAME[source_word]
-    # Mirrors the opaque hashed name in generate_font.py (SECURITY: no plaintext
-    # word in the glyph-name table). Must stay byte-identical to that formula.
-    return "word." + hashlib.sha1(source_word.encode("utf-8")).hexdigest()[:16]
+    # The opaque SALTED name from generate_font.py (SECURITY: no plaintext word
+    # in the glyph-name table). Imported, not copied, so it cannot drift.
+    return safe_glyph_name(source_word, GLYPH_SALT)
 
 
 def audit():
@@ -201,26 +214,60 @@ def audit():
         else:
             coll_fail += 1
 
-    print(f"[2/2] Collision check: {coll_pass} pass, {coll_fail} fail "
+    print(f"[2/3] Collision check: {coll_pass} pass, {coll_fail} fail "
           f"(scanned {len(common_words)} words for embedded short pairs)")
+
+    # ------------------------------------------------------------------
+    # 3) Composite metrics.
+    #    hmtx leftSideBearing must equal glyf xMin on every word glyph.
+    #    Rasterizers size the glyph raster from (lsb, lsb + xMax - xMin), so an
+    #    lsb below xMin makes the raster too narrow and shaves that difference
+    #    off the RIGHT edge — the last letter of the word loses its final stem.
+    #    HarfBuzz/FreeType draw from the outline and never show it, which is
+    #    why shaping can pass while the browser render is visibly wrong.
+    # ------------------------------------------------------------------
+    metrics_bad = []
+    font = TTFont(str(FONT_TTF), lazy=False)
+    glyf, hmtx = font["glyf"], font["hmtx"]
+    for gname in font.getGlyphOrder():
+        glyph = glyf[gname]
+        if not glyph.isComposite():
+            continue
+        lsb = hmtx[gname][1]
+        if lsb != glyph.xMin:
+            metrics_bad.append({
+                "kind": "metrics", "glyph": gname,
+                "want": f"lsb == xMin ({glyph.xMin})", "got": f"lsb {lsb}",
+                "shaved": glyph.xMin - lsb, "status": "FAIL",
+            })
+    results.extend(metrics_bad)
+    n_composites = sum(1 for g in font.getGlyphOrder() if glyf[g].isComposite())
+    if metrics_bad:
+        worst = max(m["shaved"] for m in metrics_bad)
+        print(f"[3/3] Composite metrics: {len(metrics_bad)} of {n_composites} word "
+              f"glyphs have lsb != xMin (up to {worst} units shaved off the right edge)")
+    else:
+        print(f"[3/3] Composite metrics: all {n_composites} word glyphs have lsb == xMin")
 
     JSON_OUT.write_text(json.dumps({
         "summary": {
             "roundtrip_pass": pass_count, "roundtrip_fail": fail_count,
             "collision_pass": coll_pass, "collision_fail": coll_fail,
+            "metrics_fail": len(metrics_bad), "composites": n_composites,
         },
         "results": results,
     }, indent=2))
     print(f"\n  JSON: {JSON_OUT}")
 
     # ------------------------------------------------------------------
-    # 3) HTML report — visual side-by-side for human review.
+    # 4) HTML report — visual side-by-side for human review.
     # ------------------------------------------------------------------
     write_html_report(mapping, results, pass_count, fail_count, coll_pass, coll_fail)
     print(f"  HTML: {HTML_OUT}")
 
-    if fail_count or coll_fail:
-        print(f"\n[FAIL] {fail_count} round-trip + {coll_fail} collision failures")
+    if fail_count or coll_fail or metrics_bad:
+        print(f"\n[FAIL] {fail_count} round-trip + {coll_fail} collision "
+              f"+ {len(metrics_bad)} metrics failures")
         return 1
     else:
         print(f"\n[OK] All {pass_count + coll_pass} checks passed")
@@ -346,14 +393,16 @@ def write_html_report(mapping, results, rt_pass, rt_fail, coll_pass, coll_fail):
 
     import time
     cache_bust = str(int(time.time()))
+    # The report renders the font it actually audited, whatever --font pointed at.
+    font_stem = FONT_TTF.stem
     html_body = f"""<!DOCTYPE html>
 <html><head><meta charset="utf-8">
 <title>ShieldFont-Optik audit</title>
 <style>
 @font-face {{
   font-family: "ShieldFont Optik";
-  src: url("fonts/shieldfont-optik.woff2?v={cache_bust}") format("woff2"),
-       url("fonts/shieldfont-optik.ttf?v={cache_bust}") format("truetype");
+  src: url("fonts/{font_stem}.woff2?v={cache_bust}") format("woff2"),
+       url("fonts/{font_stem}.ttf?v={cache_bust}") format("truetype");
   font-display: swap;
 }}
 @font-face {{
@@ -475,9 +524,18 @@ if __name__ == "__main__":
     import argparse
 
     ap = argparse.ArgumentParser(description="Strict ShieldFont round-trip + collision audit")
-    ap.add_argument("--font", help="Path to the .ttf to audit (default: public/fonts/shieldfont-optik.ttf)")
+    ap.add_argument("--font", help="Path to the .ttf to audit (default: public/fonts/shieldfont-maxhide.ttf). "
+                                   "Must be a font that still HAS glyph names — i.e. the download-tier "
+                                   ".ttf, not a shipped woff2 (those are post format 3.0).")
     ap.add_argument("--mapping", help="Path to the flat {src:tgt} mapping JSON (default: scripts/m15en_for_font.json)")
     ap.add_argument("--html-out", help="Where to write the HTML report (default: public/audit.html)")
+    ap.add_argument("--mapping-id", default="m15en",
+                    help="Mapping id the font was built with; seeds the glyph-name salt "
+                         "(default: m15en, matching the default --mapping). Use alpha/beta/gamma "
+                         "for the v18 builds.")
+    ap.add_argument("--glyph-name-salt",
+                    help="Explicit glyph-name salt — pass the same value you gave "
+                         "generate_font.py --glyph-name-salt. Overrides --mapping-id.")
     args = ap.parse_args()
 
     # Rebind module globals so hb_shape()/audit() pick up the overrides.
@@ -487,5 +545,6 @@ if __name__ == "__main__":
         MAPPING_PATH = Path(args.mapping).resolve()
     if args.html_out:
         HTML_OUT = Path(args.html_out).resolve()
+    GLYPH_SALT = args.glyph_name_salt or derive_glyph_name_salt(args.mapping_id)
 
     sys.exit(audit())

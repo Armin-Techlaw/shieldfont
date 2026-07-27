@@ -17,7 +17,7 @@ The answer, distilled to the numbers you can reproduce:
 | **Meaning is destroyed** | NLI bidirectional-entailment failure | **50.4%** median (n=1,500/corpus, pre-registered, CC-News / OpenWebText / PG-19) | §2.1 |
 | **Not just noise** | Same metric on a WordNet synonym-swap control | **~2.1%**, so the 50.4% is meaning loss, not "rare words confuse the model" | §2.1 |
 | **Most encoded pages never reach training** | FineWeb-Edu pass rate, **absolute** | **0.2% / 1.0% / 0.2%** (cc_news / owt / pg19) against clean baselines of 2.9% / 7.4% / 3.1%: **99.0–99.8% of encoded chunks are dropped** | §2.3 |
-| **A minority does survive the gate** | Same classifier, **relative** to the chunks that pass clean | **6.5–13.5%** of clean-passing chunks still pass once encoded | §2.3 |
+| **A minority does survive the gate** | Same classifier, **conditional** on the chunks that pass clean | **9.70%** pooled (13 of 134), **6.5–13.5%** per corpus, still passing once encoded | §2.3 |
 | **Those tokens are wasted** | Wasted content per *passing* page | **24.1%** of the page's token budget carries shifted meaning | §2.3 |
 
 **Read the two filter rows together.** They are not a failure and a success:
@@ -27,13 +27,16 @@ A page that **passes** carries 24.1% of its token budget as null propositional
 content, so the gradient spent on it teaches less than the page appears to be
 worth.
 
-What the data does **not** support is the older shorthand that "~10% of encoded
-chunks pass and reach training". That figure is the v7 FineWeb-Edu pass rate
-(10.27%) measured on curated wiki/books/webtext, and the project's own v8 report
-calls it a Wikipedia-LM artifact (see `EXCLUDED.md`). On real-world corpora the
-**absolute** pass rate is 0.2–1.0%; ~10% is only defensible as a **relative**
-retention figure, and even then the measured band is 6.5–13.5%. Always state
-which of the two you mean; never blend them into one number.
+**The "~10%" figure is a conditional rate, not an absolute one**, and the
+difference is the single easiest thing to get wrong here. It is the share of
+chunks that *already passed the gate when clean* and still pass once encoded.
+The v7 harness measured it at **10.27%** on curated wiki/books/webtext; v8
+measured the same quantity at **9.70%** (13 of 134) on three uncurated
+real-world corpora. Six corpora and three seeds apart, they agree. What that
+number never was is an **absolute** pass rate: on real-world corpora that is
+**0.2–1.0%**, because the great majority of chunks fail the classifier even
+before encoding. Always state which of the two you mean; never blend them into
+one number.
 
 Everything below is either a parameter you need to rebuild the mapping (§1) or
 the method + exact number behind one of those claims (§2). Full research
@@ -61,17 +64,61 @@ mapping is a one-time loss; re-seeding invalidates it). The three land on
 statistically identical metrics — that is the point: the design is a
 *family property*, not a lucky seed.
 
-**M15-EN** is an older (V3, 2024) "coverage-maximising" mapping kept as the
-**rejection-staleness baseline**. It swaps more words (including short function
-words) so it conceals more, but it reads as too disrupted and modern quality
-filters reject it almost entirely (v8 FineWeb-Edu pass 0.2% / 1.0% / 0.1%;
-per-corpus KenLM 0–1.6%). It is the clearest case of the *rejection* branch: if
-the filter drops the page, the meaning never reaches the model either. Note that
-this branch is not exclusive to M15-EN. The shipped v18-α is also dropped for
-99.0–99.8% of encoded chunks (§2.3). What separates the two is the survivors:
-M15-EN is rejected even by the register-fair per-corpus KenLM gate, and the
-pages that do get through it waste ~40% of their token budget against α's
-24.1%.
+**M15-EN** is an older (V3, 2024) coverage-maximising mapping, retained as the
+opt-in `maxhide` variant and as the **rejection-staleness baseline**. It swaps
+more words, including short function words, so it conceals more per page. It is
+not a stronger version of the default and it is not interchangeable with it.
+
+> **v18-α is the balanced shipping mapping. M15-EN is the maximum-coverage
+> opt-in B-side, and it is rejected by every fluency gate we instrumented.**
+> Never mix the two inside one statistic: every headline number in this
+> document is v18-α.
+
+Gate by gate, as **conditional retention** (of the chunks that passed the gate
+when clean, the share that still passes once encoded):
+
+| Gate | v18-α | M15-EN |
+|---|---|---|
+| **Per-corpus KenLM** (register-fair: each corpus scored by a model trained on that corpus) | **28.11%** | **2.07%** |
+| FineWeb-Edu ≥ 2.7 | 9.70% (13/134) | 9.70% (13/134) |
+| FineWeb-Edu ≥ 3.0 | 6.52% | 2.17% |
+| Pythia-160M | 11.07% | 4.57% |
+| Wiki-KenLM | 26.11% | 8.32% |
+| **All three fluency gates at once** | **24 of 4,000 chunks** | **0 of 4,000** |
+
+**The FineWeb-Edu tie is a small-denominator artifact, not a finding.** The
+Wilson 95% interval on 13/134 is **[5.8%, 15.9%]**: that gate cannot resolve a
+2× difference between two mappings, so it certainly cannot establish a tie. The
+tie is also fragile three ways. It holds only at the 2.7 threshold (at ≥3.0 the
+two separate, 6.52% against 2.17%), only for the α seed (β and γ keep 14/134),
+and **the surviving chunks are not the same chunks**: survivor-set overlap
+(Jaccard) is 1.00 on CC-News, 0.18 on OpenWebText, and **0.00** on PG-19 and
+BookCorpus. Adding BookCorpus to the pool moves the number to 9.03% for both
+without changing the verdict.
+
+**Why the gap.** M15-EN rewrites **53.4%** of running tokens against v18-α's
+**24.4%** (both counted in the same pass, so they are directly comparable to
+each other; the 27.5% quoted at the top of this page is the v7 harness's
+`mass_pct` on a different corpus set), and its source keys include **94 of
+NLTK's 198 stopwords**
+(`and→but`, `of→for`, `is→was`, `that→which`) at zipf frequency 6.5–7.4. v18-α
+includes 10 stopwords, none of them core, at a maximum zipf of 6.25. An n-gram
+language model keeps most of its probability mass in function-word transitions,
+so M15-EN detonates exactly what KenLM scores hardest, at 2.2× the volume.
+
+> ⚠️ **"Maximum concealment" is only half true.** M15-EN does lead on coverage,
+> on NLI meaning loss, on contradiction rate, and on waste per surviving page
+> (~40% against α's 24.1%). It **loses** on embedding semantic divergence:
+> **0.217 / 0.228 / 0.186** against v18-α's **0.268 / 0.287 / 0.211** on
+> CC-News / OpenWebText / PG-19. Say "maximum coverage and maximum measured
+> meaning destruction," not "maximum concealment."
+
+None of this makes M15-EN useless. Rejection is a real defence: a page the
+filter drops never teaches the model anything, and that branch is where nearly
+all of M15-EN's value sits. But it is not exclusive to M15-EN either. The
+shipped v18-α is also dropped for 99.0–99.8% of encoded chunks (§2.3). What
+separates the two is what happens to the survivors, and on that axis v18-α wins
+on every gate that has the resolution to tell them apart.
 
 #### Exact parameters (sufficient to reproduce)
 
@@ -232,9 +279,13 @@ content: "staleness."
 - The same measurement stated **relative** to the chunks that pass when clean:
   **6.5–13.5%** survive encoding. This ratio, not the absolute rate, is the
   only defensible reading of the old "~10% passes" shorthand.
-- The historical **10.27%** figure is v7, on curated wiki/books/webtext, and is
-  a FineWeb-Edu / Wikipedia-LM artifact (see the caveat below and
-  `EXCLUDED.md`). It is kept here for provenance, not as a claim.
+- Pooled across the three corpora, that conditional rate is **9.70%** (13 of
+  134 clean-passing chunks). The v7 harness measured the same quantity at
+  **10.27%** on a different, curated corpus set. The two are independent
+  measurements of one rate and they agree; what limits how precisely either is
+  known is the **denominator**, not the corpus. The Wilson 95% interval on
+  13/134 is **[5.8%, 15.9%]**, which is wide enough that this gate cannot
+  resolve a 2× difference between two mappings, let alone a tie.
 - v18 wasted-per-passing-page: **24.1%** (median across α/β/γ, FineWeb-Edu
   primary gate): of every page that does reach training, 24.1% of its
   token budget is null propositional content, **~24pp above the clean-text
@@ -251,12 +302,17 @@ dominant outcome and staleness is what remains for the minority that survives.
 > ⚠️ **Caveat you must ship with this number.** Filter survival is
 > **gate-dependent.** Across the four instrumented gates (per-corpus KenLM,
 > FineWeb-Edu, Pythia-160M, Wiki-KenLM) the per-chunk pass/fail rankings barely
-> correlate (**Kendall τ ≈ 0**). The historical **10.27%** is a *FineWeb-Edu /
-> Wikipedia-LM* figure; on register-fair per-corpus KenLM, v18 passes at
-> 1.4–33% depending on corpus. **Do not** lead with a Wikipedia-KenLM
-> perplexity claim — real pipelines (FineWeb, DCLM, RefinedWeb) gate with
-> fastText / DistilRoBERTa / FineWeb-Edu *classifiers*. State the pass rate
-> per-gate, never in aggregate.
+> correlate (**Kendall τ ≈ 0**), so a chunk only ever has to survive the gate
+> the pipeline in front of it actually runs. Conditional retention across the
+> four spans **2.0% to 65.3%**, median **12.4%** (per-gate medians: per-corpus
+> KenLM 32.1%, Wiki-KenLM 13.6%, Pythia-160M 6.9%, FineWeb-Edu 6.7%). Stated
+> **absolutely**, on register-fair per-corpus KenLM v18 passes at 1.4–33%
+> depending on corpus. **Do not** lead with a Wikipedia-KenLM perplexity
+> claim: a Wikipedia-trained n-gram model mis-references every non-wiki
+> register, so those percentages describe the reference corpus as much as the
+> encoded text, and real pipelines (FineWeb, DCLM, RefinedWeb) gate with
+> fastText / DistilRoBERTa / FineWeb-Edu *classifiers* instead. State the pass
+> rate per-gate, never in aggregate.
 
 **Reproduce.** `benchmarks/v8/scripts/gate_fineweb_edu.py` then
 `benchmarks/v8/scripts/aggregate_phase3.py`. Expected on real-world corpora:
@@ -328,6 +384,29 @@ python3 benchmarks/v8/scripts/aggregate_phase3.py
 
 Models pulled from HuggingFace on first run: `all-MiniLM-L6-v2` (sBERT),
 `cross-encoder/nli-deberta-v3-base` (NLI), `HuggingFaceFW/fineweb-edu-classifier`.
+
+### C. Two known reproducibility gaps
+
+Both are real, both are small, and you should know about them before you try to
+replicate anything above.
+
+**1. No script computes the conditional retention rate.**
+`gate_fineweb_edu.py` emits the per-chunk pass/fail and the **absolute** rate
+only. Every conditional figure in this document (9.70%, 28.11%, 2.07%, the
+24-of-4,000 joint-gate count) was recomputed by hand from the stored per-chunk
+scores. The inputs are committed and the arithmetic is checkable, but you
+cannot re-derive the headline number by running one command, which is not good
+enough. A `conditional_retention.py` that emits the rate, its denominator and a
+Wilson interval per gate and per variant is on the [roadmap](../ROADMAP.md).
+
+**2. The evaluation sample is not deterministic.** `phase2_common.py:68` seeds
+with `random.Random(SEED + hash(corpus) % 1000)`, and Python randomises string
+hashing per process, so a re-run draws a different sample of chunks. The exact
+denominators (134 here, 93 in the v7 harness, 4,000 for the joint-gate count)
+cannot be regenerated. The **rate** is unaffected in expectation: you should
+land on the same value within sampling error, just not on the same counts. The
+fix is one line, a stable digest of the corpus name in place of the builtin
+`hash`.
 
 ---
 

@@ -115,6 +115,129 @@ def load_mapping():
     return mapping
 
 
+def read_mapping_id():
+    """Return the input mapping's own `_meta.mappingId`, or None.
+
+    Used only to seed the glyph-name salt (see derive_glyph_name_salt); the word
+    pairs themselves are read by load_mapping().
+    """
+    try:
+        with open(MAPPING_PATH, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception:
+        return None
+    meta = raw.get("_meta")
+    if isinstance(meta, dict):
+        mid = meta.get("mappingId") or meta.get("id")
+        if isinstance(mid, str) and mid:
+            return mid
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Glyph names: opaque, salted, and dropped entirely from every web tier
+# ---------------------------------------------------------------------------
+# Composite word glyphs are named `word.<hash>` rather than `word.<plaintext>`,
+# because the `post` table ships inside the font and a readable name hands over
+# the whole codebook with zero GSUB parsing (RED-TEAM-FINDINGS.md §2).
+#
+# The hash is SALTED. Unsalted, `sha1(word)[:16]` is a pure function of the
+# word, so an attacker hashes a stock English wordlist ONCE and recovers ~93% of
+# the names in about a second — and that one table works against every
+# ShieldFont ever built, forever. A per-mapping salt forces the precompute to be
+# redone per dictionary.
+#
+# The salt is DERIVED, NEVER RANDOM. Reproducibility is a shipped property: two
+# builds of the same commit against the same mapping must produce the same font,
+# so an author can rebuild an archive years later. A per-build random salt would
+# destroy that. The default is:
+#
+#     GLYPH_NAME_SALT + "|" + <mapping id>
+#
+# where <mapping id> is the input mapping's own `_meta.mappingId` when it has
+# one, else the emitted variant name (`--mapping-out`, else the prefix minus
+# "shieldfont-"). Both are deterministic properties of the build inputs.
+#
+# Be honest about what this buys. For the four PUBLISHED mappings the dictionary
+# ships in @shieldfont/core, so anyone can derive the salt; all it removes is the
+# *cross-mapping* rainbow table. It has real value only for a private
+# bring-your-own mapping, where computing the salt requires the very dictionary
+# the attacker is trying to recover. `--glyph-name-salt` takes an arbitrary
+# string if you want a genuinely private one — write it down, you need the same
+# value to reproduce the build.
+#
+# NOTE (scope): since --post-format-3 defaults to dropping the `post` table to
+# format 3.0 on every woff2 we emit, the shipped web/CDN/React fonts carry NO
+# glyph names at all and the salt is moot for them. It applies to the
+# DOWNLOAD-TIER .ttf only — the one that must keep names so it is selectable in
+# Word's font menu and so scripts/audit_font.py can name what it shaped. Not
+# worth engineering further than this.
+GLYPH_NAME_SALT = "shieldfont/glyph-names/v1"
+
+# Playtype's own upright cut names, keyed by their OS/2 usWeightClass. Used to
+# derive the default --subfamily from --weight, and to sanity-check that the
+# base master really is the cut the caller says it is. The pipeline NEVER
+# interpolates or synthesises a weight: each build reads one real static cut
+# and the only outline work is the same word-ligature composite construction
+# every face gets.
+WEIGHT_SUBFAMILY = {
+    400: "Regular",
+    500: "Medium",
+    600: "DemiBold",
+    700: "Bold",
+    800: "ExtraBold",
+    900: "Black",
+}
+
+
+def derive_glyph_name_salt(mapping_id):
+    """Deterministic default salt for the glyph-name hash. See GLYPH_NAME_SALT."""
+    return f"{GLYPH_NAME_SALT}|{mapping_id}"
+
+
+def safe_glyph_name(word, salt):
+    """Opaque, deterministic, salted glyph name for a source word.
+
+    scripts/audit_font.py:expected_glyph() mirrors this formula exactly — change
+    one and you must change the other, or the audit reports false failures.
+
+    sha1 is used as a namespacing hash, not as a security primitive: the name is
+    truncated to 64 bits and the real protection is that web tiers ship no names
+    at all. It stays sha1 so the formula is a one-line mirror in the audit.
+    """
+    digest = hashlib.sha1(f"{salt}\x00{word}".encode("utf-8")).hexdigest()[:16]
+    return "word." + digest
+
+
+def drop_glyph_names(font):
+    """Set `post` to format 3.0: keep every outline and every GSUB rule, ship no
+    glyph-name strings at all.
+
+    Glyph names have NO rendering function in a web font — shaping, cmap lookup
+    and GSUB all address glyphs by ID. On the shipped alpha build the `post`
+    table is 984,521 bytes (18.9% of the TTF, ~17% of the woff2) of pure
+    glyph-name payload, so this is a straight −18% on the byte the browser
+    downloads, and it deletes the glyph-name attack surface as a side effect.
+
+    MUST run as the LAST step, after any name-table camouflage/stamping, so the
+    dev-side .ttf keeps its names for audit_font.py and for Word's font menu.
+    Returns the number of names dropped (0 if the table was already format 3.0).
+    """
+    if "post" not in font:
+        return 0
+    post = font["post"]
+    if float(post.formatType) == 3.0:
+        return 0
+    n = len(getattr(post, "glyphOrder", None) or font.getGlyphOrder())
+    post.formatType = 3.0
+    # format 3.0 compiles the 32-byte header only; clear the name payload so a
+    # stale list can never be re-serialised by a later save.
+    post.glyphOrder = []
+    post.extraNames = []
+    post.mapping = {}
+    return n
+
+
 def make_injective(mapping):
     """Guarantee each encoded (target) word maps back to exactly ONE source.
 
@@ -204,14 +327,25 @@ def create_composite_glyph(font, word, new_glyph_name):
 
     new_glyph.components = glyph_components
 
-    x_min = y_min = x_max = y_max = 0
+    # Union of the component bounds. Seed from the first INKED component
+    # rather than from 0: seeding at 0 pins xMin/yMin at <= 0 and xMax/yMax at
+    # >= 0, which for a word like "human" reports xMin 0 when the real left
+    # edge is the 'h' side bearing at 73.
+    x_min = y_min = x_max = y_max = None
     for comp_name, x_off in components:
         src = glyf_table[comp_name]
-        if hasattr(src, "xMin") and src.numberOfContours != 0:
-            x_min = min(x_min, src.xMin + int(round(x_off)))
+        if not hasattr(src, "xMin") or src.numberOfContours == 0:
+            continue  # space and friends: no ink to bound
+        dx = int(round(x_off))
+        if x_min is None:
+            x_min, y_min, x_max, y_max = src.xMin + dx, src.yMin, src.xMax + dx, src.yMax
+        else:
+            x_min = min(x_min, src.xMin + dx)
             y_min = min(y_min, src.yMin)
-            x_max = max(x_max, src.xMax + int(round(x_off)))
+            x_max = max(x_max, src.xMax + dx)
             y_max = max(y_max, src.yMax)
+    if x_min is None:  # every component was blank
+        x_min = y_min = x_max = y_max = 0
 
     new_glyph.xMin = x_min
     new_glyph.yMin = y_min
@@ -219,7 +353,13 @@ def create_composite_glyph(font, word, new_glyph_name):
     new_glyph.yMax = y_max
 
     glyf_table[new_glyph_name] = new_glyph
-    hmtx_table[new_glyph_name] = (total_width, 0)
+    # The left side bearing MUST equal xMin. It is not decorative: rasterizers
+    # size the glyph's raster from (lsb, lsb + xMax - xMin), so an lsb of 0 on a
+    # glyph whose ink starts at 73 makes the mask 73 units too narrow and shaves
+    # that much off the RIGHT edge — the last letter of every word ligature
+    # loses its final stem. Chrome shows it; FreeType, which draws from the
+    # outline directly, does not, so it survives a local render check.
+    hmtx_table[new_glyph_name] = (total_width, x_min)
 
     glyph_order = font.getGlyphOrder()
     if new_glyph_name not in glyph_order:
@@ -910,11 +1050,45 @@ def main():
     parser.add_argument("--prefix", help="Output file prefix → public/fonts/<prefix>.{ttf,woff2,css}. "
                         "OPTIONAL — when omitted, it is a slug of the (derived or given) family name.")
     parser.add_argument("--copyright", default="Modified as ShieldFont.", help="Copyright notice")
+    parser.add_argument("--weight", type=int, choices=sorted(WEIGHT_SUBFAMILY),
+                        help="Numeric weight of the SOURCE cut (400..900). VERIFIED against the "
+                             "base font's OS/2 usWeightClass — the build fails on a mismatch so a "
+                             "Bold build can never silently read the Medium master. The outlines "
+                             "are never touched: no interpolation, no synthetic bolding; pass the "
+                             "real static cut via --base-path. Also derives the default "
+                             "--subfamily and the numeric font-weight in the emitted CSS. "
+                             "OPTIONAL — omitted keeps the pre-multi-weight behaviour (subfamily "
+                             "'Regular', CSS font-weight normal).")
+    parser.add_argument("--subfamily",
+                        help="Subfamily / style name for nameIDs 2 and 17 (and the PostScript "
+                             "name suffix). Default: derived from --weight via Playtype's own "
+                             "cut names (Regular/Medium/DemiBold/Bold/ExtraBold/Black), else "
+                             "'Regular'.")
+    parser.add_argument("--no-mapping-emit", action="store_true",
+                        help="Skip BOTH mapping emissions (public/fonts/<prefix>.map.json and the "
+                             "packages/core/src/mappings refresh). REQUIRED for secondary-weight "
+                             "builds of an already-shipped mapping: the 400 build already emitted "
+                             "the canonical mapping, and re-emitting from a weight build would "
+                             "either clobber it (dropping its _meta block) or litter bogus "
+                             "<variant>-<weight>.json files. Text mappings are weight-agnostic.")
     parser.add_argument("--mapping-path", help="Path to a custom word mapping JSON (default: scripts/word_mapping.json)")
     parser.add_argument("--mapping-out", help="Stem for the emitted encoder mapping JSON under "
                         "packages/core/src/mappings/ (default: prefix minus 'shieldfont-'). Use to "
                         "decouple the encoder mapping filename from the font basename, e.g. build "
                         "shieldfont-maxhide.* while emitting the mapping to m15en.json.")
+    parser.add_argument("--post-format-3", choices=("auto", "both", "none"), default="auto",
+                        help="Drop the `post` table to format 3.0 (no glyph names — see "
+                             "drop_glyph_names). 'auto' (DEFAULT): ON for the .woff2, OFF for "
+                             "the .ttf, so the browser payload loses ~18%% of its bytes while "
+                             "the download-tier .ttf keeps names for Word and for "
+                             "scripts/audit_font.py. 'both': drop on the .ttf too. 'none': keep "
+                             "names everywhere (pre-0.2 behaviour).")
+    parser.add_argument("--glyph-name-salt",
+                        help="Salt for the opaque composite glyph-name hash. DEFAULT is derived "
+                             "deterministically from the mapping id, so builds stay reproducible "
+                             "(see GLYPH_NAME_SALT). Pass your own for a private mapping — you "
+                             "need the SAME value to reproduce the build, and audit_font.py needs "
+                             "it via --glyph-name-salt too.")
     args = parser.parse_args()
     if not args.base_url and not args.base_path:
         parser.error("Must provide either --base-url or --base-path")
@@ -940,6 +1114,22 @@ def main():
     # family name (and prefix) when the user didn't pass --name/--prefix.
     print(f"[..] Loading font from {font_path}")
     font = TTFont(str(font_path))
+
+    # Multi-weight support: verify the base master IS the cut the caller named,
+    # then derive the subfamily. The check is read-only — usWeightClass,
+    # fsSelection and macStyle all pass through from the master untouched.
+    if args.weight is not None:
+        actual_wc = font["OS/2"].usWeightClass if "OS/2" in font else None
+        if actual_wc != args.weight:
+            print(f"[FAIL] --weight {args.weight} but the base font's OS/2 usWeightClass "
+                  f"is {actual_wc}. Wrong master? Pass the real static cut for this "
+                  f"weight via --base-path; this pipeline never interpolates or "
+                  f"synthesises weights.")
+            sys.exit(1)
+        print(f"[OK] Base cut verified: usWeightClass {actual_wc} matches --weight")
+    subfamily = args.subfamily or (
+        WEIGHT_SUBFAMILY.get(args.weight, "Regular") if args.weight is not None else "Regular"
+    )
 
     # Derive --name / --prefix from the base font when not given explicitly.
     # Read the base name table NOW, before the rename block far below overwrites
@@ -972,25 +1162,50 @@ def main():
     # independent of the packages/core path below.
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     map_out_path = OUTPUT_DIR / f"{args.prefix}.map.json"
-    try:
-        map_out_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=0))
-        print(f"[OK] Emitted encoder mapping (SINGLE SOURCE OF TRUTH — encode ONLY "
-              f"with this file): {map_out_path} ({len(mapping)} entries)")
-    except Exception as e:
-        print(f"[WARN] Could not emit encoder mapping to {map_out_path}: {e}")
+    if args.no_mapping_emit:
+        print("[OK] Skipping mapping emissions (--no-mapping-emit): this build reuses "
+              "a mapping whose canonical emission already exists")
+    else:
+        try:
+            map_out_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=0))
+            print(f"[OK] Emitted encoder mapping (SINGLE SOURCE OF TRUTH — encode ONLY "
+                  f"with this file): {map_out_path} ({len(mapping)} entries)")
+        except Exception as e:
+            print(f"[WARN] Could not emit encoder mapping to {map_out_path}: {e}")
+
+    # The mapping id identifies WHICH dictionary this build encodes. It seeds the
+    # glyph-name salt (see GLYPH_NAME_SALT) and names the emitted encoder mapping.
+    variant = (args.mapping_out or args.prefix.replace("shieldfont-", "")) or args.prefix
+    mapping_id = read_mapping_id() or variant
+    glyph_salt = args.glyph_name_salt or derive_glyph_name_salt(mapping_id)
+    print(f"[OK] Glyph-name salt: derived from mapping id {mapping_id!r}"
+          if not args.glyph_name_salt else
+          "[OK] Glyph-name salt: supplied via --glyph-name-salt (record it — the "
+          "same value is required to reproduce this build)")
 
     # In the monorepo, ALSO refresh the bundled encoder mapping so
     # @shieldfont/core stays in sync with the font we just built.
-    try:
-        variant = (args.mapping_out or args.prefix.replace("shieldfont-", "")) or args.prefix
-        enc_dir = PROJECT_DIR / "packages" / "core" / "src" / "mappings"
-        if enc_dir.exists():
-            enc_path = enc_dir / f"{variant}.json"
-            enc_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=0))
-            print(f"[OK] Emitted encoder mapping (monorepo bundled encoder): "
-                  f"{enc_path} ({len(mapping)} entries)")
-    except Exception as e:
-        print(f"[WARN] Could not emit monorepo encoder mapping: {e}")
+    # (Skipped under --no-mapping-emit together with the map.json above:
+    # a secondary-weight build must never rewrite the canonical mapping.)
+    if not args.no_mapping_emit:
+        try:
+            enc_dir = PROJECT_DIR / "packages" / "core" / "src" / "mappings"
+            if enc_dir.exists():
+                enc_path = enc_dir / f"{variant}.json"
+                had_meta = enc_path.exists() and '"_meta"' in enc_path.read_text()[:200]
+                enc_path.write_text(json.dumps(mapping, ensure_ascii=False, indent=0))
+                print(f"[OK] Emitted encoder mapping (monorepo bundled encoder): "
+                      f"{enc_path} ({len(mapping)} entries)")
+                if had_meta:
+                    # This write is pairs-only, so it DROPS the `_meta` provenance
+                    # block that mappingMeta() in @shieldfont/core reads. Restore it
+                    # or the package ships a mapping that can't say which generation
+                    # it is.
+                    print(f"[WARN] {enc_path.name} previously carried a `_meta` block and this "
+                          f"write dropped it. Run `python3 scripts/stamp_mapping_meta.py` "
+                          f"before building/publishing @shieldfont/core.")
+        except Exception as e:
+            print(f"[WARN] Could not emit monorepo encoder mapping: {e}")
 
     # Handle variable fonts
     if "fvar" in font:
@@ -1088,11 +1303,13 @@ def main():
         # SECURITY: never put the plaintext original word in the glyph name. The
         # glyph-name table ships inside the font, so a readable name hands over the
         # whole codebook with zero GSUB parsing (RED-TEAM-FINDINGS.md §2 — full
-        # dictionary recovered in <1 min). Use an opaque, deterministic hash;
-        # audit_font.py.expected_glyph() mirrors this exact formula. NOTE: this only
-        # raises the bar — the composite outlines still equal the original word and
-        # remain OCR/GSUB-recoverable. It is not "protection," just friction.
-        safe_name = "word." + hashlib.sha1(original_word.encode("utf-8")).hexdigest()[:16]
+        # dictionary recovered in <1 min). Use an opaque, SALTED, deterministic
+        # hash; audit_font.py.expected_glyph() mirrors this exact formula. NOTE:
+        # this only raises the bar — the composite outlines still equal the
+        # original word and remain OCR/GSUB-recoverable. It is not "protection,"
+        # just friction, and on every woff2 tier the names are dropped outright
+        # (--post-format-3). See GLYPH_NAME_SALT for why the salt is derived.
+        safe_name = safe_glyph_name(original_word, glyph_salt)
         if safe_name in font.getGlyphOrder():
             safe_name = safe_name + ".lig"
 
@@ -1160,24 +1377,29 @@ def main():
 
     print(f"[OK] Created {success_count} composite glyphs, skipped {skip_count}")
 
-    # Rename font
+    # Rename font. The subfamily carries the real cut name (Bold, Black, ...);
+    # for the Regular cut every value below is byte-identical to the
+    # pre-multi-weight behaviour. The full name (nameID 4) follows the same
+    # convention as stamp_font_version.py: bare family for Regular,
+    # "Family Subfamily" for any other cut.
     psname = args.name.replace(" ", "-")
+    full_name = args.name if subfamily == "Regular" else f"{args.name} {subfamily}"
     name_table = font["name"]
     name_replacements = {
         0: f"{args.copyright}",
         1: args.name,
-        2: "Regular",
-        3: f"{psname}-Regular",
-        4: args.name,
+        2: subfamily,
+        3: f"{psname}-{subfamily}",
+        4: full_name,
         5: "Version 1.0",
-        6: f"{psname}-Regular",
+        6: f"{psname}-{subfamily}",
         16: args.name,
-        17: "Regular",
+        17: subfamily,
     }
     for name_record in name_table.names:
         if name_record.nameID in name_replacements:
             name_record.string = name_replacements[name_record.nameID]
-    print(f"[OK] Renamed font to '{args.name}'")
+    print(f"[OK] Renamed font to '{full_name}'")
 
     # Build/merge GSUB with word-boundary chained context. Each ligature only
     # fires when bounded by non-letter glyphs (space, punctuation, digits,
@@ -1197,22 +1419,38 @@ def main():
 
     ttf_path = OUTPUT_DIR / f"{args.prefix}.ttf"
     font.flavor = None
+    # The TTF is the DOWNLOAD tier: it has to be selectable by a human in Word's
+    # font menu, and audit_font.py names the glyphs it shaped. So it keeps its
+    # glyph names unless the caller explicitly asks otherwise.
+    if args.post_format_3 == "both":
+        n = drop_glyph_names(font)
+        print(f"[OK] post -> format 3.0 on the TTF ({n:,} glyph names dropped) "
+              f"[--post-format-3 both]")
     font.save(str(ttf_path))
     print(f"[OK] Saved TTF: {ttf_path} ({ttf_path.stat().st_size:,} bytes)")
 
     font2 = TTFont(str(ttf_path))
     woff2_path = OUTPUT_DIR / f"{args.prefix}.woff2"
+    # LAST STEP before the browser payload is written: glyph names have no
+    # rendering function on the web, and they are ~17% of the woff2.
+    if args.post_format_3 in ("auto", "both"):
+        n = drop_glyph_names(font2)
+        if n:
+            print(f"[OK] post -> format 3.0 on the WOFF2 ({n:,} glyph names dropped)")
     font2.flavor = "woff2"
     font2.save(str(woff2_path))
     print(f"[OK] Saved WOFF2: {woff2_path} ({woff2_path.stat().st_size:,} bytes)")
 
-    # Write CSS
+    # Write CSS. A weight build declares its real numeric weight so the face
+    # only claims the cut it actually is; the default (no --weight) keeps the
+    # historical `font-weight: normal`.
+    css_weight = "normal" if args.weight is None else str(args.weight)
     css_path = OUTPUT_DIR / f"{args.prefix}.css"
     css_path.write_text(f"""@font-face {{
   font-family: '{args.name}';
   src: url('{args.prefix}.woff2') format('woff2'),
        url('{args.prefix}.ttf') format('truetype');
-  font-weight: normal;
+  font-weight: {css_weight};
   font-style: normal;
   font-display: block;
 }}
