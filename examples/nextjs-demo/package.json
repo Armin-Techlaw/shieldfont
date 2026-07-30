@@ -9,8 +9,9 @@
     "start": "next start",
     "verify": "next build",
     "copy-fonts": "mkdir -p public/fonts && cp ../../packages/react/fonts/*.woff2 public/fonts/",
-    "predev": "npm run copy-fonts",
-    "prebuild": "npm run copy-fonts"
+    "predev": "npm run build-packages && npm run copy-fonts",
+    "prebuild": "npm run build-packages && npm run copy-fonts",
+    "build-packages": "npm --prefix ../.. run build"
   },
   "dependencies": {
     "@shieldfont/react": "file:../../packages/react",

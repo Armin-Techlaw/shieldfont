@@ -162,6 +162,11 @@ script should look like.
   and hand-written types for `@shieldfont/font`, and `src/mappings` dropped from
   the published files (unreachable through `exports`): `@shieldfont/core`
   unpacked drops from 2.8 MB to 1.9 MB.
+- The example app builds the workspace packages itself (`predev`/`prebuild`)
+  rather than relying on a package `prepare` script. A `prepare` on
+  `@shieldfont/react` runs `tsc` during `npm install`, before
+  `@shieldfont/core`'s `dist/` exists, which breaks a fresh clone — it only
+  appeared to work where a previous build had left `dist/` on disk.
 
 ### Added
 

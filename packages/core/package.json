@@ -49,8 +49,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json && node ../../scripts/copy-mappings.mjs",
     "test": "vitest run",
-    "prepack": "npm run build",
-    "prepare": "npm run build"
+    "prepack": "npm run build"
   },
   "keywords": [
     "shieldfont",

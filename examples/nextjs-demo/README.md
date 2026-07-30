@@ -7,17 +7,17 @@ The smallest possible Next.js App Router page using `@shieldfont/react`.
 ```bash
 cd examples/nextjs-demo
 npm install
-npm run copy-fonts   # put the font files where the browser will ask for them
 npm run dev
 # Open http://localhost:3000
 ```
 
-`npm install` builds `@shieldfont/react` from source (it is a `file:` dependency
-on this repo's workspace, so its `prepare` script runs), and `copy-fonts` copies
-the `.woff2` files into `public/fonts/` — the location `<Shield>` requests by
-default. Skip that step and the font 404s, at which point ShieldFont's own guard
-replaces every protected block with "Content unavailable", which is the failure
-working as designed.
+`npm run dev` first builds the workspace packages (this demo depends on
+`packages/react` via `file:`, which npm symlinks, so its `dist/` has to exist)
+and then copies the `.woff2` files into `public/fonts/` — the location
+`<Shield>` requests by default. Both steps are wired to `predev`/`prebuild`, so
+there is nothing to remember. If the fonts were missing the page would not fail
+quietly: ShieldFont's own guard replaces every protected block with "Content
+unavailable", which is the failure working as designed.
 
 To verify the encoded text actually reaches the browser, scrape the page:
 
