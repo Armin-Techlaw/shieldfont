@@ -38,6 +38,15 @@ describe("omitting a11y", () => {
     // ...and must not re-suggest the thing this release deleted.
     expect(message).toMatch(/speechSynthesis/);
     expect(message).toMatch(/build time/i);
+
+    // The text mode is suggested again, and that is correct — but ONLY in its
+    // time-lock shape. This assertion used to forbid the string `mode: "text"`
+    // outright, which was right while the mode did not exist and is wrong now.
+    // What must never come back is the 0.2.0 shape: a URL to the original words
+    // sitting in the HTML. So the name is allowed and `href` is not.
+    expect(message).toMatch(/mode: "text"/);
+    expect(message).not.toMatch(/href/i);
+    expect(message).not.toMatch(/plain-text (copy|version|URL)/i);
   });
 
   it("does not warn when a11y IS supplied, in any mode", async () => {
@@ -45,8 +54,10 @@ describe("omitting a11y", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
 
     Shield({ children: BODY, a11y: { mode: "none" } });
-    Shield({ children: BODY, a11y: { mode: "text", href: "/p.txt" } });
     Shield({ children: BODY, a11y: { mode: "audio", src: "/a.mp3" } });
+    Shield({ children: BODY, a11y: { mode: "audio", src: "/a.mp3", note: "Listen." } });
+    Shield({ children: BODY, a11y: { mode: "text" } });
+    Shield({ children: BODY, a11y: { mode: "text", seconds: 5 } });
 
     expect(warn).not.toHaveBeenCalled();
   });

@@ -29,60 +29,23 @@ site/node_modules/
 .env.*
 !.env.example
 
-# Generated fonts — regenerate with scripts/generate_font.py
+# Generated ShieldFont builds — regenerate with scripts/generate_font.py.
+# NOTE: this also incidentally catches the retail Optik masters below (they
+# live in the same directory); the explicit never-commit rule further down
+# is the one that actually matters for those, not this "regenerate" comment.
 public/fonts/*
 
-# V3 benchmark heavy artifacts (regeneratable)
-benchmarks/v3/data/
-benchmarks/v3/adapters/
-benchmarks/v3/results/embeddings_*.npz
-benchmarks/v3/results/_crawler_site/
-benchmarks/v3/kenlm_model/
-
-# V5 benchmark — regenerate per-condition jsonl + adapters; keep probes + budget + eval JSONs (audit trail)
-benchmarks/v5/data/clean100/
-benchmarks/v5/data/m15en_optimized_10/
-benchmarks/v5/data/m15_multi_noun_only_10/
-benchmarks/v5/data/eval_wiki_holdout.jsonl
-benchmarks/v5/adapters/
-
-# V6 benchmark — regenerate per-condition jsonl + adapters + heavy embeddings; keep probes + mappings + eval JSONs (audit trail)
-benchmarks/v6/adapters/
-benchmarks/v6/data/m15en_optimized_10/
-benchmarks/v6/data/m17near_*/
-benchmarks/v6/data/eval_wiki_holdout.jsonl
-benchmarks/v6/data/numberbatch_en.tsv
-benchmarks/v6/data/numberbatch-en-*.txt.gz
-benchmarks/v6/data/_datamuse_cache.json
-benchmarks/v6/data/brysbaert_concreteness.tsv*
+# Local debug/QA tooling output — never meant to ship, not evidence
+public/*.html
 
 # Claude Code session artifacts
 .claude/
 
-# V4 work artifacts (intermediates from white paper assembly)
-benchmarks/v4/work/
-
-# V7 benchmark — regenerate pair/reject candidate dumps + heavy embeddings + LM caches; keep audit JSONs/metrics
-benchmarks/v7/data/embeddings/
-benchmarks/v7/data/lms/
-benchmarks/v7/data/pairs_v7_alpha_v*.json
-benchmarks/v7/data/rejects_v7_alpha_v*.json
-# ...but ALWAYS track the ONE shipped production mapping (v18 = v15_0_1_0_0_0_0, 11,988 pairs).
-# It is the shipping artifact; keeping it in git means no machine can silently lose it again.
-!benchmarks/v7/data/pairs_v7_alpha_v15_0_1_0_0_0_0.json
-
-# V8 benchmark — keep scripts/reports/result-JSONs; ignore heavy regenerable corpora / LMs / adapters
-benchmarks/v8/data/corpora/
-benchmarks/v8/data/lms/
-benchmarks/v8/data/splits/
-benchmarks/v8/data/phase5_train/
-benchmarks/v8/data/phase5_test/
-benchmarks/v8/phase5_finetune/adapters/
-benchmarks/v8/**/*.arpa
-benchmarks/v8/**/*.binary
-benchmarks/v8/**/*.safetensors
-benchmarks/v8/**/*.jsonl
-benchmarks/v8/**/*.txt
+# benchmark/data/ holds only the specific light, vetted result files and
+# scripts copied in from the development repo's v7/v8 research rounds — no
+# heavy regeneratable corpora, embeddings, LMs or adapters live here, so
+# nothing under it needs an ignore rule. (The old benchmarks/v2-v8 layout
+# this block used to manage no longer exists in this repo.)
 
 # Temporary preview server artifacts
 shieldfont_test/
@@ -92,8 +55,15 @@ site/out/
 # Root-level Next.js build cache (only site/ should hold Next state)
 /.next/
 
-# Retail Optik masters — Playtype proprietary; never commit to a public repo (kept on disk for local render/deploy only)
+# Retail Optik masters — Playtype proprietary; never commit to a public repo
+# (kept on disk for local render/deploy only). site/public/fonts/optik/ is
+# where they sit in the separate marketing-site repo; public/fonts/ below
+# covers where the same masters and their camouflage/dev-build derivatives
+# (optik-regular.*, camo/, BEFORE-*) sit in *this* repo's working tree.
 site/public/fonts/optik/
+public/fonts/optik-regular.*
+public/fonts/camo/
+public/fonts/BEFORE-*
 
 # Local-only working files (never commit) — e.g. RECONCILE-MANIFEST.local.md, TODO-BEFORE-RELEASE.local.md
 *.local.md

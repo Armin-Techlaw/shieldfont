@@ -1,0 +1,364 @@
+/**
+ * `a11y={{ mode: "text" }}` — the time-lock plain-text control.
+ *
+ * Two things are being defended here and they pull in opposite directions:
+ *
+ *   1. A screen-reader user must reach a working, comprehensible control and,
+ *      after it runs, the real words — announced, focusable, in reading order.
+ *   2. The rendered HTML must not contain those words. Not in an attribute, not
+ *      in a comment, not in the sealed payload. The whole point of the mode is
+ *      that the plaintext is present but *closed*, and a leak here would be a
+ *      silent, total defeat of the package.
+ *
+ * The suite asserts both on the same tree, because a change that satisfies one
+ * by breaking the other is the failure mode worth catching.
+ */
+import { describe, it, expect } from "vitest";
+import { Shield, setCamouflage, withShieldRenderPass } from "../src/Shield.js";
+import { props, walkAll, findAllTags, shieldedBlock, descendants } from "./helpers.js";
+
+const BODY = "The future of writing belongs to those who write it.";
+/** Milliseconds rather than seconds; the mode's own default is 20s. */
+const FAST = { mode: "text", seconds: 5 } as const;
+
+/** The one element carrying a given bare data attribute. */
+function byAttr(tree: unknown, attr: string) {
+  return walkAll(tree as never).find((e) => attr in props(e));
+}
+
+/** Everything the browser would see, near enough for leak assertions. */
+function markup(tree: unknown): string {
+  return JSON.stringify(tree);
+}
+
+describe("the encoded block stays hidden", () => {
+  it("is aria-hidden even when the puzzle control is present", () => {
+    const tree = Shield({ children: BODY, a11y: FAST });
+    expect(props(shieldedBlock(tree))["aria-hidden"]).toBe("true");
+  });
+
+  it("puts the control OUTSIDE the hidden block and BEFORE it in DOM order", () => {
+    const tree = Shield({ children: BODY, a11y: FAST });
+    const all = walkAll(tree);
+    const block = shieldedBlock(tree);
+    const button = findAllTags(tree, "button")[0];
+    expect(button).toBeDefined();
+
+    // Outside: nothing inside the aria-hidden subtree is the control.
+    expect(descendants(block)).not.toContain(button);
+    // Before: linear navigation reaches the control ahead of the silence.
+    expect(all.indexOf(button!)).toBeLessThan(all.indexOf(block));
+  });
+
+  it("never renders a link, in any configuration", () => {
+    // The removed 0.2.0 text mode was an <a href> to the original words. The
+    // replacement must not quietly reintroduce one.
+    for (const a11y of [FAST, { mode: "text" } as const, { mode: "text", seconds: 120 } as const]) {
+      expect(findAllTags(Shield({ children: BODY, a11y }), "a")).toHaveLength(0);
+    }
+  });
+});
+
+describe("the plaintext does not ship", () => {
+  /** The sealed JSON as it would reach the browser. */
+  function payload(children: string): string {
+    const holder = byAttr(Shield({ children, a11y: FAST }), "data-typeface-data");
+    return (props(holder!).dangerouslySetInnerHTML as { __html: string }).__html;
+  }
+
+  it("never appears in the sealed payload", () => {
+    // This is the guarantee the mode rests on: the words are present in the
+    // page but CLOSED. Assert it against the payload specifically rather than
+    // the whole tree — the encoded block is a separate mechanism with its own
+    // separate (and openly documented) property, exercised just below.
+    const secret = "Zarquon threadbare pomegranate ossuary.";
+    const json = payload(secret);
+
+    expect(json).not.toContain(secret);
+    for (const word of ["Zarquon", "threadbare", "pomegranate", "ossuary"]) {
+      expect(json.toLowerCase()).not.toContain(word.toLowerCase());
+    }
+  });
+
+  it("is sealed independently of how well the encoder covered the words", () => {
+    // Words outside the ~12k mapping pass through `encode()` unchanged, so a
+    // block of rare vocabulary renders much of itself in clear in the encoded
+    // element. That is a property of dictionary coverage, not of this mode, and
+    // `variant="maxhide"` is the lever for it — but it means the puzzle must
+    // not inherit the weakness. Whatever the encoder did, the payload is sealed.
+    const rare = "Zarquon threadbare pomegranate ossuary.";
+    const common = "The future of writing belongs to those who write it.";
+    for (const source of [rare, common]) {
+      expect(payload(source)).not.toContain(source);
+    }
+  });
+
+  it("ships only n, t, iv and ct in the payload", () => {
+    const holder = byAttr(Shield({ children: BODY, a11y: FAST }), "data-typeface-data");
+    expect(holder).toBeDefined();
+    const json = (props(holder!).dangerouslySetInnerHTML as { __html: string }).__html;
+    expect(Object.keys(JSON.parse(json)).sort()).toEqual(["ct", "iv", "n", "t"]);
+  });
+
+  it("escapes < in the payload so a future field cannot inject markup", () => {
+    const holder = byAttr(Shield({ children: BODY, a11y: FAST }), "data-typeface-data");
+    const json = (props(holder!).dangerouslySetInnerHTML as { __html: string }).__html;
+    expect(json).not.toContain("<");
+  });
+
+  it("seals fresh every render, so identical text is not a shared puzzle", () => {
+    const read = () => {
+      const holder = byAttr(Shield({ children: BODY, a11y: FAST }), "data-typeface-data");
+      return (props(holder!).dangerouslySetInnerHTML as { __html: string }).__html;
+    };
+    expect(read()).not.toBe(read());
+  });
+});
+
+describe("the control is usable by a screen reader", () => {
+  const tree = () => Shield({ children: BODY, a11y: FAST });
+
+  it("wraps the alternative WITHOUT a group role or label", () => {
+    // Measured against real VoiceOver, `role="group"` + `aria-label` produced
+    // about twenty words of scaffolding per block — "Accessible alternative,
+    // group… you are currently on a button inside of a group… to exit this
+    // group press Control-Option-Shift-Up-Arrow" — in front of a button whose
+    // own name already says what it does.
+    const wrap = byAttr(tree(), "data-typeface-group");
+    expect(wrap).toBeDefined();
+    // `presentation` takes the wrapper itself out of the accessibility tree.
+    // Without it VoiceOver announces the plain <div> as a group of its own.
+    expect(props(wrap!).role).toBe("presentation");
+    expect(props(wrap!)["aria-label"]).toBeUndefined();
+  });
+
+  it("explains WHY the section is silent, in a sentence", () => {
+    // "Show plain text" alone tells a screen-reader user nothing about why the
+    // article they were reading went quiet.
+    const note = walkAll(tree()).find(
+      (e) => typeof props(e).children === "string" && String(props(e).children).includes("scrambled"),
+    );
+    expect(note).toBeDefined();
+    expect(String(props(note!).children).length).toBeGreaterThan(40);
+    // …but not so long it becomes noise to skip past. Measured by ear.
+    expect(String(props(note!).children).length).toBeLessThan(120);
+  });
+
+  it("labels the button with the cost, not just the action", () => {
+    const button = findAllTags(tree(), "button")[0]!;
+    const label = String(props(button).children);
+    expect(label).toMatch(/plain text/i);
+    // Someone deciding whether to press it needs to know it is not instant.
+    expect(label).toMatch(/\b5 seconds\b/);
+    expect(props(button).type).toBe("button");
+  });
+
+  it("ships the button hidden, for the script to reveal once it knows it works", () => {
+    // Progressive enhancement: a control that cannot function is worse than no
+    // control, and worst of all for a reader who cannot see that it did nothing.
+    expect(props(findAllTags(tree(), "button")[0]!).hidden).toBe(true);
+  });
+
+  it("has a polite live region, and no landmark role on it", () => {
+    const status = byAttr(tree(), "data-typeface-status");
+    expect(status).toBeDefined();
+    // assertive would interrupt whatever the reader is listening to, four times
+    // over, for a background task they were told to keep reading through.
+    expect(props(status!)["aria-live"]).toBe("polite");
+    expect(props(status!)["aria-atomic"]).toBe("true");
+    // NOT role="status". Both announce updates, but the role also puts a named
+    // landmark in the tree, so a screen reader passing an as-yet-empty one says
+    // the bare word "status" for nothing — once per block. Caught by running a
+    // real screen reader over a two-block page.
+    expect(props(status!).role).toBeUndefined();
+  });
+
+  it("gives each block a distinct button name", () => {
+    // Identical labels are unusable on a real article: a reader who wants the
+    // third block has to guess. Verified with a screen reader — before this,
+    // two buttons on one page were indistinguishable by ear.
+    const trees = withShieldRenderPass(() => [
+      Shield({ children: BODY, as: "h2", a11y: FAST }),
+      Shield({ children: BODY, a11y: FAST }),
+      Shield({ children: BODY, as: "blockquote", a11y: FAST }),
+    ]);
+    const labels = trees.map((t) => String(props(findAllTags(t, "button")[0]!).children));
+    expect(new Set(labels).size).toBe(3);
+    expect(labels[0]).toContain("heading 1");
+    expect(labels[1]).toContain("section 2");
+    expect(labels[2]).toContain("quote 3");
+    // The cost still has to reach the reader deciding whether to press it.
+    for (const l of labels) expect(l).toMatch(/5 seconds/);
+  });
+
+  it("never puts the protected words in the button name", () => {
+    // The label ships in the HTML. A label quoting the text it unlocks would be
+    // the same free bypass the removed href was.
+    const secret = "Zarquon threadbare pomegranate ossuary.";
+    const label = String(
+      props(findAllTags(Shield({ children: secret, a11y: FAST }), "button")[0]!).children,
+    );
+    for (const w of ["Zarquon", "threadbare", "pomegranate", "ossuary"]) {
+      expect(label.toLowerCase()).not.toContain(w.toLowerCase());
+    }
+  });
+
+  it("honours an explicit label override", () => {
+    const t = Shield({ children: BODY, a11y: { ...FAST, label: "Read this bit plainly" } });
+    expect(String(props(findAllTags(t, "button")[0]!).children)).toBe("Read this bit plainly");
+  });
+
+  it("shortens the note after the first block on a page", () => {
+    // The full explanation is worth hearing once. Six times, before reaching any
+    // content, it is an obstacle.
+    const trees = withShieldRenderPass(() =>
+      [1, 2, 3].map((i) => Shield({ children: `${BODY} ${i}`, a11y: FAST })),
+    );
+    const notes = trees.map((t) =>
+      String(props(walkAll(t).find((e) => String(props(e).children).includes("crambled"))!).children),
+    );
+    expect(notes[0].length).toBeGreaterThan(notes[1].length);
+    expect(notes[1]).toBe(notes[2]);
+    // Even the short one has to say what the button is for.
+    expect(notes[1]).toMatch(/unlock/i);
+  });
+
+  it("clips the revealed text off-screen by default, never removing it", () => {
+    const out = byAttr(Shield({ children: BODY, a11y: FAST }), "data-typeface-out");
+    const style = props(out!).style as Record<string, unknown>;
+    // display:none and visibility:hidden would both drop the words out of the
+    // accessibility tree, which is the entire thing being delivered. The
+    // display:none present here is the pre-reveal state; the solver clears only
+    // that property, leaving the clip in place.
+    expect(style.clipPath).toBe("inset(50%)");
+    expect(style.position).toBe("absolute");
+    expect(style.visibility).toBeUndefined();
+    expect(props(out!)["data-typeface-out"]).toBe("hidden");
+  });
+
+  it("can be told to reveal visibly instead", () => {
+    const out = byAttr(
+      Shield({ children: BODY, a11y: { ...FAST, reveal: "visible" } }),
+      "data-typeface-out",
+    );
+    const style = props(out!).style as Record<string, unknown>;
+    expect(style.clipPath).toBeUndefined();
+    expect(props(out!)["data-typeface-out"]).toBe("visible");
+  });
+
+  it("keeps the progress bar in the accessibility tree, and labelled", () => {
+    const bar = findAllTags(tree(), "progress")[0];
+    expect(bar).toBeDefined();
+    // Not aria-hidden: <progress> does not announce on its own, so leaving it
+    // exposed costs nothing and lets a reader query exact progress on demand.
+    expect(props(bar!)["aria-hidden"]).toBeUndefined();
+    expect(props(bar!)["aria-label"]).toBe("Decoding progress");
+  });
+
+  it("gives the output element a focus target and starts it hidden", () => {
+    const out = byAttr(tree(), "data-typeface-out");
+    expect(out).toBeDefined();
+    // tabIndex -1 so the script can move focus to the words once they exist,
+    // rather than announcing "done" and leaving someone to hunt for the change.
+    expect(props(out!).tabIndex).toBe(-1);
+    expect(props(out!).hidden).toBe(true);
+  });
+
+  it("points the button at the block it will hide", () => {
+    const t = tree();
+    const button = findAllTags(t, "button")[0]!;
+    const target = props(button)["data-typeface-solve-for"];
+    expect(target).toBeTruthy();
+    expect(props(shieldedBlock(t)).id).toBe(target);
+  });
+
+  it("hides the whole control from sighted readers by default", () => {
+    // A sighted reader can already read the block — the font does that — so an
+    // unexplained widget attached to text that looks fine is noise to them.
+    const style = props(byAttr(Shield({ children: BODY, a11y: FAST }), "data-typeface-group")!)
+      .style as Record<string, unknown>;
+    expect(style.clipPath).toBe("inset(50%)");
+    // The audio mode keeps its player on screen: one nobody can see is one
+    // nobody can press.
+    const audio = props(
+      byAttr(Shield({ children: BODY, a11y: { mode: "audio", src: "/a.mp3" } }), "data-typeface-group")!,
+    ).style;
+    expect(audio).toBeUndefined();
+  });
+
+  it("honours visualHidden by clipping, never by display:none", () => {
+    const t = Shield({ children: BODY, a11y: { ...FAST, visualHidden: true } });
+    const group = byAttr(t, "data-typeface-group")!;
+    const style = props(group).style as Record<string, unknown>;
+    // display:none would remove the control from the accessibility tree, which
+    // is the precise bug this whole prop exists to fix.
+    expect(style.display).toBeUndefined();
+    expect(style.clipPath).toBe("inset(50%)");
+  });
+
+  it("uses phrasing-content wrappers for an inline shield", () => {
+    // A <p> or <div> sibling next to an inline <Shield as="span"> would close
+    // the enclosing paragraph early and reflow the document.
+    const t = Shield({ children: BODY, as: "span", a11y: FAST });
+    for (const el of walkAll(t)) {
+      expect(el.type).not.toBe("p");
+      expect(el.type).not.toBe("div");
+    }
+  });
+});
+
+describe("page-level wiring", () => {
+  it("emits the solver once per render pass, however many blocks there are", () => {
+    const trees = withShieldRenderPass(() =>
+      [1, 2, 3, 4].map((i) => Shield({ children: `${BODY} ${i}`, a11y: FAST })),
+    );
+    const solvers = findAllTags(trees, "script").filter((s) =>
+      String((props(s).dangerouslySetInnerHTML as { __html: string })?.__html).includes("-solve"),
+    );
+    expect(solvers).toHaveLength(1);
+  });
+
+  it("gives blocks distinct ids even when their text is identical", () => {
+    // Same string hashes the same, so without the pass counter both buttons
+    // would address one block and the other would never be hidden.
+    const trees = withShieldRenderPass(() => [
+      Shield({ children: BODY, a11y: FAST }),
+      Shield({ children: BODY, a11y: FAST }),
+    ]);
+    const ids = trees.map((t) => props(shieldedBlock(t)).id);
+    expect(ids[0]).toBeTruthy();
+    expect(ids[0]).not.toBe(ids[1]);
+  });
+
+  it("stamps no id and no solver when the mode is not text", () => {
+    for (const a11y of [{ mode: "none" } as const, { mode: "audio", src: "/a.mp3" } as const]) {
+      const t = Shield({ children: BODY, a11y });
+      expect(props(shieldedBlock(t)).id).toBeUndefined();
+      const scripts = findAllTags(t, "script").filter((s) =>
+        String((props(s).dangerouslySetInnerHTML as { __html: string })?.__html).includes("-solve"),
+      );
+      expect(scripts).toHaveLength(0);
+    }
+  });
+
+  it("routes every emitted name through camouflage", () => {
+    setCamouflage({ hash: "b7c1" });
+    try {
+      const t = Shield({ children: BODY, a11y: FAST });
+      const html = markup(t);
+      expect(html).toContain("data-typeface-b7c1-solve");
+      // Nothing in the SSR-visible output may say what this is.
+      expect(html.toLowerCase()).not.toContain("shield");
+      expect(html.toLowerCase()).not.toContain("puzzle");
+    } finally {
+      setCamouflage({ hash: "" });
+      setCamouflage({
+        familyName: { alpha: "Optik", beta: "Optik Beta", gamma: "Optik Gamma", maxhide: "Optik Max" },
+        filePrefix: { alpha: "optik-a", beta: "optik-b", gamma: "optik-c", maxhide: "optik-m" },
+        attrName: "data-typeface",
+        guardFlag: "__tf_guard__",
+        logPrefix: "[typeface]",
+      });
+    }
+  });
+});

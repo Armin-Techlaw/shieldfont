@@ -1,0 +1,44 @@
+[
+  {
+    "cell": "v18_a",
+    "variant_note": "v15 Hungarian-optimal baseline (winner of 64-cell sweep)",
+    "seed": null,
+    "identical_to_v15": null,
+    "n_pairs": 11988,
+    "n_rare": 2960,
+    "mass_pct": 27.49,
+    "content_pct": 48.36,
+    "info_pct": 34.27,
+    "sem_div": 0.2973,
+    "kenlm_pct": 120.8,
+    "pass_27": 10.27
+  },
+  {
+    "cell": "v18_b",
+    "variant_note": "v15 family, re-seeded build (seed=1)",
+    "seed": null,
+    "identical_to_v15": null,
+    "n_pairs": 12046,
+    "n_rare": 2998,
+    "mass_pct": 27.81,
+    "content_pct": 48.95,
+    "info_pct": 34.66,
+    "sem_div": 0.2991,
+    "kenlm_pct": 127.6,
+    "pass_27": 12.98
+  },
+  {
+    "cell": "v18_c",
+    "variant_note": "v15 family, re-seeded build (seed=2)",
+    "seed": null,
+    "identical_to_v15": null,
+    "n_pairs": 12048,
+    "n_rare": 2990,
+    "mass_pct": 27.71,
+    "content_pct": 48.85,
+    "info_pct": 34.57,
+    "sem_div": 0.2954,
+    "kenlm_pct": 122.8,
+    "pass_27": 6.73
+  }
+]

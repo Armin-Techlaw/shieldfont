@@ -7,9 +7,17 @@
  *   2. `visualHidden` clips rather than `display:none`-ing — the latter would
  *      remove the control from the accessibility tree, which is the exact bug
  *      the prop exists to fix.
+ *
+ * A third property is now asserted just as hard, in "renders no link, ever":
+ * the alternative contains NO `<a>` at all. `mode: "text"` and the audio
+ * mode's optional `transcript` both used to put a URL to the original words in
+ * the HTML, which any scraper that follows it reads for free. Both are gone,
+ * and the test is the guard against either coming back by accident. The cases
+ * they carried (markup validity, `visualHidden`, `note`) run against the audio
+ * mode.
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { Shield } from "../src/Shield.js";
+import { Shield, type ShieldA11y } from "../src/Shield.js";
 import type { CSSProperties } from "react";
 import { descendants, findAllTags, findTag, props, shieldedBlock, walkAll } from "./helpers.js";
 
@@ -23,8 +31,8 @@ describe("aria-hidden stays on the encoded block", () => {
   it("keeps aria-hidden=\"true\", with and without an alternative", () => {
     for (const a11y of [
       { mode: "none" } as const,
-      { mode: "text", href: "/plain" } as const,
       { mode: "audio", src: "/a.mp3" } as const,
+      { mode: "audio", src: "/a.mp3", note: "Listen." } as const,
     ]) {
       const block = shieldedBlock(Shield({ children: BODY, a11y }));
       expect(props(block)["aria-hidden"]).toBe("true");
@@ -72,52 +80,54 @@ describe('mode: "audio"', () => {
     expect(text).toMatch(/audio/i);
   });
 
-  it("renders a transcript link only when one is given", () => {
-    const without = Shield({ children: BODY, a11y: { mode: "audio", src: "/a.mp3" } });
-    expect(findAllTags(without, "a")).toHaveLength(0);
-
-    const withT = Shield({
-      children: BODY,
-      a11y: { mode: "audio", src: "/a.mp3", transcript: "/t.txt" },
-    });
-    const links = findAllTags(withT, "a");
-    expect(links).toHaveLength(1);
-    expect(props(links[0]!).href).toBe("/t.txt");
-    expect(props(links[0]!).children).toBe("Transcript");
-  });
-
-  it("lets `label` name the transcript link and `note` replace the sentence", () => {
+  it("lets `note` replace the sentence", () => {
     const tree = Shield({
       children: BODY,
-      a11y: {
-        mode: "audio",
-        src: "/a.mp3",
-        transcript: "/t.txt",
-        label: "Read the transcript",
-        note: "Listen to this essay.",
-      },
+      a11y: { mode: "audio", src: "/a.mp3", note: "Listen to this essay." },
     });
-    expect(props(findTag(tree, "a")!).children).toBe("Read the transcript");
     expect(props(findTag(tree, "p")!).children).toBe("Listen to this essay.");
   });
 });
 
-describe('mode: "text"', () => {
-  it("links the plain-text version with a sensible default label", () => {
-    const tree = Shield({ children: BODY, a11y: { mode: "text", href: "/posts/1/plain" } });
-    const link = findTag(tree, "a");
-    expect(link).toBeDefined();
-    expect(props(link!).href).toBe("/posts/1/plain");
-    expect(props(link!).children).toBe("Plain-text version");
-    expect(findTag(tree, "audio")).toBeUndefined();
+describe("renders no link, ever", () => {
+  // The regression guard for the whole reason `mode: "text"` and the audio
+  // mode's `transcript` were deleted: a URL to the original words sitting in
+  // the HTML is a one-line bypass for any scraper that follows it, and it
+  // cannot be shown to a screen reader without being shown to everyone else.
+  // If an <a> reappears in this output, something has undone that.
+  it("emits no <a> under any accepted configuration", () => {
+    for (const a11y of [
+      { mode: "none" } as const,
+      { mode: "audio", src: "/a.mp3" } as const,
+      { mode: "audio", src: "/a.mp3", note: "Listen." } as const,
+      { mode: "audio", src: "/a.mp3", visualHidden: true } as const,
+    ]) {
+      const tree = Shield({ children: BODY, a11y });
+      expect(findAllTags(tree, "a")).toHaveLength(0);
+    }
+    // ...including with no `a11y` at all (which warns; silence it here).
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(findAllTags(Shield({ children: BODY }), "a")).toHaveLength(0);
   });
 
-  it("honours a custom label", () => {
-    const tree = Shield({
-      children: BODY,
-      a11y: { mode: "text", href: "/p.txt", label: "Read as plain text" },
-    });
-    expect(props(findTag(tree, "a")!).children).toBe("Read as plain text");
+  it("ignores a leftover `transcript`/`label` instead of rendering it", () => {
+    // TypeScript rejects both fields now, but a plain-JS caller and a project
+    // mid-upgrade can still pass the 0.2.0 shape. The old URL must not reach
+    // the DOM just because the object it arrived on still has the key — that
+    // would make the removal cosmetic for exactly the installs that have not
+    // migrated yet. (Typechecking does not run over this directory, so this is
+    // asserted at runtime, where it is actually verified.)
+    const stale = {
+      mode: "audio",
+      src: "/a.mp3",
+      transcript: "/t.txt",
+      label: "Read the transcript",
+    } as unknown as ShieldA11y;
+    const tree = Shield({ children: BODY, a11y: stale });
+    expect(findAllTags(tree, "a")).toHaveLength(0);
+    expect(JSON.stringify(tree)).not.toContain("/t.txt");
+    // The audio itself still renders — a stale field is ignored, not fatal.
+    expect(findTag(tree, "audio")).toBeDefined();
   });
 });
 
@@ -138,7 +148,7 @@ describe("visualHidden", () => {
   it("clips instead of using display:none or visibility:hidden", () => {
     for (const a11y of [
       { mode: "audio", src: "/a.mp3", visualHidden: true } as const,
-      { mode: "text", href: "/p.txt", visualHidden: true } as const,
+      { mode: "audio", src: "/a.mp3", note: "Listen.", visualHidden: true } as const,
     ]) {
       const tree = Shield({ children: BODY, a11y });
       const wrap = walkAll(tree).find((el) => String(props(el).className ?? "").endsWith("-alt"));
@@ -163,7 +173,7 @@ describe("visualHidden", () => {
 
 describe("markup validity", () => {
   it("wraps in a div/p for block Shields", () => {
-    const tree = Shield({ children: BODY, a11y: { mode: "text", href: "/p.txt" } });
+    const tree = Shield({ children: BODY, a11y: { mode: "audio", src: "/a.mp3" } });
     const wrap = walkAll(tree).find((el) => String(props(el).className ?? "").endsWith("-alt"));
     expect(wrap!.type).toBe("div");
     expect(findTag(tree, "p")).toBeDefined();
@@ -172,7 +182,7 @@ describe("markup validity", () => {
   it("uses phrasing content for an inline Shield, so it cannot split a <p>", () => {
     // A <div>/<p> sibling emitted next to an inline <Shield as="span"> inside a
     // paragraph makes the browser close the enclosing <p> early.
-    const tree = Shield({ as: "span", children: BODY, a11y: { mode: "text", href: "/p.txt" } });
+    const tree = Shield({ as: "span", children: BODY, a11y: { mode: "audio", src: "/a.mp3" } });
     const wrap = walkAll(tree).find((el) => String(props(el).className ?? "").endsWith("-alt"));
     expect(wrap!.type).toBe("span");
     expect(findTag(tree, "div")).toBeUndefined();
@@ -180,11 +190,18 @@ describe("markup validity", () => {
     expect(shieldedBlock(tree).type).toBe("span");
   });
 
-  it("groups and labels the alternative", () => {
+  it("wraps the alternative without a group role", () => {
+    // `role="group"` + `aria-label` used to be here. Removed after a real
+    // VoiceOver session: it announced the group, then that you were "inside of
+    // a group", then how to exit the group — before a control that already
+    // named itself. A note and a player read fine as plain siblings.
     const tree = Shield({ children: BODY, a11y: { mode: "audio", src: "/a.mp3" } });
     const wrap = walkAll(tree).find((el) => String(props(el).className ?? "").endsWith("-alt"));
-    expect(props(wrap!).role).toBe("group");
-    expect(props(wrap!)["aria-label"]).toBe("Accessible alternative");
+    expect(wrap).toBeDefined();
+    // `presentation` takes the wrapper itself out of the accessibility tree.
+    // Without it VoiceOver announces the plain <div> as a group of its own.
+    expect(props(wrap!).role).toBe("presentation");
+    expect(props(wrap!)["aria-label"]).toBeUndefined();
   });
 });
 

@@ -1,0 +1,107 @@
+{
+  "v18_a": {
+    "wiki": {
+      "n": 60,
+      "mean_entail": 0.5990559458732605,
+      "mean_meaning_loss": 0.4009440541267395,
+      "bidir_failure_rate": 0.5333333333333333,
+      "strong_contradiction_rate": 0.2
+    },
+    "books": {
+      "n": 60,
+      "mean_entail": 0.4000270664691925,
+      "mean_meaning_loss": 0.5999729335308075,
+      "bidir_failure_rate": 0.7333333333333333,
+      "strong_contradiction_rate": 0.21666666666666667
+    },
+    "webtext": {
+      "n": 60,
+      "mean_entail": 0.623083233833313,
+      "mean_meaning_loss": 0.376916766166687,
+      "bidir_failure_rate": 0.5,
+      "strong_contradiction_rate": 0.2
+    },
+    "reddit": {
+      "n": 60,
+      "mean_entail": 0.49542683362960815,
+      "mean_meaning_loss": 0.5045731663703918,
+      "bidir_failure_rate": 0.6166666666666667,
+      "strong_contradiction_rate": 0.3333333333333333
+    },
+    "__avg__": {
+      "mean_meaning_loss": 0.47060173004865646,
+      "bidir_failure_rate": 0.5958333333333333,
+      "strong_contradiction_rate": 0.2375
+    }
+  },
+  "v18_b": {
+    "wiki": {
+      "n": 60,
+      "mean_entail": 0.5470953583717346,
+      "mean_meaning_loss": 0.4529046416282654,
+      "bidir_failure_rate": 0.5833333333333334,
+      "strong_contradiction_rate": 0.3
+    },
+    "books": {
+      "n": 60,
+      "mean_entail": 0.39819902181625366,
+      "mean_meaning_loss": 0.6018009781837463,
+      "bidir_failure_rate": 0.8,
+      "strong_contradiction_rate": 0.23333333333333334
+    },
+    "webtext": {
+      "n": 60,
+      "mean_entail": 0.6475371718406677,
+      "mean_meaning_loss": 0.3524628281593323,
+      "bidir_failure_rate": 0.45,
+      "strong_contradiction_rate": 0.16666666666666666
+    },
+    "reddit": {
+      "n": 60,
+      "mean_entail": 0.546972393989563,
+      "mean_meaning_loss": 0.453027606010437,
+      "bidir_failure_rate": 0.6166666666666667,
+      "strong_contradiction_rate": 0.26666666666666666
+    },
+    "__avg__": {
+      "mean_meaning_loss": 0.46504901349544525,
+      "bidir_failure_rate": 0.6125,
+      "strong_contradiction_rate": 0.24166666666666664
+    }
+  },
+  "v18_c": {
+    "wiki": {
+      "n": 60,
+      "mean_entail": 0.5658982396125793,
+      "mean_meaning_loss": 0.43410176038742065,
+      "bidir_failure_rate": 0.55,
+      "strong_contradiction_rate": 0.25
+    },
+    "books": {
+      "n": 60,
+      "mean_entail": 0.32547780871391296,
+      "mean_meaning_loss": 0.674522191286087,
+      "bidir_failure_rate": 0.8333333333333334,
+      "strong_contradiction_rate": 0.3
+    },
+    "webtext": {
+      "n": 60,
+      "mean_entail": 0.6713885068893433,
+      "mean_meaning_loss": 0.32861149311065674,
+      "bidir_failure_rate": 0.4166666666666667,
+      "strong_contradiction_rate": 0.16666666666666666
+    },
+    "reddit": {
+      "n": 60,
+      "mean_entail": 0.5300007462501526,
+      "mean_meaning_loss": 0.4699992537498474,
+      "bidir_failure_rate": 0.6,
+      "strong_contradiction_rate": 0.2833333333333333
+    },
+    "__avg__": {
+      "mean_meaning_loss": 0.47680867463350296,
+      "bidir_failure_rate": 0.6,
+      "strong_contradiction_rate": 0.25
+    }
+  }
+}

@@ -14,8 +14,32 @@ the few rules we actually enforce.
 - **Code**: generator improvements, new variants, tests, CI.
 - **Dictionaries**: new language mappings, better curation of existing
   ones. Linguists especially welcome. See `ROADMAP.md`.
-- **Accessibility**: screen reader compatibility is an open problem and
-  a priority. Help here is valued above almost anything else.
+- **Accessibility**: `<Shield>` hides protected regions from assistive
+  tech, and `a11y={{ mode: "text" }}` now puts the real words beside them
+  with nothing required from the author — sealed into the page at build
+  time, opened by the reader's own browser (see
+  [`docs/plain-text-mode.md`](./docs/plain-text-mode.md)). It has been
+  driven under `@guidepup/virtual-screen-reader` in Playwright and by
+  hand with real **VoiceOver on macOS**, which is what found most of the
+  bugs worth finding. Four things remain open, and help on any of them is
+  valued above almost anything else:
+  - **NVDA and JAWS are unverified.** Nobody has run either against it.
+    Given how much the VoiceOver session changed, expect Windows screen
+    readers to have their own list.
+  - **A sighted keyboard user loses their focus indicator.** The text
+    mode's control is screen-reader-only by default, so Tabbing through
+    the page without a screen reader lands on something invisible —
+    **WCAG 2.2 SC 2.4.7**. `visualHidden: false` restores an on-screen
+    control, which is an escape hatch and not an answer.
+  - **The non-React tiers ship none of it.** The CDN paste-in and
+    `@shieldfont/core` leave `aria-hidden` and the alternative entirely
+    to the author. The puzzle primitive is already framework-free
+    (`@shieldfont/core/puzzle`); the control around it is not.
+  - **A reader who needs it waits** while everyone else gets the words
+    instantly. That is unequal access, not a solved problem.
+
+  If you work in accessibility engineering, the last one is the
+  highest-value contribution available in this project.
 - **Threat research**: adversarial testing, scraper-pipeline evaluation,
   honest documentation of what ShieldFont does and doesn't defend against.
 - **Integrations**: CMS plugins (WordPress, Ghost, Webflow, Shopify),

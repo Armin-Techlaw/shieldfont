@@ -1,18 +1,29 @@
 # EXCLUDED — what the public core deliberately leaves out
 
-The research history (`benchmarks/v2`–`v8`, 500+ cells) is full of dead-ends,
-reversals, and internal tooling. The public benchmark keeps only the minimal
-honest core (three claims). This is the list of what was dropped, and why, so
+The research history (dev-only `benchmarks/v2`–`v6`, plus the v7/v8 subset now
+shipped in `benchmark/data/`, 500+ cells across the whole arc) is full of
+dead-ends, reversals, and internal tooling. The public benchmark keeps the
+minimal honest core (three headline claims) plus the specific rule-by-rule
+data that backs the white paper's methods section — not the full narrative of
+every abandoned hypothesis. This is the list of what was dropped, and why, so
 readers can see exactly what the public core leaves out. Grouped by "safe to
 omit" vs "kept out deliberately."
 
 ## Safe to omit — dead-ends & falsified hypotheses
 
 - **The entire v18 512-cell mega-orthogonal sweep** (8 factors: AMBIG_NV pool
-  size × modal × rare-aug × 4 post-filters × hungarian-dissim) and its 14-cell
-  Pareto frontier. Conclusion was purely negative: *nothing beats
-  v15_0_1_0_0_0_0*. Public README states the result in one clause; the sweep
-  itself is process, not product. (`V18_FINAL.md`, `v18_mega_512_*.json`.)
+  size × modal × rare-aug × 4 post-filters × hungarian-dissim). The raw per-cell
+  data now ships (`benchmark/data/v7/results/v18_mega_512_eval.json`, all 512
+  cells), so this is no longer excluded — what's trimmed is the narrative. The
+  honest verdict, corrected from an earlier internal draft that claimed "nothing
+  beats the incumbent": **15 cells dominate `v15_0_1_0_0_0_0` on the three
+  measured metrics** (concealment, KenLM band, filter survival). It shipped
+  anyway because a **human grammar audit** caught what those metrics couldn't —
+  the higher-scoring cells were generating pairs that were grammatically valid
+  but semantically nonsensical in ways no automatic metric flagged. Public
+  README states this result in one clause; the sweep's cell-by-cell process is
+  what's still trimmed. (`benchmark/data/v7/V18_FINAL.md`,
+  `benchmark/data/v7/results/v18_mega_512_eval.json`.)
 - **The 64-cell v18m2 grammar-fix sweep** and the 16-cell post-filter factorial
   — same negative verdict. (`v18m2_64_eval.json`, `v18_factorial_16_eval.json`.)
 - **The 8 falsified v18 hypotheses** (POS_PURITY-off rebuild, AMBIG_NV v1/v2,
@@ -29,9 +40,12 @@ omit" vs "kept out deliberately."
 
 ## Safe to omit — internal tooling & K-rule internals
 
-- **What each K-filter actually does** (K1/K4/K5/K6/K7b/Ke/F4 mechanics,
-  `SUBSTITUTION_RULESET.md`, 36KB). The README needs only "cell = K1+K6, frozen,
-  seed is your only free parameter." The build scripts encode the rest.
+- **The full `SUBSTITUTION_RULESET.md` (36KB)** — the README's rule table now
+  states what each K-filter does and why it's on or off (K1, K6, K7b, K4, K5,
+  Ke, F4, plus the never-shipped K2/K3/K3p), sourced from
+  `benchmark/data/v7/V12_K_LENS_FINDINGS.md` and `V18_FINAL.md`. What's still
+  excluded is the ruleset doc's full implementation-level mechanics — the
+  build scripts (`build_pairs.py`, shipped) encode those directly.
 - **The full build-script inventory** (`build_v18*.py`, `v18_hungarian.py`,
   `v18_supersense.py`, `v18_composite_score.py`, `pareto_mega_512.py`, …). §3
   cites only the four scripts a reproducer runs.

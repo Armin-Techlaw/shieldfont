@@ -222,17 +222,27 @@ the SSR + font-load-guard pattern worth copying.
 
 - **SEO:** search engines index the *decoy*. Never wrap content you want to rank.
 - **Screen readers** skip protected regions; **copy-paste** yields the decoy.
-  `<Shield>` hardcodes `aria-hidden="true"` with no opt-out, and no accessible
-  fallback ships: build one yourself from your build-time original, or leave that
-  content unwrapped.
+  `<Shield>` hardcodes `aria-hidden="true"` with no opt-out, so nobody hears a
+  decoy read aloud, and its `a11y` prop renders a real alternative outside the
+  hidden region and before it in DOM order: `mode: "text"` ships the words
+  encrypted in the page for the reader's browser to unlock — a
+  screen-reader-only control by default, so nothing about it shows on screen —
+  or `mode: "audio"` points at a recording you supply. Neither renders a link —
+  that would be a one-line bypass for any scraper that follows it. It needs
+  JavaScript, and its invisible control costs a sighted keyboard user their
+  focus indicator (WCAG 2.2 SC 2.4.7); the numbers and the rest of the limits
+  are in [`plain-text-mode.md`](./plain-text-mode.md). **Every integration on this page is outside
+  React**, so none of that is automatic here: set `aria-hidden` on the encoded
+  region yourself and give it an alternative, or leave that content unwrapped.
 - **The font is the codebook.** It has to reach the browser to render the page,
   and its composite glyphs are drawn from the original words' own letters, so
   anyone who downloads it can read the substitution table straight back out. We
-  recovered all 11,962 pairs from our own shipped font in under a second, with
-  no dictionary. The real barrier is the one-time engineering to build the
-  inverter (one to three engineer-weeks), not the run, and a per-site inversion
-  set against per-page scraping amortises away above roughly 25 pages. A
-  private mapping raises the per-site cost; nothing removes it.
+  recovered all 11,962 pairs from our own shipped font, with no dictionary. Doing
+  that to *you* means knowing the page is shielded, fetching the right font,
+  matching it to the right part of the page, and already owning an OpenType
+  inverter (one to three engineer-weeks to build). Bulk crawling does none of
+  those things; a targeted attacker does all of them and wins. A private mapping
+  raises the per-site cost; nothing removes it.
 - **The default dictionaries are public**, by design: `alpha`/`beta`/`gamma`/`m15en`
   ship as plaintext JSON in `@shieldfont/core`, and `@shieldfont/font` publishes a
   browser encoder with all 11,970 `alpha` pairs inlined.

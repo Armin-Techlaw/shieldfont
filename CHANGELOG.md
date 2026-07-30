@@ -6,6 +6,165 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [Unreleased]
+
+A plain-text accessible alternative that a scraper cannot read for free. The
+URL-shaped answer is removed and a time-locked one replaces it, so the words
+are in the page for the reader who needs them and cost real sequential compute
+for anyone harvesting at scale.
+
+### Added
+
+- **`a11y={{ mode: "text" }}` on `<Shield>` — the block's real words, encrypted
+  into the page, opened by the reader's own browser.** No `href`, no URL, no
+  link anywhere. That object on its own is a complete configuration: nothing to
+  generate, nothing to host, no server. Full reference:
+  [`docs/plain-text-mode.md`](docs/plain-text-mode.md).
+  - **How.** Each block gets its own **time-lock puzzle** (Rivest–Shamir–Wagner,
+    1996) at build time. With `n = p·q`, the key is `2^(2^T) mod n`: T
+    sequential squarings, each needing the result of the one before, so the
+    work **cannot be parallelised**. A crawler with a thousand GPUs still pays
+    T sequential steps per block; its only advantage is a faster single core.
+  - **The build is cheap because it holds a trapdoor.** Knowing `p` and `q`
+    collapses the tower into two modular exponentiations: **62 ms to seal a
+    block whose default budget is twenty seconds of the reader's own CPU.** The
+    primes are discarded and never returned.
+  - **Options, all optional.** `seconds` (default 20, range 5..120);
+    `reveal: "hidden" | "visible"` (default `"hidden"`); `label` overrides the
+    button's accessible name; `note` overrides the explanatory sentence; and
+    `visualHidden`, which now defaults to **`true` for `mode: "text"`** and
+    stays `false` for `mode: "audio"` — a player nobody can see is a player
+    nobody can press.
+  - **The control is screen-reader-only by default.** Nothing about it appears
+    on screen. A sighted reader can already read the block — the font does that
+    work — so a note and a button explaining an unlocking mechanism would be an
+    unexplained widget attached to text that looks fine.
+  - **Unlocked words go to assistive technology, not to the layout.** Under the
+    default `reveal: "hidden"` they land in the accessibility tree clipped
+    off-screen and the encoded block stays visible and unchanged, so nothing
+    shifts for anyone else. `reveal: "visible"` instead replaces the encoded
+    block on screen: it costs a layout shift and buys selection, copy-paste and
+    browser translation of the real text for everyone.
+  - **Every block's button has a distinct name** — "Unlock the plain text for
+    paragraph 2 (up to 20 seconds)", built from the element type and the
+    block's position on the page. Identical labels sounded fine on a one-block
+    demo and were unusable on a real article: nothing told two buttons apart by
+    ear. For the same reason the long explanatory note is spoken **once per
+    page** and later blocks get a short form.
+  - **Revealed text is spoken on arrival and can be re-read.** The output is its
+    own polite live region, so filling it speaks it, and it becomes a real Tab
+    stop the moment it has content. The wrapper is `role="presentation"` with
+    **no group role** (VoiceOver was reading roughly twenty words of group
+    scaffolding in front of every button), and the status region announces
+    nothing at all while it is empty.
+  - **Known cost, and not a small one: sighted keyboard users.** Because the
+    control is invisible by default, someone navigating by keyboard **without**
+    a screen reader Tabs into a control they cannot see and loses their focus
+    indicator — a **WCAG 2.2 SC 2.4.7** failure. It is deliberate rather than
+    an oversight (the skip-link pattern of appearing on focus was rejected: the
+    control was asked to be invisible), and `visualHidden: false` restores an
+    on-screen control for anyone who would rather take the other trade.
+  - **Screen-reader verification, stated exactly.** Driven under Playwright
+    with `@guidepup/virtual-screen-reader`, and by hand with **real VoiceOver on
+    macOS** — which is what found the group chatter, the announcements that cut
+    each other off, and the revealed text that could not be re-read. **NVDA and
+    JAWS remain unverified**, there is no axe scan and no published test page.
+  - **Fresh primes per block, per build.** Solving one block teaches an
+    attacker nothing about the next, and every redeploy invalidates every
+    solution already computed. That expires your readers' cached solutions too;
+    the symmetry is the point, because it is the same property that expires the
+    crawler's.
+  - **Difficulty is bounded above by OCR, not by paranoia.** A crawler can
+    always render the page and read the pixels for roughly three seconds of
+    server CPU, with or without this feature — that is the floor on the whole
+    package's protection and no cryptography raises it. So the target is not
+    "expensive", it is **not cheaper than OCR**: enough that the accessible
+    path stops being the *shortcut*, and no further. Past that, extra
+    difficulty buys nothing and is paid for entirely by disabled readers
+    waiting longer. Default `seconds: 20`, accepted range **5..120**, optional
+    per block. Quote the ceiling whenever you quote the default.
+  - **Measured.** Sealing ~62 ms per block; 2048-bit modulus; 5,000,000
+    squarings at the default; **Chrome desktop solves it in 7.6 s**. The
+    labelling rate is a deliberately conservative 250,000 squarings/second —
+    roughly a mid-range phone — so `seconds` is a budget denominated on a
+    *slow* device. The button says "up to N seconds" and a live status
+    line replaces that with a real per-device measurement about 80 ms after the
+    press.
+  - **Limits, stated where the feature is sold.** It needs JavaScript plus
+    `BigInt` and `crypto.subtle` — the only part of ShieldFont that does not
+    work with JS off — and `crypto.subtle` is absent on insecure origins, so
+    plain `http://` breaks it. A reader who needs this waits while everyone
+    else has the words instantly, which is unequal access however carefully it
+    is engineered. OCR stays cheaper for a determined crawler: this is not a
+    wall. Once revealed the plaintext is in the DOM, having been paid for,
+    which is the deal. React only — the CDN paste-in and `@shieldfont/core`
+    ship none of it.
+  - **It does not rescue the audio mode.** `{ mode: "audio" }` on its own still
+    fails **WCAG 2.2 SC 1.2.1 (Level A)**; the two are separate alternatives an
+    author chooses between, not a pair.
+- **`@shieldfont/core/puzzle`** — a new export subpath exposing `sealText`,
+  `solveText`, `DEFAULT_SECONDS` and `REFERENCE_SQUARINGS_PER_SECOND`. The
+  puzzle is independent of React and is exported for tooling. Deliberately
+  **not** re-exported from the package index: `sealText` needs `node:crypto`
+  for prime generation, and keeping it off the index means bundling
+  `@shieldfont/core` for a browser never pulls it in.
+- **`encodeSegments(text, mapping)`** — the encoder's own tokenizer, exposed. It
+  returns the text piece by piece (`{ original, encoded, swapped, kind }`), and
+  `encode` is now defined as the join of those pieces, so the two cannot
+  disagree. For anything that has to *show* the substitution rather than just
+  apply it — a live encoder, an x-ray overlay, a swapped-token counter — this
+  replaces re-deriving the token boundaries. Every consumer that rolled its own
+  `/[A-Za-z]+/g` loop had the same bug: **digits were skipped entirely**, so a
+  pane displayed "Take 3 tablets" while the encoder and the font both read 8.
+  `encode` and `decode` are byte-for-byte unchanged.
+
+### Removed
+
+- **BREAKING (`@shieldfont/react`): every plain-text URL is gone from the
+  `a11y` prop.** Both `a11y={{ mode: "text", href }}` and the optional
+  `transcript` (with its companion `label`) on `{ mode: "audio" }` are
+  removed, and `<Shield>` renders **no `<a>` element at all**. A project
+  passing either **fails to compile**; there is no runtime deprecation window,
+  because a silent fallback would leave the link in the HTML, which is the
+  whole problem. Note that `mode: "text"` still exists as a name — with an
+  entirely different shape and no `href`, per the Added section above.
+  - **Why, once, for both.** A URL cannot be offered to a screen reader
+    without being offered to everyone else, and the same crawl that reads the
+    decoy reads the link sitting beside it. One line of scraper code follows
+    it and gets the original. A block carrying either was strictly *less*
+    protected than an unwrapped one while still looking protected, which
+    defeats the entire purpose of the package.
+  - `0.2.0`'s own acceptance criteria said as much about `mode: "text"` and
+    shipped it anyway, filed under "the trade that mode asks you to make". It
+    is not a trade an author can make knowingly, because the cost lands on the
+    content, not on them. `transcript` was the same hole in a smaller opening.
+  - **`{ mode: "audio" }` alone still fails WCAG 2.2 SC 1.2.1 (Level A),** and
+    that is not fixed by anything in this release. `transcript` was this
+    package's only answer to that criterion; the new text mode is a *separate*
+    alternative, not a text alternative *for the audio*, so an author who ships
+    audio and nothing else still cannot satisfy 1.2.1. Audio is also still not
+    a document — not navigable by heading, not searchable, not quotable, not
+    skimmable. Do not let the text mode's arrival blur either point.
+  - **Migration.** Replace `{ mode: "text", href }` with `{ mode: "text" }` —
+    drop the `href` and delete the page you were hosting; the words now ride in
+    the block itself. Replace a `transcript` link the same way, or record the
+    block (`piper` on CI, `say` on macOS, both free and offline) and pass
+    `{ mode: "audio", src }`, or pass `{ mode: "none" }` to make the opt-out
+    explicit and auditable. `note` still overrides the explanatory sentence. Do
+    **not** reintroduce either link by hand beside the shielded block: the
+    bypass is the URL being in the HTML, not the prop that wrote it.
+  - `README.md`, `ROADMAP.md`, `CONTRIBUTING.md`, `docs/integration.md`,
+    `docs/use-anywhere.md`, `docs/custom-mappings.md`, `docs/CLAUDE.md` and the
+    React package README are updated for both the removal and the replacement. `docs/CLAUDE.md`
+    still tells AI co-pilots **never** to suggest linking a plain-text copy of
+    protected text — that instruction is unchanged and is not softened by the
+    new mode; what changed is that there is now a right answer to point at.
+  - A test asserts the rendered output contains no `<a>` under any accepted
+    configuration, including when a stale `transcript`/`label` object arrives
+    from an unmigrated caller at runtime.
+
+---
+
 ## [0.2.1] — the last letter of every shielded word
 
 A rendering fix. `@shieldfont/core`, `@shieldfont/react` and `@shieldfont/font`

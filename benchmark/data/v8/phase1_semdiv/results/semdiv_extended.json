@@ -1,0 +1,382 @@
+{
+  "schema_version": 1,
+  "run_date": "2026-05-16T20:38:00",
+  "seed": 20260516,
+  "params": {
+    "n_chunks_per_corpus": 1500,
+    "chunk_chars": 1500,
+    "sbert_model": "all-MiniLM-L6-v2",
+    "nli_model": "cross-encoder/nli-deberta-v3-base"
+  },
+  "mappings": [
+    "clean",
+    "v18_a",
+    "v18_b",
+    "v18_c",
+    "m15_en",
+    "m0_v3",
+    "synonym_swap_25"
+  ],
+  "corpora": [
+    "cc_news",
+    "openwebtext",
+    "pg19",
+    "bookcorpus"
+  ],
+  "results": {
+    "clean": {
+      "cc_news": {
+        "n": 1000,
+        "sem_div_mean": -0.0,
+        "sem_div_p25": 0.0,
+        "sem_div_p75": 0.0,
+        "nli_bidir_fail": 0.01,
+        "nli_strong_contradiction": 0.0,
+        "nli_mean_meaning_loss": 0.0158,
+        "content_coverage": 0.0
+      },
+      "openwebtext": {
+        "n": 1000,
+        "sem_div_mean": -0.0,
+        "sem_div_p25": -0.0,
+        "sem_div_p75": 0.0,
+        "nli_bidir_fail": 0.008,
+        "nli_strong_contradiction": 0.001,
+        "nli_mean_meaning_loss": 0.0131,
+        "content_coverage": 0.0
+      },
+      "pg19": {
+        "n": 1000,
+        "sem_div_mean": -0.0,
+        "sem_div_p25": -0.0,
+        "sem_div_p75": 0.0,
+        "nli_bidir_fail": 0.013,
+        "nli_strong_contradiction": 0.0,
+        "nli_mean_meaning_loss": 0.0185,
+        "content_coverage": 0.0
+      },
+      "__avg__": {
+        "sem_div_mean": 0.0,
+        "nli_bidir_fail": 0.0115
+      },
+      "__median__": {
+        "sem_div_mean": 0.0,
+        "nli_bidir_fail": 0.0115
+      },
+      "bookcorpus": {
+        "n": 1000,
+        "sem_div_mean": -0.0,
+        "sem_div_p25": 0.0,
+        "sem_div_p75": 0.0,
+        "nli_bidir_fail": 0.015,
+        "nli_strong_contradiction": 0.0,
+        "nli_mean_meaning_loss": 0.0225,
+        "content_coverage": 0.0
+      }
+    },
+    "v18_a": {
+      "cc_news": {
+        "n": 1000,
+        "sem_div_mean": 0.268,
+        "sem_div_p25": 0.185,
+        "sem_div_p75": 0.337,
+        "nli_bidir_fail": 0.558,
+        "nli_strong_contradiction": 0.214,
+        "nli_mean_meaning_loss": 0.43,
+        "content_coverage": 0.4674
+      },
+      "openwebtext": {
+        "n": 1000,
+        "sem_div_mean": 0.2872,
+        "sem_div_p25": 0.1934,
+        "sem_div_p75": 0.359,
+        "nli_bidir_fail": 0.519,
+        "nli_strong_contradiction": 0.174,
+        "nli_mean_meaning_loss": 0.3973,
+        "content_coverage": 0.4788
+      },
+      "pg19": {
+        "n": 1000,
+        "sem_div_mean": 0.2113,
+        "sem_div_p25": 0.1399,
+        "sem_div_p75": 0.2651,
+        "nli_bidir_fail": 0.311,
+        "nli_strong_contradiction": 0.132,
+        "nli_mean_meaning_loss": 0.2632,
+        "content_coverage": 0.3949
+      },
+      "__avg__": {
+        "sem_div_mean": 0.257425,
+        "nli_bidir_fail": 0.43324999999999997
+      },
+      "__median__": {
+        "sem_div_mean": 0.2656,
+        "nli_bidir_fail": 0.432
+      },
+      "bookcorpus": {
+        "n": 1000,
+        "sem_div_mean": 0.2632,
+        "sem_div_p25": 0.1852,
+        "sem_div_p75": 0.3325,
+        "nli_bidir_fail": 0.345,
+        "nli_strong_contradiction": 0.131,
+        "nli_mean_meaning_loss": 0.2843,
+        "content_coverage": 0.4478
+      }
+    },
+    "v18_b": {
+      "cc_news": {
+        "n": 1000,
+        "sem_div_mean": 0.2698,
+        "sem_div_p25": 0.1841,
+        "sem_div_p75": 0.3387,
+        "nli_bidir_fail": 0.558,
+        "nli_strong_contradiction": 0.203,
+        "nli_mean_meaning_loss": 0.417,
+        "content_coverage": 0.4699
+      },
+      "openwebtext": {
+        "n": 1000,
+        "sem_div_mean": 0.2908,
+        "sem_div_p25": 0.2006,
+        "sem_div_p75": 0.367,
+        "nli_bidir_fail": 0.495,
+        "nli_strong_contradiction": 0.178,
+        "nli_mean_meaning_loss": 0.381,
+        "content_coverage": 0.4811
+      },
+      "pg19": {
+        "n": 1000,
+        "sem_div_mean": 0.22,
+        "sem_div_p25": 0.1385,
+        "sem_div_p75": 0.2804,
+        "nli_bidir_fail": 0.341,
+        "nli_strong_contradiction": 0.149,
+        "nli_mean_meaning_loss": 0.2783,
+        "content_coverage": 0.4006
+      },
+      "__avg__": {
+        "sem_div_mean": 0.262175,
+        "nli_bidir_fail": 0.42874999999999996
+      },
+      "__median__": {
+        "sem_div_mean": 0.26895,
+        "nli_bidir_fail": 0.41800000000000004
+      },
+      "bookcorpus": {
+        "n": 1000,
+        "sem_div_mean": 0.2681,
+        "sem_div_p25": 0.1865,
+        "sem_div_p75": 0.3388,
+        "nli_bidir_fail": 0.321,
+        "nli_strong_contradiction": 0.106,
+        "nli_mean_meaning_loss": 0.2554,
+        "content_coverage": 0.4523
+      }
+    },
+    "v18_c": {
+      "cc_news": {
+        "n": 1000,
+        "sem_div_mean": 0.2671,
+        "sem_div_p25": 0.1818,
+        "sem_div_p75": 0.3343,
+        "nli_bidir_fail": 0.541,
+        "nli_strong_contradiction": 0.203,
+        "nli_mean_meaning_loss": 0.4208,
+        "content_coverage": 0.4658
+      },
+      "openwebtext": {
+        "n": 1000,
+        "sem_div_mean": 0.2834,
+        "sem_div_p25": 0.1889,
+        "sem_div_p75": 0.3605,
+        "nli_bidir_fail": 0.504,
+        "nli_strong_contradiction": 0.184,
+        "nli_mean_meaning_loss": 0.3915,
+        "content_coverage": 0.4784
+      },
+      "pg19": {
+        "n": 1000,
+        "sem_div_mean": 0.1995,
+        "sem_div_p25": 0.1225,
+        "sem_div_p75": 0.2529,
+        "nli_bidir_fail": 0.332,
+        "nli_strong_contradiction": 0.138,
+        "nli_mean_meaning_loss": 0.2707,
+        "content_coverage": 0.388
+      },
+      "__avg__": {
+        "sem_div_mean": 0.2529,
+        "nli_bidir_fail": 0.42575
+      },
+      "__median__": {
+        "sem_div_mean": 0.26435,
+        "nli_bidir_fail": 0.41800000000000004
+      },
+      "bookcorpus": {
+        "n": 1000,
+        "sem_div_mean": 0.2616,
+        "sem_div_p25": 0.1839,
+        "sem_div_p75": 0.3311,
+        "nli_bidir_fail": 0.326,
+        "nli_strong_contradiction": 0.098,
+        "nli_mean_meaning_loss": 0.2678,
+        "content_coverage": 0.4497
+      }
+    },
+    "m15_en": {
+      "cc_news": {
+        "n": 1000,
+        "sem_div_mean": 0.2166,
+        "sem_div_p25": 0.1472,
+        "sem_div_p75": 0.2721,
+        "nli_bidir_fail": 0.835,
+        "nli_strong_contradiction": 0.613,
+        "nli_mean_meaning_loss": 0.7226,
+        "content_coverage": 0.4858
+      },
+      "openwebtext": {
+        "n": 1000,
+        "sem_div_mean": 0.2278,
+        "sem_div_p25": 0.1523,
+        "sem_div_p75": 0.2857,
+        "nli_bidir_fail": 0.82,
+        "nli_strong_contradiction": 0.585,
+        "nli_mean_meaning_loss": 0.7093,
+        "content_coverage": 0.4879
+      },
+      "pg19": {
+        "n": 1000,
+        "sem_div_mean": 0.186,
+        "sem_div_p25": 0.1259,
+        "sem_div_p75": 0.2363,
+        "nli_bidir_fail": 0.652,
+        "nli_strong_contradiction": 0.503,
+        "nli_mean_meaning_loss": 0.5571,
+        "content_coverage": 0.4357
+      },
+      "__avg__": {
+        "sem_div_mean": 0.22260000000000002,
+        "nli_bidir_fail": 0.758
+      },
+      "__median__": {
+        "sem_div_mean": 0.2222,
+        "nli_bidir_fail": 0.7725
+      },
+      "bookcorpus": {
+        "n": 1000,
+        "sem_div_mean": 0.26,
+        "sem_div_p25": 0.177,
+        "sem_div_p75": 0.3247,
+        "nli_bidir_fail": 0.725,
+        "nli_strong_contradiction": 0.512,
+        "nli_mean_meaning_loss": 0.6255,
+        "content_coverage": 0.514
+      }
+    },
+    "m0_v3": {
+      "cc_news": {
+        "n": 1000,
+        "sem_div_mean": 0.4648,
+        "sem_div_p25": 0.3815,
+        "sem_div_p75": 0.5425,
+        "nli_bidir_fail": 0.727,
+        "nli_strong_contradiction": 0.032,
+        "nli_mean_meaning_loss": 0.5789,
+        "content_coverage": 0.1973
+      },
+      "openwebtext": {
+        "n": 1000,
+        "sem_div_mean": 0.4949,
+        "sem_div_p25": 0.4042,
+        "sem_div_p75": 0.5841,
+        "nli_bidir_fail": 0.751,
+        "nli_strong_contradiction": 0.033,
+        "nli_mean_meaning_loss": 0.603,
+        "content_coverage": 0.2047
+      },
+      "pg19": {
+        "n": 1000,
+        "sem_div_mean": 0.5286,
+        "sem_div_p25": 0.4643,
+        "sem_div_p75": 0.6277,
+        "nli_bidir_fail": 0.529,
+        "nli_strong_contradiction": 0.105,
+        "nli_mean_meaning_loss": 0.3938,
+        "content_coverage": 0.2225
+      },
+      "__avg__": {
+        "sem_div_mean": 0.522,
+        "nli_bidir_fail": 0.6835
+      },
+      "__median__": {
+        "sem_div_mean": 0.5117499999999999,
+        "nli_bidir_fail": 0.727
+      },
+      "bookcorpus": {
+        "n": 1000,
+        "sem_div_mean": 0.5997,
+        "sem_div_p25": 0.5363,
+        "sem_div_p75": 0.7073,
+        "nli_bidir_fail": 0.727,
+        "nli_strong_contradiction": 0.077,
+        "nli_mean_meaning_loss": 0.5563,
+        "content_coverage": 0.2688
+      }
+    },
+    "synonym_swap_25": {
+      "cc_news": {
+        "n": 1000,
+        "nli_bidir_fail": 0.025
+      },
+      "openwebtext": {
+        "n": 1000,
+        "nli_bidir_fail": 0.019
+      },
+      "pg19": {
+        "n": 1000,
+        "nli_bidir_fail": 0.009
+      },
+      "__median__": {
+        "nli_bidir_fail": 0.020999999999999998
+      },
+      "bookcorpus": {
+        "n": 1000,
+        "nli_bidir_fail": 0.023
+      }
+    }
+  },
+  "derived": {
+    "v18_sem_div_median_across_corpora": 0.2656,
+    "v18_nli_bidir_fail_median_across_corpora": 0.418,
+    "v18_minus_m0_semdiv_median": -0.2461,
+    "synonym_swap_nli_bidir_fail_median": 0.021
+  },
+  "falsification_bars": {
+    "F1a": {
+      "name": "v18 sem-div median \u2265 0.25",
+      "bar": 0.25,
+      "actual": 0.268,
+      "pass": true
+    },
+    "F1b": {
+      "name": "v18 NLI bidir-fail median \u2265 0.50",
+      "bar": 0.5,
+      "actual": 0.504,
+      "pass": true
+    },
+    "F1c": {
+      "name": "v18 \u2212 m0_v3 sem-div median \u2265 0.10",
+      "bar": 0.1,
+      "actual": -0.2269,
+      "pass": false
+    },
+    "F1d": {
+      "name": "synonym-swap NLI bidir-fail median \u2264 0.20",
+      "bar": 0.2,
+      "actual": 0.019,
+      "pass": true
+    }
+  },
+  "run_date_addendum": "2026-05-17T10:16:13"
+}

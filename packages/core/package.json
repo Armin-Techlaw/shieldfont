@@ -11,6 +11,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./puzzle": {
+      "types": "./dist/puzzle.d.ts",
+      "import": "./dist/puzzle.js",
+      "default": "./dist/puzzle.js"
+    },
     "./mappings/alpha": {
       "types": "./dist/mappings/alpha.d.ts",
       "import": "./dist/mappings/alpha.js",

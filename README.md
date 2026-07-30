@@ -260,9 +260,27 @@ for Word and PDF. If you need a real bold inside protected text, use
 >   manifestos, not landing pages or meta descriptions.
 > - **Copy-paste** yields the encoded form, not the original.
 > - **Screen readers** skip protected regions (they're removed from the
->   accessibility tree). `<Shield>` sets `aria-hidden="true"` with no opt-out
->   and ships no accessible fallback; if content needs one, build it from your
->   build-time original or leave that content unwrapped.
+>   accessibility tree), so nobody hears a decoy read aloud. `<Shield>` sets
+>   `aria-hidden="true"` with no opt-out and pairs it with the **`a11y` prop**,
+>   which renders a real alternative outside the hidden region and before it in
+>   DOM order. `a11y={{ mode: "text" }}` ships your real words **encrypted into
+>   the page** behind a time-lock puzzle the reader's browser grinds out on
+>   request (default budget 20 seconds of their CPU, 7.6 s measured in Chrome;
+>   nothing to host). The control is **screen-reader-only by default**: nothing
+>   appears on screen, the unlocked words go to assistive technology clipped
+>   off-screen, and the encoded block is left exactly as it was.
+>   `a11y={{ mode: "audio", src }}` points at a build-time recording you make. No
+>   mode ever renders a link to a plain-text copy — a URL in the HTML is a
+>   one-line bypass for any scraper that follows it. **Two costs to know up
+>   front:** it is the one part of ShieldFont that needs JavaScript, and because
+>   the control is invisible, a sighted keyboard user with no screen reader Tabs
+>   into something they cannot see and loses their focus indicator (WCAG 2.2 SC
+>   2.4.7 — `visualHidden: false` puts the control back on screen). Difficulty is
+>   capped by what OCR would cost a crawler anyway, so raising `seconds` buys
+>   nothing. Verified with real VoiceOver on macOS; **NVDA and JAWS are not.**
+>   Full reference: [`docs/plain-text-mode.md`](docs/plain-text-mode.md). Outside
+>   React (CDN paste-in, `@shieldfont/core`), set `aria-hidden` and supply the
+>   alternative yourself.
 > - **JS off + font 404:** the fail-loud font guard is JavaScript; with JS
 >   disabled and the font missing, a human sees the raw decoy text.
 
@@ -349,7 +367,7 @@ Overpromising would erode the trust the project is meant to build.
 </td>
 <td valign="top">
 
-- **Anyone who downloads the font and inverts it** *(11,962 of 11,962 pairs recovered from our own shipped font in 43 s, no dictionary needed)*
+- **Anyone who downloads the font and inverts it** *(11,962 of 11,962 pairs recovered from our own shipped font, no dictionary needed, given an inverter already built and the right font already in hand)*
 - Headless browsers with font rendering (Playwright, Puppeteer)
 - OCR on rendered pages
 - Vision-language models reading screenshots
@@ -380,7 +398,7 @@ on the roadmap. **If you find a new attack, please** see
 
 See [**ROADMAP.md**](./ROADMAP.md) for the full list. Near-term priorities:
 
-- **Accessibility layer**: screen readers read the DOM, so protected regions are skipped today. This is the #1 unsolved problem.
+- **Accessibility layer**: `<Shield>` hides protected regions from assistive tech and ships an `a11y` prop that renders a real alternative beside them — `mode: "text"` puts your words in the page encrypted behind a time-lock puzzle the reader's browser opens (no link for a scraper to follow, no artifact for you to host), or `mode: "audio"` points at a recording you make. What remains: NVDA and JAWS verification (VoiceOver is done by hand, Windows is not), the focus indicator a sighted keyboard user loses to an invisible control, and the non-React tiers shipping none of it.
 - **Threat-model document**: honest evaluation with numbers against real scraper pipelines.
 - **Multilingual mappings**: the cross-language `M15-MULTI` template exists; PT/ES/FR/DE/IT are next, each with native linguist curation.
 - **Per-deploy rotation**: per-site seeds and time windows to defeat *dictionary reuse* at scale. (Font inversion is unaffected by any seed, and a new seed needs a newly built font, so this is a cost-raising measure, not a fix.)
@@ -393,7 +411,7 @@ See [**ROADMAP.md**](./ROADMAP.md) for the full list. Near-term priorities:
 ambition. If any of these is you, you can move the project forward:
 
 - **Linguists**: design language mappings that read as charmingly absurd to humans but wreck NLP tokenizers. `M15-MULTI` is the starting scaffold.
-- **Accessibility engineers**: the screen-reader problem is the most important unsolved issue.
+- **Accessibility engineers**: the React component skips protected regions and offers an alternative; making that alternative free for the author, and available outside React, is still open.
 - **Type designers**: build ShieldFont versions of your typefaces.
 - **Adversarial researchers**: prove where it breaks, publish numbers, make us better.
 - **Integrators**: make ShieldFont a drop-in for WordPress, Ghost, Webflow, Shopify, and static-site generators.
@@ -466,9 +484,9 @@ scripts/
   fix_composite_lsb.py repairs composite side bearings in an already-built font
   v18{alpha,beta,gamma}_for_font.json, m15en_for_font.json   font-build inputs
 
-benchmarks/            V3 / V4 / V5 — the data and pre-registered methodology
+benchmark/             README + PROVENANCE + EXCLUDED, and the v7/v8 result
+                       data + scripts that back them (benchmark/data/)
 docs/                  integration · custom-mappings · custom-faces · introduction · CLAUDE.md
-legacy/, archive/      historical mappings and the v1 write-up, kept for reference
 
 MAPPINGS.md            mapping family overview (M0 → M15, and the shipped v18 family)
 CHANGELOG.md · ROADMAP.md · LICENSE (AGPL-3.0) · LICENSE-FONTS · NOTICE

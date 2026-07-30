@@ -1,6 +1,6 @@
 # ShieldFont Benchmark (public, minimal core)
 
-ShieldFont swaps ~1 in 4 words on a page (measured: **27.5%** of all tokens,
+ShieldFont swaps ~1 in 4 words on a page (measured: **24.4%** of all tokens,
 **48.4%** of content words) for a *grammatically-matched but semantically-wrong*
 decoy. A human never sees the swap — the font's ligature
 table renders every decoy back to the original word shape. A machine reading
@@ -14,18 +14,40 @@ The answer, distilled to the numbers you can reproduce:
 
 | | Metric | Result | Where |
 |---|---|---|---|
-| **Meaning is destroyed** | NLI bidirectional-entailment failure | **50.4%** median (n=1,500/corpus, pre-registered, CC-News / OpenWebText / PG-19) | §2.1 |
-| **Not just noise** | Same metric on a WordNet synonym-swap control | **~2.1%**, so the 50.4% is meaning loss, not "rare words confuse the model" | §2.1 |
+| **Meaning is destroyed** | NLI bidirectional-entailment failure, **per corpus** (n=1,000/corpus, real-world text) | **55.8%** news (CC-News) · **51.9%** general web (OpenWebText) · **34.5%** fiction (BookCorpus) · **31.1%** older fiction (PG-19) | §2.1 |
+| **Not just noise** | Same metric on a WordNet synonym-swap control, same four corpora | **~2.1%**, so the per-corpus numbers above are meaning loss, not "rare words confuse the model" | §2.1 |
 | **Most encoded pages never reach training** | FineWeb-Edu pass rate, **absolute** | **0.2% / 1.0% / 0.2%** (cc_news / owt / pg19) against clean baselines of 2.9% / 7.4% / 3.1%: **99.0–99.8% of encoded chunks are dropped** | §2.3 |
 | **A minority does survive the gate** | Same classifier, **conditional** on the chunks that pass clean | **9.70%** pooled (13 of 134), **6.5–13.5%** per corpus, still passing once encoded | §2.3 |
-| **Those tokens are wasted** | Wasted content per *passing* page | **24.1%** of the page's token budget carries shifted meaning | §2.3 |
+| **Those tokens are wasted** | Wasted content per *passing* page, across all four corpora | **19.4%** of the page's token budget carries shifted meaning | §2.3 |
 
 **Read the two filter rows together.** They are not a failure and a success:
 they are the two branches of one defence. A page the classifier **drops** never
 reaches the model, so its meaning is never learned; rejection *is* protection.
-A page that **passes** carries 24.1% of its token budget as null propositional
+A page that **passes** carries 19.4% of its token budget as null propositional
 content, so the gradient spent on it teaches less than the page appears to be
 worth.
+
+**Report per corpus, never a bare median.** A three-corpus pre-registered run
+(CC-News, OpenWebText, PG-19) gave a median bidir-fail of 50.4%; adding a
+fourth corpus (BookCorpus, fiction) pulls the median to 41.8%, because fiction
+is the weakest register for this technique. Both numbers are honestly computed
+and differ only in which corpora are counted — but a bare median invites
+exactly the "which one did you pick" question the per-corpus table above
+answers directly. The same corpus-count sensitivity applies to the waste
+figure: 19.4% is the four-corpus number; the pre-BookCorpus three-corpus cut
+reads 24.1%. This document uses the four-corpus numbers throughout as the
+current headline; both cuts are VERIFIED in `PROVENANCE.md` rows 28/33 (NLI)
+and 44/44a (waste), each tagged by corpus count.
+
+**One pairing in the opening line is a different harness, not a different
+pass.** The 24.4% swap-rate above is a v8, four-corpus, real-world-text
+reading. The adjacent 48.4% content-word figure is not from that same pass —
+it's the v7-harness reading on curated corpora (also what the live white paper
+quotes). The actual v8 four-corpus content coverage for the same cell is
+44.7% (mean) / 45.8% (median) — a few points lower, same direction, different
+harness. See `PROVENANCE.md` row 72. This is the same kind of mixing the
+27.5%-vs-24.4% swap-rate note below already flags; it just hadn't been called
+out for content coverage until this pass.
 
 **The "~10%" figure is a conditional rate, not an absolute one**, and the
 difference is the single easiest thing to get wrong here. It is the share of
@@ -55,7 +77,12 @@ visually. Three of these ship (a rotation family); one is a benchmark baseline.
 
 **v18-α (alpha)** is the production default. It *is* the mapping internally
 named `v15_0_1_0_0_0_0`, built at seed 42. The name "v18" is the ship label
-for "v15's recipe, frozen after a 512-cell sweep failed to beat it."
+for "v15's recipe, kept after a 512-cell sweep found nothing worth switching
+to" — 15 of those 512 cells actually scored better on paper, but a human
+grammar audit found they were generating pairs that were grammatically valid
+and semantically nonsensical in ways no automatic metric caught (§2.4 has the
+detail). It is not that nothing beat it; it's that beating it on the numbers
+wasn't the same as being a better dictionary.
 
 **v18-β and v18-γ** are the *same recipe re-run at seeds 1 and 2*. Same
 vocabulary, same buckets, same filters — only the concrete word↔decoy
@@ -98,9 +125,10 @@ without changing the verdict.
 
 **Why the gap.** M15-EN rewrites **53.4%** of running tokens against v18-α's
 **24.4%** (both counted in the same pass, so they are directly comparable to
-each other; the 27.5% quoted at the top of this page is the v7 harness's
-`mass_pct` on a different corpus set), and its source keys include **94 of
-NLTK's 198 stopwords**
+each other; an older v7-harness reading of 27.5% — the same quantity on a
+different, curated corpus set — appears in the per-variant metrics table in
+`PROVENANCE.md` (rows 21–23) and should not be mixed with this one), and its
+source keys include **94 of NLTK's 198 stopwords**
 (`and→but`, `of→for`, `is→was`, `that→which`) at zipf frequency 6.5–7.4. v18-α
 includes 10 stopwords, none of them core, at a maximum zipf of 6.25. An n-gram
 language model keeps most of its probability mass in function-word transitions,
@@ -108,7 +136,7 @@ so M15-EN detonates exactly what KenLM scores hardest, at 2.2× the volume.
 
 > ⚠️ **"Maximum concealment" is only half true.** M15-EN does lead on coverage,
 > on NLI meaning loss, on contradiction rate, and on waste per surviving page
-> (~40% against α's 24.1%). It **loses** on embedding semantic divergence:
+> (~40% against α's 19.4%). It **loses** on embedding semantic divergence:
 > **0.217 / 0.228 / 0.186** against v18-α's **0.268 / 0.287 / 0.211** on
 > CC-News / OpenWebText / PG-19. Say "maximum coverage and maximum measured
 > meaning destruction," not "maximum concealment."
@@ -134,7 +162,7 @@ on every gate that has the resolution to tell them apart.
 | Logical pairs | 5,994 | 6,023 | 6,024 | 1,267 |
 | Bidirectional dict entries² | 11,988 | 12,046 | 12,048 | 2,534 |
 | Shipped flat-file entries³ | 11,976 | 12,037 | 12,040 | 2,534 |
-| Source pairs file | `benchmarks/v7/data/pairs_v7_alpha_v15_0_1_0_0_0_0.json` | β/γ source in dev repo | β/γ source in dev repo | — |
+| Source pairs file | `benchmark/data/v7/pairs_v7_alpha_v15_0_1_0_0_0_0.json` | β/γ source in dev repo | β/γ source in dev repo | — |
 | Shipped mapping file | `scripts/v18alpha_for_font.json` | `scripts/v18beta_for_font.json` | `scripts/v18gamma_for_font.json` | `scripts/m15en_for_font.json` |
 
 ¹ The cell name `v15_K7b_K6_K5_K4_Ke_F4 = v15_0_1_0_0_0_0` sets six binary
@@ -189,7 +217,7 @@ how to reproduce.** All three run on Apple Silicon, no GPU rental.
 
 ### §2.1 — Encoded text loses its meaning (the headline)
 
-**Claim.** Swapping ~25% of a page's tokens (27.5% measured, 48.4% of content
+**Claim.** Swapping ~25% of a page's tokens (24.4% measured, 48.4% of content
 words) for grammar-matched decoys makes the encoded text stop *entailing* the original — i.e. a machine no longer
 reads it as the same factual claim.
 
@@ -207,29 +235,41 @@ Bidirectional is the right test because content-word swaps do outsized damage:
 
 **Result.**
 
-- **The headline, v8 (n=1,500 chunks/corpus, pre-registered, real-world corpora
-  CC-News / OpenWebText / PG-19):** median bidir-fail **50.4%** (α/β/γ within
-  2.4pp of each other → family property holds). This is the number to quote.
+- **The headline, v8 (n=1,000 chunks/corpus, pre-registered, real-world
+  corpora), reported per corpus, never as a bare median:** news (CC-News)
+  **55.8%**, general web (OpenWebText) **51.9%**, fiction (BookCorpus) **34.5%**,
+  older fiction (PG-19) **31.1%**. Fiction is consistently the weakest register
+  for this technique — say so, don't average it away.
+- **The median, for readers who want one number, with its corpus-count
+  attached:** the three-corpus pre-registered set (CC-News / OpenWebText /
+  PG-19) gives **50.4%**; adding BookCorpus as a fourth corpus pulls it to
+  **41.8%**. Both are honestly computed from the same run and differ only in
+  which corpora are counted — quote one, and say which.
 - **Control (crucial):** a WordNet **synonym-swap** at the same ~25% density
-  scores **~2.1%** bidir-fail. So the 50.4% is genuine meaning loss, **not** the
-  NLI model being confused by unusual words. This control is the strongest
-  single result in the benchmark.
-- **Secondary, smaller sample, v7 (n=60 chunks/corpus, 4 corpora):** mean
-  bidirectional-entailment failure **59.6% / 61.3% / 60.0%** for α / β / γ, the
-  source of the older "~60%" shorthand, with a **books** peak of **83.3%** (γ).
-  Both are n=60 measurements on curated corpora and neither replicated at
-  n=1,500. Label them as such wherever they appear; do not lead with them.
+  scores **~2.1%** bidir-fail (clean-text instrument noise is **1.1%**). So the
+  per-corpus numbers above are genuine meaning loss, **not** the NLI model
+  being confused by unusual words. At the weakest corpus this is still **15×**
+  a synonym swap; on news, **27×**. This control is the strongest single result
+  in the benchmark.
+- **Secondary, smaller sample, v7 (n=60 chunks/corpus, 4 curated corpora):**
+  mean bidirectional-entailment failure **59.6% / 61.3% / 60.0%** for α / β / γ,
+  the source of the older "~60%" shorthand, with a **books** peak of **83.3%**
+  (γ). This is an n=60 measurement on curated corpora and did not replicate at
+  n=1,000 (see caveat below). Label it as such wherever it appears; do not lead
+  with it.
 
 > ⚠️ **Honest caveat, verified against the data.** The v7 "**83% on books**"
 > peak was **n=60** and did **not** replicate at scale: on v8's larger-n
-> fiction corpora (PG-19, BookCorpus, n=1,500) fiction is the *weakest*
-> register at **31–35%**. Lead with the robust, pre-registered **50.4% median**;
-> treat "up to 83% on narrative prose" as a smaller-sample earlier result, not
-> a headline. See `PROVENANCE.md`.
+> fiction corpora fiction is the *weakest* register, at **34.5%** (BookCorpus)
+> and **31.1%** (PG-19). Lead with the per-corpus table above; treat "up to 83%
+> on narrative prose" as a smaller-sample earlier result, not a headline. See
+> `PROVENANCE.md`.
 
-**Reproduce.** `benchmarks/v8/scripts/eval_phase1_semdiv.py` (needs the corpus
-splits + `pairs_v7_alpha_v18_*.json`). Expected: NLI bidir-fail ~50% median on
-the v8 corpora, synonym-swap control < 5%.
+**Reproduce.** `benchmark/data/v8/scripts/eval_phase1_semdiv.py` (needs the corpus
+splits + `pairs_v7_alpha_v18_*.json`), or run `benchmark/data/verify.py` against
+the committed `semdiv_extended.json` to recompute the per-corpus and median
+figures directly without re-running the model. Expected: NLI bidir-fail
+31–56% depending on corpus, synonym-swap control < 5%.
 
 ### §2.2 — The signal is meaning, not rare vocabulary
 
@@ -286,10 +326,13 @@ content: "staleness."
   known is the **denominator**, not the corpus. The Wilson 95% interval on
   13/134 is **[5.8%, 15.9%]**, which is wide enough that this gate cannot
   resolve a 2× difference between two mappings, let alone a tie.
-- v18 wasted-per-passing-page: **24.1%** (median across α/β/γ, FineWeb-Edu
-  primary gate): of every page that does reach training, 24.1% of its
-  token budget is null propositional content, **~24pp above the clean-text
-  baseline**.
+- v18 wasted-per-passing-page: **19.4%** (median across α/β/γ, FineWeb-Edu
+  primary gate, across all four corpora — cc_news / owt / pg19 plus
+  BookCorpus): of every page that does reach training, 19.4% of its
+  token budget is null propositional content, **~19pp above the clean-text
+  baseline**. The pre-BookCorpus, three-corpus cut of the same measurement
+  reads 24.1% — both are stored in `wasted_tokens.json`; this document
+  quotes the four-corpus figure throughout.
 - **M15-EN** wastes **~40%** per passing page **but** passes at **~0–1%**,
   so its adopter-weighted waste collapses to ~0. That is the *rejection*
   branch in its purest form: the filter, not the gradient, does the work.
@@ -314,10 +357,112 @@ dominant outcome and staleness is what remains for the minority that survives.
 > fastText / DistilRoBERTa / FineWeb-Edu *classifiers* instead. State the pass
 > rate per-gate, never in aggregate.
 
-**Reproduce.** `benchmarks/v8/scripts/gate_fineweb_edu.py` then
-`benchmarks/v8/scripts/aggregate_phase3.py`. Expected on real-world corpora:
+**Reproduce.** `benchmark/data/v8/scripts/gate_fineweb_edu.py` then
+`benchmark/data/v8/scripts/aggregate_phase3.py`. Expected on real-world corpora:
 FineWeb-Edu **absolute** pass 0.2–1.0%, **relative** to clean-passing chunks
 6.5–13.5%; wasted-per-passing-page ~15–26%.
+
+---
+
+### §2.4 — The rule table: what's on, what's off, and why
+
+Eighteen dictionary rebuilds and roughly 1,100 further configurations scored
+after the shipping version was chosen. Almost none of it changed the
+outcome — which is itself the finding: two rules earn their place, everything
+else was tested and left off.
+
+**The foundation: a 113-word do-not-swap list.** Swapping the commonest words
+in English — `the`, `of`, `and`, `by`, `is`, `can` — is the worst possible use
+of this technique: those words carry almost no meaning, so hiding them
+conceals nothing, but they hold a sentence together, so replacing them makes
+the page read as visibly broken. A 400-pair mapping that swapped them anyway
+(`the→plumb`, `of→bezel`) raised KenLM perplexity **+1,076%**; excluding them
+by construction, the shipping dictionary raises it **+120.8%**, inside the
+110–140% band where pages survive a quality filter (a different, per-corpus
+reading of the same shipped cell reads +109% — see the note in `PROVENANCE.md`
+row 71a on why that figure is *not* the one to quote as "inside the band").
+The exclusion is a hand-written,
+113-word list (`benchmark/data/v7/scripts/build_pairs.py:190-209`, function
+`is_filtered`), applied before any word is bucketed or paired — not a zipf
+threshold computed at build time, though a post-hoc audit confirms it
+happens to cover every English word at zipf ≥ 7.
+
+| Rule | What it does | Shipped? | Why |
+|---|---|---|---|
+| **`DO_NOT_SWAP`** | Never touch the 113 commonest words | **ON**, always | Foundation. Without it: +1,076% perplexity, every filter rejects the page. |
+| **K1 — closed-class lockdown** | Also exclude high-frequency words that *look* like content but behave like glue: light verbs (*do, get, make*), quote verbs (*said, asked*), time/place nouns (*day, year, way*), pointing adverbs (*now, then, here*) | **ON** | Highest-impact rule found. Flagged **145 swaps = 17.8%** of all swaps in a 120-sample audit. |
+| **K6 — rotation rerank** | When a word repeats, cycle through several decoys instead of always picking one | **ON** | The only rule that buys filter survival for free: took `pass_27` from 3.15% to **10.84%**, for a cost of 51 lost pairs. |
+| **K7b — calendar/number freeze** | Stop swapping month names, weekdays, number words | off | A dedicated sweep was built to test this toggle. Off won: it costs concealment for little gain. |
+| **K4 — selectional restriction** | Require verb and object to be compatible (*eat* takes food, not ideas) | off | Right in principle, too expensive: bundled with K5 it dropped content coverage **46.03% → 21.15%**. |
+| **K5 — MWE freeze** | Don't break fixed phrases (*take up arms*, *make sure*) | off | Real problem — 18 broken idioms in 120 samples — but every level tested cost more concealment than it bought. |
+| **Ke — K-base extensions** | Toxic-word blacklist + strict deictic rule + year banding | off | Costs 16–20% of semantic divergence. An earlier "winner" cell using it was explicitly retracted. |
+| **F4 — bigram gate** | Reject a swap that makes the local word pair improbable | off | Never earned its place in any sweep. |
+| **K2 — bigram surprisal blacklist** | Build-time version of F4 | never shipped | Rarely flagged a sample that K1 missed. |
+| **K3 — register matching** | Don't swap formal words for casual ones | never shipped | Flags 30% of samples, the second-highest-impact rule found — but never produced a winning cell. |
+
+**The cell name.** The shipped mapping (`v15_0_1_0_0_0_0`) decodes as
+`K7b_K6_K5_K4_Ke_F4 = 0_1_0_0_0_0`: only K6 is on (K1 is always on and not
+named). Full decoder: `benchmark/data/v7/BUILDING_VARIANTS.md:26-41`.
+
+**The concealment-vs-filter-survival tradeoff.** Raising concealment lowers
+filter survival, reliably and steeply. Across a mixed pool of 855 dictionary
+versions, Pearson **r = −0.857**. Measured within one recipe family (the
+512-cell sweep below, everything else held fixed) — the conservative reading,
+since the 855-version pool mixes families and so confounds the correlation
+with general dictionary aggressiveness — **r = −0.556**. Use this as the
+headline figure.
+
+**The 512-cell sweep.** Fifteen of the 512 tested configurations beat the
+shipped cell on the three measured metrics (concealment, KenLM band, filter
+survival) — this is *not* a case of "nothing scored better." What happened
+instead: a human grammar audit of the higher-scoring cells' output found they
+were generating pairs that were grammatically valid and semantically
+nonsensical in ways no automatic metric caught. They were rejected and the
+incumbent shipped. **Every automatic measurement alone would have shipped a
+worse dictionary.**
+
+**Reproduce.** `python3 benchmark/data/verify.py` recomputes both correlations
+directly from `benchmark/data/v7/results/mega_pareto.json` (855-version pool)
+and `v18_mega_512_eval.json` (512-cell family).
+
+> ⚠️ **Sourcing note on the table above.** Unlike the rest of this document,
+> the rule table's per-rule numbers (17.8%, the 51-pair rotation cost, the
+> 46.03%→21.15% K4+K5 collapse) are drawn from internal research write-ups
+> (`V12_K_LENS_FINDINGS.md`, `V18_FINAL.md`) rather than from a single
+> committed script that recomputes them from raw per-chunk data. The
+> reasoning and the underlying eval files are shipped and checkable; treat
+> this table as **ASSUMED** in the sense `PROVENANCE.md` uses that word, not
+> **VERIFIED**.
+
+**Font inversion: what we tried, honestly.** The font has to reach the
+browser to render the page, and its composite glyphs are drawn from the
+original words' own letters, so anyone who downloads it can read the
+substitution table back out — we do not claim otherwise. We evaluated eight
+approaches to making that harder:
+
+| # | Approach | Attacker cost added | Our cost | Verdict |
+|---|---|---|---|---|
+| 1 | Drop the glyph-name table | small (removes a whole attack surface) | −18% bytes | ✅ pure win, shipped |
+| 2 | Content-scoped subsetting | small (per-site codebook only) | −78% bytes | ✅ pure win, shipped |
+| 3 | Salt the glyph-name hash | closes the dictionary route on the `.ttf` tier | ~0 | ✅ narrow win, superseded by #1 for the web |
+| 4 | Flattened outlines | raises inversion from sub-second to ~13s in Python (still sub-second with a compiled tool) | +16% bytes, 4× memory | ❌ poor: one afternoon of attacker engineering defeats it |
+| 5 | Decoy / reordered components | ~1 line of attacker code to strip | small; layout risk | ❌ |
+| 6 | Split glyphs (top/bottom) | ~0 | high | ❌ breaks the ligature chain and Word/Pages/InDesign rendering |
+| 7 | SVG glyphs | negative — plain-text path data is *easier* to read than binary outlines | double storage | ❌ breaks Word and the GSUB pipeline |
+| 8 | Coordinate perturbation (jitter) | attacker still recovers 75.8% of words / 87.2% of characters | 12× the bytes (a 12.3MB font, self-inflicted) | ❌ worst on the list |
+
+Only #1 and #2 are unambiguous wins, and both are *performance* work that
+happens to reduce attack surface — neither claims to make inversion
+impossible. The honest conclusion is not to keep trying to defeat inversion,
+but to price it correctly: see `docs/concealment.md` and
+`docs/custom-mappings.md` for what that cost actually is (identifying a
+shielded page, fetching the right font, and building an inverter in the
+first place — not the sub-second parse once all of that is already done).
+
+> ⚠️ Same sourcing caveat as the rule table above: this comparison is drawn
+> from internal research notes, not a committed, re-runnable benchmark
+> script. No project file currently reproduces these eight numbers from a
+> single command.
 
 ---
 
@@ -325,16 +470,18 @@ FineWeb-Edu **absolute** pass 0.2–1.0%, **relative** to clean-passing chunks
 
 ### A. Rebuild a mapping (your own seed → your own private mapping)
 
-The from-scratch generation pipeline (`build_pairs.py`, `apply_v15_cell_to_v11.py`,
-`BUILDING_VARIANTS.md`) lives in the **development repository**, not this lean
-release. What you *can* run with the scripts shipped here: rebuild the font from
-the shipped production-alpha source pairs, and mint your own reseeded mapping.
+The bucket-and-pair builder (`build_pairs.py`) and its cell-name decoder
+(`BUILDING_VARIANTS.md`) are shipped in `benchmark/data/v7/`. The one step that
+still lives only in the **development repository** is `apply_v15_cell_to_v11.py`,
+which turns a `build_pairs.py` run into a specific K1+K6-style cell — what you
+*can* run with everything shipped here: rebuild the font from the shipped
+production-alpha source pairs, and mint your own reseeded mapping.
 
 ```bash
 # 1. Flatten the shipped production-alpha source pairs into the {src:tgt}
 #    form the font/encoder consume.
 python3 scripts/build_alpha_mapping.py \
-    benchmarks/v7/data/pairs_v7_alpha_v15_0_1_0_0_0_0.json \
+    benchmark/data/v7/pairs_v7_alpha_v15_0_1_0_0_0_0.json \
     scripts/myvariant_for_font.json
 
 # 2. Build the font from any TrueType base, then audit round-trip + collisions
@@ -365,19 +512,21 @@ It is not comparable to the v8 real-corpus absolute rate of 0.2–1.0% in §2.3.
 Use it only as a rebuild sanity signal: if `pass_27 < 5%` on that harness, you
 almost certainly forgot `--expand-paradigms`.
 
-### B. Re-run the hero measurements (development repository)
+### B. Re-run the hero measurements
 
-The measurement harness that computes §2.1–§2.3 lives in the project's
-**development repository**, not this lean release. For reference, it runs:
+The measurement harness that computes §2.1–§2.3 is shipped in
+`benchmark/data/v8/scripts/`. It still needs the corpus splits and a few
+HuggingFace models pulled on first run (see below) — those are not committed,
+for size. It runs:
 
 ```bash
 # Sem-div + NLI + synonym-swap control (§2.1, §2.2). Needs corpus splits.
-python3 benchmarks/v8/scripts/eval_phase1_semdiv.py
+python3 benchmark/data/v8/scripts/eval_phase1_semdiv.py
 #   → sem-div 0.25-0.30 median · NLI bidir-fail ~50% median · control < 5%
 
 # Filter outcome + wasted tokens (§2.3).
-python3 benchmarks/v8/scripts/gate_fineweb_edu.py
-python3 benchmarks/v8/scripts/aggregate_phase3.py
+python3 benchmark/data/v8/scripts/gate_fineweb_edu.py
+python3 benchmark/data/v8/scripts/aggregate_phase3.py
 #   → FineWeb-Edu absolute pass 0.2-1.0% (relative to clean-passing: 6.5-13.5%)
 #     · wasted-per-passing-page ~15-26%
 ```
@@ -390,14 +539,17 @@ Models pulled from HuggingFace on first run: `all-MiniLM-L6-v2` (sBERT),
 Both are real, both are small, and you should know about them before you try to
 replicate anything above.
 
-**1. No script computes the conditional retention rate.**
+**1. ~~No script computes the conditional retention rate~~ — fixed.**
 `gate_fineweb_edu.py` emits the per-chunk pass/fail and the **absolute** rate
-only. Every conditional figure in this document (9.70%, 28.11%, 2.07%, the
-24-of-4,000 joint-gate count) was recomputed by hand from the stored per-chunk
-scores. The inputs are committed and the arithmetic is checkable, but you
-cannot re-derive the headline number by running one command, which is not good
-enough. A `conditional_retention.py` that emits the rate, its denominator and a
-Wilson interval per gate and per variant is on the [roadmap](../ROADMAP.md).
+only; the conditional figures in this document were originally recomputed by
+hand from the stored per-chunk scores, which meant the inputs were committed
+and the arithmetic was checkable but not runnable as one command. `verify.py`
+now does that recomputation directly against the committed per-chunk scores
+and reproduces 9.70% (13/134) exactly — run `python3 benchmark/data/verify.py`.
+It currently covers the FineWeb-Edu gate; extending it to the other three
+instrumented gates (per-corpus KenLM, Pythia-160M, Wiki-KenLM) and emitting a
+Wilson interval per gate is still open, tracked on the
+[roadmap](../ROADMAP.md).
 
 **2. The evaluation sample is not deterministic.** `phase2_common.py:68` seeds
 with `random.Random(SEED + hash(corpus) % 1000)`, and Python randomises string

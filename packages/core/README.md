@@ -25,6 +25,28 @@ const back = decode(encoded, alpha);
 // → "Publish your garden essay today; it belongs to readers."  (decode === encode)
 ```
 
+## Showing the encoding: `encodeSegments`
+
+Building a UI that has to *display* the substitution — a live encoder, a diff
+overlay, a "n of m tokens swapped" readout — ask for the pieces instead of
+re-tokenising the text yourself:
+
+```ts
+import { encodeSegments, alpha } from "@shieldfont/core";
+
+encodeSegments("Take 3 tablets", alpha);
+// → [ { original: "Take",    encoded: "Find",     swapped: true,  kind: "word"  },
+//     { original: " ",       encoded: " ",        swapped: false, kind: "other" },
+//     { original: "3",       encoded: "8",        swapped: true,  kind: "digit" },
+//     { original: " ",       encoded: " ",        swapped: false, kind: "other" },
+//     { original: "tablets", encoded: "missiles", swapped: true,  kind: "word"  } ]
+```
+
+Joining every `encoded` is exactly `encode(text, mapping)` — `encode` is defined
+in terms of this function, so the two cannot drift. That is the whole point: the
+word and digit rules in the table below are subtle enough that a hand-rolled
+`/[A-Za-z]+/g` loop looks right and silently skips every digit.
+
 ## HTML helpers
 
 ```ts

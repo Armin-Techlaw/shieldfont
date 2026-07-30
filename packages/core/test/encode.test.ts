@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { encode, decode } from "../src/encode.js";
+import { encode, decode, encodeSegments } from "../src/encode.js";
 import m15en from "../src/mappings/m15en.json" with { type: "json" };
 import alphaMap from "../src/mappings/alpha.json" with { type: "json" };
 
@@ -126,6 +126,70 @@ describe("P1 — accented words pass through (Unicode tokenizer + NFC)", () => {
   });
   it("normalises decomposed (NFD) input to NFC", () => {
     expect(encode("café", alpha)).toBe("café".normalize("NFC"));
+  });
+});
+
+describe("encodeSegments — the overlay API cannot drift from encode()", () => {
+  const samples = [
+    "Take 3 tablets 4 times a day for 10 days.",
+    "H3O, C4H10, a3b, x5, mp3, 3D, Route66",
+    "The year 1984 was 40 years ago.",
+    "café résumé — naïve façade",
+    "1568 vs M15-EN vs iPhone15",
+    "",
+    "0123456789",
+    "no digits here at all",
+  ];
+
+  for (const s of samples) {
+    it(`joins back to encode(): ${JSON.stringify(s.slice(0, 32))}`, () => {
+      const joined = encodeSegments(s, alpha).map((g) => g.encoded).join("");
+      expect(joined).toBe(encode(s, alpha));
+    });
+
+    it(`preserves the original: ${JSON.stringify(s.slice(0, 32))}`, () => {
+      const joined = encodeSegments(s, alpha).map((g) => g.original).join("");
+      expect(joined).toBe(s.normalize("NFC"));
+    });
+  }
+
+  it("flags exactly the pieces that changed", () => {
+    for (const seg of encodeSegments("Take 3 tablets in 2026", alpha)) {
+      expect(seg.swapped).toBe(seg.encoded !== seg.original);
+    }
+  });
+
+  it("reports swapped digits — the case every hand-rolled overlay missed", () => {
+    const digits = encodeSegments("Take 3 tablets", alpha).filter((s) => s.kind === "digit");
+    expect(digits).toEqual([{ original: "3", encoded: "8", swapped: true, kind: "digit" }]);
+  });
+
+  it("still reports a one-letter-neighbour digit, marked unswapped", () => {
+    // It IS a token the dictionary had a say over — the context rule declined.
+    // Counters need it in the denominator; overlays must not ring it.
+    const segs = encodeSegments("mp3", alpha);
+    expect(segs.filter((s) => s.kind === "digit")).toEqual([
+      { original: "3", encoded: "3", swapped: false, kind: "digit" },
+    ]);
+  });
+
+  it("gives every digit its own segment", () => {
+    const segs = encodeSegments("2026", alpha);
+    expect(segs.map((s) => s.kind)).toEqual(["digit", "digit", "digit", "digit"]);
+    expect(segs.map((s) => s.encoded).join("")).toBe(encode("2026", alpha));
+  });
+
+  it("reads letter-context across the word boundary, not just inside the gap", () => {
+    // 'a' and 'b' are separate word segments; the 3 between them still sees two
+    // letter-neighbours and must swap, exactly as encode() does.
+    expect(encodeSegments("a3b", alpha).find((s) => s.original === "3")?.encoded).toBe("8");
+  });
+
+  it("uses the ENCODED word edge for context, matching what the font sees", () => {
+    // The dictionary decides the neighbouring characters, so context must be
+    // read after substitution. Letters stay letters, so the verdict holds.
+    const text = "of 5 of";
+    expect(encodeSegments(text, alpha).map((s) => s.encoded).join("")).toBe(encode(text, alpha));
   });
 });
 

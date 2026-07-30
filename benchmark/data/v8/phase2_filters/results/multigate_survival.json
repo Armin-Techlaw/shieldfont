@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "gates_loaded": [
+    "per_corpus_kenlm",
+    "fineweb_edu",
+    "pythia_160m",
+    "wiki_kenlm"
+  ],
+  "pass_table": {
+    "clean": {
+      "cc_news": {
+        "per_corpus_kenlm": 0.7,
+        "fineweb_edu": 0.029,
+        "pythia_160m": 0.7,
+        "wiki_kenlm": 0.7
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": 0.7,
+        "fineweb_edu": 0.074,
+        "pythia_160m": 0.7,
+        "wiki_kenlm": 0.7
+      },
+      "pg19": {
+        "per_corpus_kenlm": 0.7,
+        "fineweb_edu": 0.031,
+        "pythia_160m": 0.7,
+        "wiki_kenlm": 0.7
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": 0.7,
+        "fineweb_edu": 0.021,
+        "pythia_160m": 0.7,
+        "wiki_kenlm": 0.7
+      }
+    },
+    "v18_a": {
+      "cc_news": {
+        "per_corpus_kenlm": 0.16,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.022,
+        "wiki_kenlm": 0.083
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": 0.014,
+        "fineweb_edu": 0.01,
+        "pythia_160m": 0.014,
+        "wiki_kenlm": 0.101
+      },
+      "pg19": {
+        "per_corpus_kenlm": 0.29,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.199,
+        "wiki_kenlm": 0.457
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": 0.323,
+        "fineweb_edu": 0.001,
+        "pythia_160m": 0.075,
+        "wiki_kenlm": 0.09
+      }
+    },
+    "v18_b": {
+      "cc_news": {
+        "per_corpus_kenlm": 0.149,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.024,
+        "wiki_kenlm": 0.079
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": 0.015,
+        "fineweb_edu": 0.011,
+        "pythia_160m": 0.014,
+        "wiki_kenlm": 0.095
+      },
+      "pg19": {
+        "per_corpus_kenlm": 0.288,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.16,
+        "wiki_kenlm": 0.45
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": 0.306,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.075,
+        "wiki_kenlm": 0.079
+      }
+    },
+    "v18_c": {
+      "cc_news": {
+        "per_corpus_kenlm": 0.157,
+        "fineweb_edu": 0.003,
+        "pythia_160m": 0.024,
+        "wiki_kenlm": 0.093
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": 0.022,
+        "fineweb_edu": 0.01,
+        "pythia_160m": 0.014,
+        "wiki_kenlm": 0.105
+      },
+      "pg19": {
+        "per_corpus_kenlm": 0.334,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.204,
+        "wiki_kenlm": 0.494
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": 0.319,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.076,
+        "wiki_kenlm": 0.084
+      }
+    },
+    "m15_en": {
+      "cc_news": {
+        "per_corpus_kenlm": 0.016,
+        "fineweb_edu": 0.002,
+        "pythia_160m": 0.015,
+        "wiki_kenlm": 0.001
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": 0.0,
+        "fineweb_edu": 0.01,
+        "pythia_160m": 0.011,
+        "wiki_kenlm": 0.006
+      },
+      "pg19": {
+        "per_corpus_kenlm": 0.003,
+        "fineweb_edu": 0.001,
+        "pythia_160m": 0.034,
+        "wiki_kenlm": 0.184
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": 0.039,
+        "fineweb_edu": 0.001,
+        "pythia_160m": 0.07,
+        "wiki_kenlm": 0.042
+      }
+    },
+    "m0_v3": {
+      "cc_news": {
+        "per_corpus_kenlm": 0.014,
+        "fineweb_edu": 0.0,
+        "pythia_160m": 0.016,
+        "wiki_kenlm": 0.001
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": 0.0,
+        "fineweb_edu": 0.001,
+        "pythia_160m": 0.009,
+        "wiki_kenlm": 0.002
+      },
+      "pg19": {
+        "per_corpus_kenlm": 0.0,
+        "fineweb_edu": 0.0,
+        "pythia_160m": 0.024,
+        "wiki_kenlm": 0.037
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": 0.033,
+        "fineweb_edu": 0.003,
+        "pythia_160m": 0.064,
+        "wiki_kenlm": 0.042
+      }
+    }
+  },
+  "kendall_tau_by_corpus": {
+    "cc_news": {
+      "per_corpus_kenlm__vs__fineweb_edu": 0.0329,
+      "per_corpus_kenlm__vs__pythia_160m": 0.0082,
+      "fineweb_edu__vs__pythia_160m": 0.0138
+    },
+    "openwebtext": {
+      "per_corpus_kenlm__vs__fineweb_edu": -0.0016,
+      "per_corpus_kenlm__vs__pythia_160m": -0.0114,
+      "fineweb_edu__vs__pythia_160m": -0.0104
+    },
+    "pg19": {
+      "per_corpus_kenlm__vs__fineweb_edu": 0.0084,
+      "per_corpus_kenlm__vs__pythia_160m": -0.0111,
+      "fineweb_edu__vs__pythia_160m": -0.042
+    },
+    "bookcorpus": {
+      "per_corpus_kenlm__vs__fineweb_edu": -0.0411,
+      "per_corpus_kenlm__vs__pythia_160m": -0.0125,
+      "fineweb_edu__vs__pythia_160m": -0.0215
+    }
+  },
+  "falsification_bars": {
+    "F2_relational": {
+      "name": "v18 gate 1 (per-corpus KenLM) pass \u2265 gate 3 (FineWeb-Edu) pass per corpus",
+      "details": {
+        "v18_a": {
+          "cc_news": {
+            "gate1_pass": 0.16,
+            "gate3_pass": 0.002,
+            "pass": true
+          },
+          "openwebtext": {
+            "gate1_pass": 0.014,
+            "gate3_pass": 0.01,
+            "pass": true
+          },
+          "pg19": {
+            "gate1_pass": 0.29,
+            "gate3_pass": 0.002,
+            "pass": true
+          },
+          "bookcorpus": {
+            "gate1_pass": 0.323,
+            "gate3_pass": 0.001,
+            "pass": true
+          }
+        },
+        "v18_b": {
+          "cc_news": {
+            "gate1_pass": 0.149,
+            "gate3_pass": 0.002,
+            "pass": true
+          },
+          "openwebtext": {
+            "gate1_pass": 0.015,
+            "gate3_pass": 0.011,
+            "pass": true
+          },
+          "pg19": {
+            "gate1_pass": 0.288,
+            "gate3_pass": 0.002,
+            "pass": true
+          },
+          "bookcorpus": {
+            "gate1_pass": 0.306,
+            "gate3_pass": 0.002,
+            "pass": true
+          }
+        },
+        "v18_c": {
+          "cc_news": {
+            "gate1_pass": 0.157,
+            "gate3_pass": 0.003,
+            "pass": true
+          },
+          "openwebtext": {
+            "gate1_pass": 0.022,
+            "gate3_pass": 0.01,
+            "pass": true
+          },
+          "pg19": {
+            "gate1_pass": 0.334,
+            "gate3_pass": 0.002,
+            "pass": true
+          },
+          "bookcorpus": {
+            "gate1_pass": 0.319,
+            "gate3_pass": 0.002,
+            "pass": true
+          }
+        }
+      }
+    },
+    "F2_retraction": {
+      "name": "v18 gate 1 pass \u2265 30% per corpus (retraction bar)",
+      "details": {
+        "v18_a": {
+          "cc_news": {
+            "gate1_pass": 0.16,
+            "pass": false
+          },
+          "openwebtext": {
+            "gate1_pass": 0.014,
+            "pass": false
+          },
+          "pg19": {
+            "gate1_pass": 0.29,
+            "pass": false
+          },
+          "bookcorpus": {
+            "gate1_pass": 0.323,
+            "pass": true
+          }
+        },
+        "v18_b": {
+          "cc_news": {
+            "gate1_pass": 0.149,
+            "pass": false
+          },
+          "openwebtext": {
+            "gate1_pass": 0.015,
+            "pass": false
+          },
+          "pg19": {
+            "gate1_pass": 0.288,
+            "pass": false
+          },
+          "bookcorpus": {
+            "gate1_pass": 0.306,
+            "pass": true
+          }
+        },
+        "v18_c": {
+          "cc_news": {
+            "gate1_pass": 0.157,
+            "pass": false
+          },
+          "openwebtext": {
+            "gate1_pass": 0.022,
+            "pass": false
+          },
+          "pg19": {
+            "gate1_pass": 0.334,
+            "pass": true
+          },
+          "bookcorpus": {
+            "gate1_pass": 0.319,
+            "pass": true
+          }
+        }
+      }
+    },
+    "F2_consistency": {
+      "name": "Kendall \u03c4 \u2265 0.4 across all gate-1..4 pairs",
+      "details": {
+        "cc_news": {
+          "pair_taus": {
+            "per_corpus_kenlm__vs__fineweb_edu": 0.0329,
+            "per_corpus_kenlm__vs__pythia_160m": 0.0082,
+            "fineweb_edu__vs__pythia_160m": 0.0138
+          },
+          "min_tau": 0.0082,
+          "pass": false
+        },
+        "openwebtext": {
+          "pair_taus": {
+            "per_corpus_kenlm__vs__fineweb_edu": -0.0016,
+            "per_corpus_kenlm__vs__pythia_160m": -0.0114,
+            "fineweb_edu__vs__pythia_160m": -0.0104
+          },
+          "min_tau": -0.0114,
+          "pass": false
+        },
+        "pg19": {
+          "pair_taus": {
+            "per_corpus_kenlm__vs__fineweb_edu": 0.0084,
+            "per_corpus_kenlm__vs__pythia_160m": -0.0111,
+            "fineweb_edu__vs__pythia_160m": -0.042
+          },
+          "min_tau": -0.042,
+          "pass": false
+        },
+        "bookcorpus": {
+          "pair_taus": {
+            "per_corpus_kenlm__vs__fineweb_edu": -0.0411,
+            "per_corpus_kenlm__vs__pythia_160m": -0.0125,
+            "fineweb_edu__vs__pythia_160m": -0.0215
+          },
+          "min_tau": -0.0411,
+          "pass": false
+        }
+      }
+    }
+  }
+}

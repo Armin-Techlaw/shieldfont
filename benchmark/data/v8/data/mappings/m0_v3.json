@@ -1,0 +1,2008 @@
+{
+  "_label": "m0_v3",
+  "_n_unique_pairs_canonical": 400,
+  "_n_records": 400,
+  "all_pairs": [
+    {
+      "src": "the",
+      "tgt": "plumb",
+      "bucket": "legacy"
+    },
+    {
+      "src": "be",
+      "tgt": "onion",
+      "bucket": "legacy"
+    },
+    {
+      "src": "to",
+      "tgt": "ferret",
+      "bucket": "legacy"
+    },
+    {
+      "src": "of",
+      "tgt": "bezel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "and",
+      "tgt": "pheasant",
+      "bucket": "legacy"
+    },
+    {
+      "src": "in",
+      "tgt": "ribbon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "that",
+      "tgt": "gauntlet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "have",
+      "tgt": "alder",
+      "bucket": "legacy"
+    },
+    {
+      "src": "it",
+      "tgt": "cinnamon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "for",
+      "tgt": "jetsam",
+      "bucket": "legacy"
+    },
+    {
+      "src": "not",
+      "tgt": "cobalt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "on",
+      "tgt": "gleam",
+      "bucket": "legacy"
+    },
+    {
+      "src": "with",
+      "tgt": "candle",
+      "bucket": "legacy"
+    },
+    {
+      "src": "he",
+      "tgt": "carbine",
+      "bucket": "legacy"
+    },
+    {
+      "src": "as",
+      "tgt": "inkwell",
+      "bucket": "legacy"
+    },
+    {
+      "src": "you",
+      "tgt": "nutmeg",
+      "bucket": "legacy"
+    },
+    {
+      "src": "do",
+      "tgt": "topknot",
+      "bucket": "legacy"
+    },
+    {
+      "src": "at",
+      "tgt": "vulture",
+      "bucket": "legacy"
+    },
+    {
+      "src": "this",
+      "tgt": "marsh",
+      "bucket": "legacy"
+    },
+    {
+      "src": "but",
+      "tgt": "laurel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "his",
+      "tgt": "cowslip",
+      "bucket": "legacy"
+    },
+    {
+      "src": "by",
+      "tgt": "fenland",
+      "bucket": "legacy"
+    },
+    {
+      "src": "from",
+      "tgt": "swath",
+      "bucket": "legacy"
+    },
+    {
+      "src": "they",
+      "tgt": "mandolin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "we",
+      "tgt": "urchin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "say",
+      "tgt": "parsnip",
+      "bucket": "legacy"
+    },
+    {
+      "src": "her",
+      "tgt": "javelin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "she",
+      "tgt": "fuchsia",
+      "bucket": "legacy"
+    },
+    {
+      "src": "or",
+      "tgt": "goldfinch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "an",
+      "tgt": "hemp",
+      "bucket": "legacy"
+    },
+    {
+      "src": "will",
+      "tgt": "verdant",
+      "bucket": "legacy"
+    },
+    {
+      "src": "my",
+      "tgt": "welt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "one",
+      "tgt": "kestrel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "all",
+      "tgt": "spinet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "would",
+      "tgt": "thane",
+      "bucket": "legacy"
+    },
+    {
+      "src": "there",
+      "tgt": "condor",
+      "bucket": "legacy"
+    },
+    {
+      "src": "their",
+      "tgt": "pilgrim",
+      "bucket": "legacy"
+    },
+    {
+      "src": "what",
+      "tgt": "rung",
+      "bucket": "legacy"
+    },
+    {
+      "src": "so",
+      "tgt": "earthworm",
+      "bucket": "legacy"
+    },
+    {
+      "src": "up",
+      "tgt": "dormant",
+      "bucket": "legacy"
+    },
+    {
+      "src": "out",
+      "tgt": "dogwood",
+      "bucket": "legacy"
+    },
+    {
+      "src": "if",
+      "tgt": "bulrush",
+      "bucket": "legacy"
+    },
+    {
+      "src": "about",
+      "tgt": "zinc",
+      "bucket": "legacy"
+    },
+    {
+      "src": "who",
+      "tgt": "lanyard",
+      "bucket": "legacy"
+    },
+    {
+      "src": "get",
+      "tgt": "hedgehog",
+      "bucket": "legacy"
+    },
+    {
+      "src": "which",
+      "tgt": "barb",
+      "bucket": "legacy"
+    },
+    {
+      "src": "go",
+      "tgt": "brine",
+      "bucket": "legacy"
+    },
+    {
+      "src": "me",
+      "tgt": "velvet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "when",
+      "tgt": "sorbet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "make",
+      "tgt": "slab",
+      "bucket": "legacy"
+    },
+    {
+      "src": "can",
+      "tgt": "truss",
+      "bucket": "legacy"
+    },
+    {
+      "src": "like",
+      "tgt": "vassal",
+      "bucket": "legacy"
+    },
+    {
+      "src": "time",
+      "tgt": "lard",
+      "bucket": "legacy"
+    },
+    {
+      "src": "no",
+      "tgt": "dolphin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "just",
+      "tgt": "buckler",
+      "bucket": "legacy"
+    },
+    {
+      "src": "him",
+      "tgt": "lynx",
+      "bucket": "legacy"
+    },
+    {
+      "src": "know",
+      "tgt": "jasmine",
+      "bucket": "legacy"
+    },
+    {
+      "src": "take",
+      "tgt": "kinfolk",
+      "bucket": "legacy"
+    },
+    {
+      "src": "people",
+      "tgt": "oarlock",
+      "bucket": "legacy"
+    },
+    {
+      "src": "into",
+      "tgt": "figment",
+      "bucket": "legacy"
+    },
+    {
+      "src": "year",
+      "tgt": "notch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "your",
+      "tgt": "gazelle",
+      "bucket": "legacy"
+    },
+    {
+      "src": "good",
+      "tgt": "alcove",
+      "bucket": "legacy"
+    },
+    {
+      "src": "some",
+      "tgt": "birdsong",
+      "bucket": "legacy"
+    },
+    {
+      "src": "could",
+      "tgt": "walrus",
+      "bucket": "legacy"
+    },
+    {
+      "src": "them",
+      "tgt": "shale",
+      "bucket": "legacy"
+    },
+    {
+      "src": "see",
+      "tgt": "goshawk",
+      "bucket": "legacy"
+    },
+    {
+      "src": "other",
+      "tgt": "pike",
+      "bucket": "legacy"
+    },
+    {
+      "src": "than",
+      "tgt": "bunting",
+      "bucket": "legacy"
+    },
+    {
+      "src": "then",
+      "tgt": "knob",
+      "bucket": "legacy"
+    },
+    {
+      "src": "now",
+      "tgt": "suture",
+      "bucket": "legacy"
+    },
+    {
+      "src": "look",
+      "tgt": "pigment",
+      "bucket": "legacy"
+    },
+    {
+      "src": "only",
+      "tgt": "blowfish",
+      "bucket": "legacy"
+    },
+    {
+      "src": "come",
+      "tgt": "ivory",
+      "bucket": "legacy"
+    },
+    {
+      "src": "its",
+      "tgt": "bloom",
+      "bucket": "legacy"
+    },
+    {
+      "src": "over",
+      "tgt": "nougat",
+      "bucket": "legacy"
+    },
+    {
+      "src": "think",
+      "tgt": "sunspot",
+      "bucket": "legacy"
+    },
+    {
+      "src": "also",
+      "tgt": "galleon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "back",
+      "tgt": "sapphire",
+      "bucket": "legacy"
+    },
+    {
+      "src": "after",
+      "tgt": "cusp",
+      "bucket": "legacy"
+    },
+    {
+      "src": "use",
+      "tgt": "warbler",
+      "bucket": "legacy"
+    },
+    {
+      "src": "two",
+      "tgt": "panther",
+      "bucket": "legacy"
+    },
+    {
+      "src": "how",
+      "tgt": "parch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "our",
+      "tgt": "acorn",
+      "bucket": "legacy"
+    },
+    {
+      "src": "work",
+      "tgt": "quorum",
+      "bucket": "legacy"
+    },
+    {
+      "src": "first",
+      "tgt": "phlox",
+      "bucket": "legacy"
+    },
+    {
+      "src": "well",
+      "tgt": "newt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "way",
+      "tgt": "mink",
+      "bucket": "legacy"
+    },
+    {
+      "src": "even",
+      "tgt": "crag",
+      "bucket": "legacy"
+    },
+    {
+      "src": "new",
+      "tgt": "granite",
+      "bucket": "legacy"
+    },
+    {
+      "src": "want",
+      "tgt": "snag",
+      "bucket": "legacy"
+    },
+    {
+      "src": "because",
+      "tgt": "epsilon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "any",
+      "tgt": "monsoon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "these",
+      "tgt": "fennel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "give",
+      "tgt": "plume",
+      "bucket": "legacy"
+    },
+    {
+      "src": "day",
+      "tgt": "grit",
+      "bucket": "legacy"
+    },
+    {
+      "src": "most",
+      "tgt": "glacier",
+      "bucket": "legacy"
+    },
+    {
+      "src": "us",
+      "tgt": "swatch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "great",
+      "tgt": "rabbit",
+      "bucket": "legacy"
+    },
+    {
+      "src": "world",
+      "tgt": "orchid",
+      "bucket": "legacy"
+    },
+    {
+      "src": "life",
+      "tgt": "walnut",
+      "bucket": "legacy"
+    },
+    {
+      "src": "still",
+      "tgt": "larkspur",
+      "bucket": "legacy"
+    },
+    {
+      "src": "much",
+      "tgt": "mead",
+      "bucket": "legacy"
+    },
+    {
+      "src": "right",
+      "tgt": "ragwort",
+      "bucket": "legacy"
+    },
+    {
+      "src": "old",
+      "tgt": "ceramic",
+      "bucket": "legacy"
+    },
+    {
+      "src": "long",
+      "tgt": "ladle",
+      "bucket": "legacy"
+    },
+    {
+      "src": "very",
+      "tgt": "cask",
+      "bucket": "legacy"
+    },
+    {
+      "src": "same",
+      "tgt": "linchpin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "here",
+      "tgt": "leopard",
+      "bucket": "legacy"
+    },
+    {
+      "src": "own",
+      "tgt": "awl",
+      "bucket": "legacy"
+    },
+    {
+      "src": "does",
+      "tgt": "fjord",
+      "bucket": "legacy"
+    },
+    {
+      "src": "tell",
+      "tgt": "goblin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "man",
+      "tgt": "husk",
+      "bucket": "legacy"
+    },
+    {
+      "src": "many",
+      "tgt": "parrot",
+      "bucket": "legacy"
+    },
+    {
+      "src": "before",
+      "tgt": "copse",
+      "bucket": "legacy"
+    },
+    {
+      "src": "last",
+      "tgt": "redstart",
+      "bucket": "legacy"
+    },
+    {
+      "src": "thing",
+      "tgt": "frigate",
+      "bucket": "legacy"
+    },
+    {
+      "src": "been",
+      "tgt": "plum",
+      "bucket": "legacy"
+    },
+    {
+      "src": "more",
+      "tgt": "flannel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "those",
+      "tgt": "sextant",
+      "bucket": "legacy"
+    },
+    {
+      "src": "such",
+      "tgt": "mulch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "find",
+      "tgt": "quintet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "through",
+      "tgt": "nostril",
+      "bucket": "legacy"
+    },
+    {
+      "src": "down",
+      "tgt": "foxhole",
+      "bucket": "legacy"
+    },
+    {
+      "src": "between",
+      "tgt": "garnet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "did",
+      "tgt": "crimp",
+      "bucket": "legacy"
+    },
+    {
+      "src": "made",
+      "tgt": "magnet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "need",
+      "tgt": "talc",
+      "bucket": "legacy"
+    },
+    {
+      "src": "never",
+      "tgt": "shoal",
+      "bucket": "legacy"
+    },
+    {
+      "src": "part",
+      "tgt": "chisel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "help",
+      "tgt": "crumb",
+      "bucket": "legacy"
+    },
+    {
+      "src": "may",
+      "tgt": "bleat",
+      "bucket": "legacy"
+    },
+    {
+      "src": "ask",
+      "tgt": "rambler",
+      "bucket": "legacy"
+    },
+    {
+      "src": "too",
+      "tgt": "neptune",
+      "bucket": "legacy"
+    },
+    {
+      "src": "should",
+      "tgt": "reef",
+      "bucket": "legacy"
+    },
+    {
+      "src": "each",
+      "tgt": "creel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "might",
+      "tgt": "cobbler",
+      "bucket": "legacy"
+    },
+    {
+      "src": "big",
+      "tgt": "stork",
+      "bucket": "legacy"
+    },
+    {
+      "src": "place",
+      "tgt": "cedar",
+      "bucket": "legacy"
+    },
+    {
+      "src": "end",
+      "tgt": "dormouse",
+      "bucket": "legacy"
+    },
+    {
+      "src": "show",
+      "tgt": "primrose",
+      "bucket": "legacy"
+    },
+    {
+      "src": "every",
+      "tgt": "frog",
+      "bucket": "legacy"
+    },
+    {
+      "src": "hand",
+      "tgt": "pewit",
+      "bucket": "legacy"
+    },
+    {
+      "src": "high",
+      "tgt": "barnacle",
+      "bucket": "legacy"
+    },
+    {
+      "src": "keep",
+      "tgt": "rosemary",
+      "bucket": "legacy"
+    },
+    {
+      "src": "start",
+      "tgt": "helm",
+      "bucket": "legacy"
+    },
+    {
+      "src": "kind",
+      "tgt": "tusk",
+      "bucket": "legacy"
+    },
+    {
+      "src": "small",
+      "tgt": "salmon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "home",
+      "tgt": "osprey",
+      "bucket": "legacy"
+    },
+    {
+      "src": "house",
+      "tgt": "badger",
+      "bucket": "legacy"
+    },
+    {
+      "src": "point",
+      "tgt": "windbreak",
+      "bucket": "legacy"
+    },
+    {
+      "src": "again",
+      "tgt": "silk",
+      "bucket": "legacy"
+    },
+    {
+      "src": "city",
+      "tgt": "turquoise",
+      "bucket": "legacy"
+    },
+    {
+      "src": "while",
+      "tgt": "dahlia",
+      "bucket": "legacy"
+    },
+    {
+      "src": "next",
+      "tgt": "firebrand",
+      "bucket": "legacy"
+    },
+    {
+      "src": "few",
+      "tgt": "isthmus",
+      "bucket": "legacy"
+    },
+    {
+      "src": "head",
+      "tgt": "loom",
+      "bucket": "legacy"
+    },
+    {
+      "src": "stand",
+      "tgt": "cleft",
+      "bucket": "legacy"
+    },
+    {
+      "src": "word",
+      "tgt": "trove",
+      "bucket": "legacy"
+    },
+    {
+      "src": "move",
+      "tgt": "windmill",
+      "bucket": "legacy"
+    },
+    {
+      "src": "side",
+      "tgt": "logjam",
+      "bucket": "legacy"
+    },
+    {
+      "src": "turn",
+      "tgt": "bristle",
+      "bucket": "legacy"
+    },
+    {
+      "src": "open",
+      "tgt": "timpani",
+      "bucket": "legacy"
+    },
+    {
+      "src": "play",
+      "tgt": "sandpiper",
+      "bucket": "legacy"
+    },
+    {
+      "src": "fact",
+      "tgt": "hemlock",
+      "bucket": "legacy"
+    },
+    {
+      "src": "line",
+      "tgt": "prong",
+      "bucket": "legacy"
+    },
+    {
+      "src": "face",
+      "tgt": "falcon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "child",
+      "tgt": "grommit",
+      "bucket": "legacy"
+    },
+    {
+      "src": "number",
+      "tgt": "napkin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "seem",
+      "tgt": "plowman",
+      "bucket": "legacy"
+    },
+    {
+      "src": "form",
+      "tgt": "gulp",
+      "bucket": "legacy"
+    },
+    {
+      "src": "change",
+      "tgt": "distaff",
+      "bucket": "legacy"
+    },
+    {
+      "src": "set",
+      "tgt": "basalt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "mean",
+      "tgt": "chaff",
+      "bucket": "legacy"
+    },
+    {
+      "src": "must",
+      "tgt": "trawl",
+      "bucket": "legacy"
+    },
+    {
+      "src": "try",
+      "tgt": "malt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "name",
+      "tgt": "chestnut",
+      "bucket": "legacy"
+    },
+    {
+      "src": "had",
+      "tgt": "apex",
+      "bucket": "legacy"
+    },
+    {
+      "src": "came",
+      "tgt": "ember",
+      "bucket": "legacy"
+    },
+    {
+      "src": "call",
+      "tgt": "cork",
+      "bucket": "legacy"
+    },
+    {
+      "src": "run",
+      "tgt": "reed",
+      "bucket": "legacy"
+    },
+    {
+      "src": "off",
+      "tgt": "slate",
+      "bucket": "legacy"
+    },
+    {
+      "src": "let",
+      "tgt": "sawmill",
+      "bucket": "legacy"
+    },
+    {
+      "src": "night",
+      "tgt": "wren",
+      "bucket": "legacy"
+    },
+    {
+      "src": "real",
+      "tgt": "stoat",
+      "bucket": "legacy"
+    },
+    {
+      "src": "left",
+      "tgt": "obsidian",
+      "bucket": "legacy"
+    },
+    {
+      "src": "put",
+      "tgt": "goblet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "close",
+      "tgt": "beehive",
+      "bucket": "legacy"
+    },
+    {
+      "src": "under",
+      "tgt": "fern",
+      "bucket": "legacy"
+    },
+    {
+      "src": "away",
+      "tgt": "artisan",
+      "bucket": "legacy"
+    },
+    {
+      "src": "three",
+      "tgt": "graphite",
+      "bucket": "legacy"
+    },
+    {
+      "src": "money",
+      "tgt": "clod",
+      "bucket": "legacy"
+    },
+    {
+      "src": "read",
+      "tgt": "juniper",
+      "bucket": "legacy"
+    },
+    {
+      "src": "water",
+      "tgt": "beaver",
+      "bucket": "legacy"
+    },
+    {
+      "src": "room",
+      "tgt": "mackerel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "body",
+      "tgt": "cove",
+      "bucket": "legacy"
+    },
+    {
+      "src": "state",
+      "tgt": "tankard",
+      "bucket": "legacy"
+    },
+    {
+      "src": "food",
+      "tgt": "thistle",
+      "bucket": "legacy"
+    },
+    {
+      "src": "without",
+      "tgt": "insect",
+      "bucket": "legacy"
+    },
+    {
+      "src": "girl",
+      "tgt": "coral",
+      "bucket": "legacy"
+    },
+    {
+      "src": "against",
+      "tgt": "wisp",
+      "bucket": "legacy"
+    },
+    {
+      "src": "during",
+      "tgt": "dustpan",
+      "bucket": "legacy"
+    },
+    {
+      "src": "family",
+      "tgt": "yurt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "women",
+      "tgt": "papyrus",
+      "bucket": "legacy"
+    },
+    {
+      "src": "once",
+      "tgt": "hermit",
+      "bucket": "legacy"
+    },
+    {
+      "src": "children",
+      "tgt": "pith",
+      "bucket": "legacy"
+    },
+    {
+      "src": "men",
+      "tgt": "grout",
+      "bucket": "legacy"
+    },
+    {
+      "src": "both",
+      "tgt": "balm",
+      "bucket": "legacy"
+    },
+    {
+      "src": "got",
+      "tgt": "bodkin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "young",
+      "tgt": "prune",
+      "bucket": "legacy"
+    },
+    {
+      "src": "school",
+      "tgt": "saffron",
+      "bucket": "legacy"
+    },
+    {
+      "src": "book",
+      "tgt": "compass",
+      "bucket": "legacy"
+    },
+    {
+      "src": "woman",
+      "tgt": "dustbin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "country",
+      "tgt": "elm",
+      "bucket": "legacy"
+    },
+    {
+      "src": "best",
+      "tgt": "capstone",
+      "bucket": "legacy"
+    },
+    {
+      "src": "ever",
+      "tgt": "hamlet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "above",
+      "tgt": "pageant",
+      "bucket": "legacy"
+    },
+    {
+      "src": "enough",
+      "tgt": "parsley",
+      "bucket": "legacy"
+    },
+    {
+      "src": "often",
+      "tgt": "kernel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "quite",
+      "tgt": "whimbrel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "white",
+      "tgt": "clam",
+      "bucket": "legacy"
+    },
+    {
+      "src": "become",
+      "tgt": "cinch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "different",
+      "tgt": "pelican",
+      "bucket": "legacy"
+    },
+    {
+      "src": "eye",
+      "tgt": "carob",
+      "bucket": "legacy"
+    },
+    {
+      "src": "bring",
+      "tgt": "octopus",
+      "bucket": "legacy"
+    },
+    {
+      "src": "father",
+      "tgt": "anthill",
+      "bucket": "legacy"
+    },
+    {
+      "src": "thought",
+      "tgt": "dale",
+      "bucket": "legacy"
+    },
+    {
+      "src": "group",
+      "tgt": "spelt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "whole",
+      "tgt": "gibbet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "study",
+      "tgt": "kelp",
+      "bucket": "legacy"
+    },
+    {
+      "src": "free",
+      "tgt": "lancet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "late",
+      "tgt": "briar",
+      "bucket": "legacy"
+    },
+    {
+      "src": "until",
+      "tgt": "radish",
+      "bucket": "legacy"
+    },
+    {
+      "src": "large",
+      "tgt": "cricket",
+      "bucket": "legacy"
+    },
+    {
+      "src": "table",
+      "tgt": "sandstorm",
+      "bucket": "legacy"
+    },
+    {
+      "src": "leave",
+      "tgt": "damsel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "since",
+      "tgt": "rafter",
+      "bucket": "legacy"
+    },
+    {
+      "src": "door",
+      "tgt": "umpire",
+      "bucket": "legacy"
+    },
+    {
+      "src": "early",
+      "tgt": "tortoise",
+      "bucket": "legacy"
+    },
+    {
+      "src": "story",
+      "tgt": "foam",
+      "bucket": "legacy"
+    },
+    {
+      "src": "letter",
+      "tgt": "kindred",
+      "bucket": "legacy"
+    },
+    {
+      "src": "however",
+      "tgt": "vellum",
+      "bucket": "legacy"
+    },
+    {
+      "src": "actually",
+      "tgt": "harvest",
+      "bucket": "legacy"
+    },
+    {
+      "src": "human",
+      "tgt": "titmouse",
+      "bucket": "legacy"
+    },
+    {
+      "src": "land",
+      "tgt": "bask",
+      "bucket": "legacy"
+    },
+    {
+      "src": "second",
+      "tgt": "coil",
+      "bucket": "legacy"
+    },
+    {
+      "src": "question",
+      "tgt": "unicorn",
+      "bucket": "legacy"
+    },
+    {
+      "src": "held",
+      "tgt": "lamprey",
+      "bucket": "legacy"
+    },
+    {
+      "src": "eat",
+      "tgt": "epaulet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "moment",
+      "tgt": "moonrise",
+      "bucket": "legacy"
+    },
+    {
+      "src": "boy",
+      "tgt": "foxglove",
+      "bucket": "legacy"
+    },
+    {
+      "src": "being",
+      "tgt": "zenith",
+      "bucket": "legacy"
+    },
+    {
+      "src": "person",
+      "tgt": "anvil",
+      "bucket": "legacy"
+    },
+    {
+      "src": "system",
+      "tgt": "chalice",
+      "bucket": "legacy"
+    },
+    {
+      "src": "always",
+      "tgt": "mortar",
+      "bucket": "legacy"
+    },
+    {
+      "src": "already",
+      "tgt": "thornbill",
+      "bucket": "legacy"
+    },
+    {
+      "src": "possible",
+      "tgt": "ramekin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "mother",
+      "tgt": "sandbar",
+      "bucket": "legacy"
+    },
+    {
+      "src": "music",
+      "tgt": "forge",
+      "bucket": "legacy"
+    },
+    {
+      "src": "going",
+      "tgt": "pleat",
+      "bucket": "legacy"
+    },
+    {
+      "src": "follow",
+      "tgt": "almanac",
+      "bucket": "legacy"
+    },
+    {
+      "src": "idea",
+      "tgt": "hawkweed",
+      "bucket": "legacy"
+    },
+    {
+      "src": "along",
+      "tgt": "cypress",
+      "bucket": "legacy"
+    },
+    {
+      "src": "sure",
+      "tgt": "bobcat",
+      "bucket": "legacy"
+    },
+    {
+      "src": "clear",
+      "tgt": "pigweed",
+      "bucket": "legacy"
+    },
+    {
+      "src": "power",
+      "tgt": "turban",
+      "bucket": "legacy"
+    },
+    {
+      "src": "rather",
+      "tgt": "mandrel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "business",
+      "tgt": "rampart",
+      "bucket": "legacy"
+    },
+    {
+      "src": "case",
+      "tgt": "pewter",
+      "bucket": "legacy"
+    },
+    {
+      "src": "problem",
+      "tgt": "burr",
+      "bucket": "legacy"
+    },
+    {
+      "src": "course",
+      "tgt": "glyph",
+      "bucket": "legacy"
+    },
+    {
+      "src": "plan",
+      "tgt": "saltbox",
+      "bucket": "legacy"
+    },
+    {
+      "src": "half",
+      "tgt": "talon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "car",
+      "tgt": "sandbank",
+      "bucket": "legacy"
+    },
+    {
+      "src": "program",
+      "tgt": "millet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "together",
+      "tgt": "spur",
+      "bucket": "legacy"
+    },
+    {
+      "src": "another",
+      "tgt": "fawn",
+      "bucket": "legacy"
+    },
+    {
+      "src": "reason",
+      "tgt": "impulse",
+      "bucket": "legacy"
+    },
+    {
+      "src": "market",
+      "tgt": "olive",
+      "bucket": "legacy"
+    },
+    {
+      "src": "company",
+      "tgt": "mongoose",
+      "bucket": "legacy"
+    },
+    {
+      "src": "social",
+      "tgt": "cactus",
+      "bucket": "legacy"
+    },
+    {
+      "src": "meet",
+      "tgt": "firebird",
+      "bucket": "legacy"
+    },
+    {
+      "src": "hold",
+      "tgt": "cresset",
+      "bucket": "legacy"
+    },
+    {
+      "src": "today",
+      "tgt": "sparrow",
+      "bucket": "legacy"
+    },
+    {
+      "src": "public",
+      "tgt": "cauliflower",
+      "bucket": "legacy"
+    },
+    {
+      "src": "order",
+      "tgt": "tarn",
+      "bucket": "legacy"
+    },
+    {
+      "src": "wrong",
+      "tgt": "cairn",
+      "bucket": "legacy"
+    },
+    {
+      "src": "level",
+      "tgt": "oyster",
+      "bucket": "legacy"
+    },
+    {
+      "src": "area",
+      "tgt": "dross",
+      "bucket": "legacy"
+    },
+    {
+      "src": "street",
+      "tgt": "flume",
+      "bucket": "legacy"
+    },
+    {
+      "src": "love",
+      "tgt": "driftnet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "color",
+      "tgt": "clove",
+      "bucket": "legacy"
+    },
+    {
+      "src": "interest",
+      "tgt": "barley",
+      "bucket": "legacy"
+    },
+    {
+      "src": "rate",
+      "tgt": "utensil",
+      "bucket": "legacy"
+    },
+    {
+      "src": "care",
+      "tgt": "ottoman",
+      "bucket": "legacy"
+    },
+    {
+      "src": "matter",
+      "tgt": "thyme",
+      "bucket": "legacy"
+    },
+    {
+      "src": "four",
+      "tgt": "origami",
+      "bucket": "legacy"
+    },
+    {
+      "src": "million",
+      "tgt": "biscuit",
+      "bucket": "legacy"
+    },
+    {
+      "src": "action",
+      "tgt": "flute",
+      "bucket": "legacy"
+    },
+    {
+      "src": "game",
+      "tgt": "gravel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "class",
+      "tgt": "sage",
+      "bucket": "legacy"
+    },
+    {
+      "src": "feel",
+      "tgt": "turf",
+      "bucket": "legacy"
+    },
+    {
+      "src": "less",
+      "tgt": "quarry",
+      "bucket": "legacy"
+    },
+    {
+      "src": "nothing",
+      "tgt": "redshank",
+      "bucket": "legacy"
+    },
+    {
+      "src": "ago",
+      "tgt": "beryl",
+      "bucket": "legacy"
+    },
+    {
+      "src": "whether",
+      "tgt": "opal",
+      "bucket": "legacy"
+    },
+    {
+      "src": "hard",
+      "tgt": "starling",
+      "bucket": "legacy"
+    },
+    {
+      "src": "report",
+      "tgt": "opus",
+      "bucket": "legacy"
+    },
+    {
+      "src": "happen",
+      "tgt": "gazer",
+      "bucket": "legacy"
+    },
+    {
+      "src": "sell",
+      "tgt": "plover",
+      "bucket": "legacy"
+    },
+    {
+      "src": "lead",
+      "tgt": "trumpet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "local",
+      "tgt": "bugler",
+      "bucket": "legacy"
+    },
+    {
+      "src": "continue",
+      "tgt": "pulp",
+      "bucket": "legacy"
+    },
+    {
+      "src": "air",
+      "tgt": "perch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "pass",
+      "tgt": "drapery",
+      "bucket": "legacy"
+    },
+    {
+      "src": "sit",
+      "tgt": "smelt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "important",
+      "tgt": "frond",
+      "bucket": "legacy"
+    },
+    {
+      "src": "hear",
+      "tgt": "sprig",
+      "bucket": "legacy"
+    },
+    {
+      "src": "office",
+      "tgt": "plinth",
+      "bucket": "legacy"
+    },
+    {
+      "src": "remain",
+      "tgt": "quartzite",
+      "bucket": "legacy"
+    },
+    {
+      "src": "drive",
+      "tgt": "yearling",
+      "bucket": "legacy"
+    },
+    {
+      "src": "pay",
+      "tgt": "gourd",
+      "bucket": "legacy"
+    },
+    {
+      "src": "build",
+      "tgt": "canopy",
+      "bucket": "legacy"
+    },
+    {
+      "src": "fall",
+      "tgt": "pavilion",
+      "bucket": "legacy"
+    },
+    {
+      "src": "develop",
+      "tgt": "bromine",
+      "bucket": "legacy"
+    },
+    {
+      "src": "national",
+      "tgt": "midge",
+      "bucket": "legacy"
+    },
+    {
+      "src": "art",
+      "tgt": "xenolith",
+      "bucket": "legacy"
+    },
+    {
+      "src": "offer",
+      "tgt": "charcoal",
+      "bucket": "legacy"
+    },
+    {
+      "src": "age",
+      "tgt": "bolt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "information",
+      "tgt": "joust",
+      "bucket": "legacy"
+    },
+    {
+      "src": "force",
+      "tgt": "millstone",
+      "bucket": "legacy"
+    },
+    {
+      "src": "month",
+      "tgt": "sapling",
+      "bucket": "legacy"
+    },
+    {
+      "src": "church",
+      "tgt": "mustard",
+      "bucket": "legacy"
+    },
+    {
+      "src": "true",
+      "tgt": "damask",
+      "bucket": "legacy"
+    },
+    {
+      "src": "nature",
+      "tgt": "whippet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "present",
+      "tgt": "eclipse",
+      "bucket": "legacy"
+    },
+    {
+      "src": "base",
+      "tgt": "bonnet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "political",
+      "tgt": "cornmill",
+      "bucket": "legacy"
+    },
+    {
+      "src": "break",
+      "tgt": "pyre",
+      "bucket": "legacy"
+    },
+    {
+      "src": "college",
+      "tgt": "corsair",
+      "bucket": "legacy"
+    },
+    {
+      "src": "receive",
+      "tgt": "wombat",
+      "bucket": "legacy"
+    },
+    {
+      "src": "paper",
+      "tgt": "morsel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "service",
+      "tgt": "lattice",
+      "bucket": "legacy"
+    },
+    {
+      "src": "provide",
+      "tgt": "dune",
+      "bucket": "legacy"
+    },
+    {
+      "src": "contain",
+      "tgt": "jade",
+      "bucket": "legacy"
+    },
+    {
+      "src": "product",
+      "tgt": "flux",
+      "bucket": "legacy"
+    },
+    {
+      "src": "carry",
+      "tgt": "catfish",
+      "bucket": "legacy"
+    },
+    {
+      "src": "final",
+      "tgt": "pinecone",
+      "bucket": "legacy"
+    },
+    {
+      "src": "cover",
+      "tgt": "shawl",
+      "bucket": "legacy"
+    },
+    {
+      "src": "press",
+      "tgt": "nightjar",
+      "bucket": "legacy"
+    },
+    {
+      "src": "begin",
+      "tgt": "terrazzo",
+      "bucket": "legacy"
+    },
+    {
+      "src": "behind",
+      "tgt": "basil",
+      "bucket": "legacy"
+    },
+    {
+      "src": "war",
+      "tgt": "muslin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "simple",
+      "tgt": "cobweb",
+      "bucket": "legacy"
+    },
+    {
+      "src": "believe",
+      "tgt": "crane",
+      "bucket": "legacy"
+    },
+    {
+      "src": "death",
+      "tgt": "pearl",
+      "bucket": "legacy"
+    },
+    {
+      "src": "live",
+      "tgt": "vale",
+      "bucket": "legacy"
+    },
+    {
+      "src": "write",
+      "tgt": "trowel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "lose",
+      "tgt": "zephyr",
+      "bucket": "legacy"
+    },
+    {
+      "src": "around",
+      "tgt": "fickle",
+      "bucket": "legacy"
+    },
+    {
+      "src": "why",
+      "tgt": "arc",
+      "bucket": "legacy"
+    },
+    {
+      "src": "went",
+      "tgt": "silt",
+      "bucket": "legacy"
+    },
+    {
+      "src": "perhaps",
+      "tgt": "amethyst",
+      "bucket": "legacy"
+    },
+    {
+      "src": "far",
+      "tgt": "ban",
+      "bucket": "legacy"
+    },
+    {
+      "src": "given",
+      "tgt": "optic",
+      "bucket": "legacy"
+    },
+    {
+      "src": "able",
+      "tgt": "tuft",
+      "bucket": "legacy"
+    },
+    {
+      "src": "talk",
+      "tgt": "keel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "watch",
+      "tgt": "brawl",
+      "bucket": "legacy"
+    },
+    {
+      "src": "walk",
+      "tgt": "dowel",
+      "bucket": "legacy"
+    },
+    {
+      "src": "seen",
+      "tgt": "moose",
+      "bucket": "legacy"
+    },
+    {
+      "src": "within",
+      "tgt": "flange",
+      "bucket": "legacy"
+    },
+    {
+      "src": "result",
+      "tgt": "flinch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "mind",
+      "tgt": "fiord",
+      "bucket": "legacy"
+    },
+    {
+      "src": "least",
+      "tgt": "grimy",
+      "bucket": "legacy"
+    },
+    {
+      "src": "yet",
+      "tgt": "bet",
+      "bucket": "legacy"
+    },
+    {
+      "src": "general",
+      "tgt": "cardamom",
+      "bucket": "legacy"
+    },
+    {
+      "src": "speak",
+      "tgt": "guise",
+      "bucket": "legacy"
+    },
+    {
+      "src": "near",
+      "tgt": "gully",
+      "bucket": "legacy"
+    },
+    {
+      "src": "type",
+      "tgt": "heist",
+      "bucket": "legacy"
+    },
+    {
+      "src": "job",
+      "tgt": "bin",
+      "bucket": "legacy"
+    },
+    {
+      "src": "field",
+      "tgt": "hitch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "sense",
+      "tgt": "ingot",
+      "bucket": "legacy"
+    },
+    {
+      "src": "view",
+      "tgt": "julep",
+      "bucket": "legacy"
+    },
+    {
+      "src": "cost",
+      "tgt": "knack",
+      "bucket": "legacy"
+    },
+    {
+      "src": "knew",
+      "tgt": "lance",
+      "bucket": "legacy"
+    },
+    {
+      "src": "lost",
+      "tgt": "lemur",
+      "bucket": "legacy"
+    },
+    {
+      "src": "past",
+      "tgt": "locus",
+      "bucket": "legacy"
+    },
+    {
+      "src": "five",
+      "tgt": "lynch",
+      "bucket": "legacy"
+    },
+    {
+      "src": "stay",
+      "tgt": "manor",
+      "bucket": "legacy"
+    },
+    {
+      "src": "done",
+      "tgt": "maple",
+      "bucket": "legacy"
+    },
+    {
+      "src": "gone",
+      "tgt": "melon",
+      "bucket": "legacy"
+    },
+    {
+      "src": "wish",
+      "tgt": "mirth",
+      "bucket": "legacy"
+    },
+    {
+      "src": "stop",
+      "tgt": "natal",
+      "bucket": "legacy"
+    },
+    {
+      "src": "step",
+      "tgt": "pansy",
+      "bucket": "legacy"
+    },
+    {
+      "src": "took",
+      "tgt": "plaid",
+      "bucket": "legacy"
+    },
+    {
+      "src": "full",
+      "tgt": "quail",
+      "bucket": "legacy"
+    },
+    {
+      "src": "week",
+      "tgt": "rinse",
+      "bucket": "legacy"
+    },
+    {
+      "src": "note",
+      "tgt": "rowdy",
+      "bucket": "legacy"
+    },
+    {
+      "src": "rest",
+      "tgt": "salve",
+      "bucket": "legacy"
+    },
+    {
+      "src": "sign",
+      "tgt": "scalp",
+      "bucket": "legacy"
+    }
+  ],
+  "_source": "legacy/scripts/m0_word_mapping.json"
+}

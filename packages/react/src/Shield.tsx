@@ -1,5 +1,7 @@
 import { encode, alpha, beta, gamma, m15en } from "@shieldfont/core";
+import { DEFAULT_SECONDS, sealText } from "@shieldfont/core/puzzle";
 import * as React from "react";
+import { solverScript } from "./solver.js";
 import {
   isValidElement,
   type CSSProperties,
@@ -87,37 +89,103 @@ export interface RotateConfig {
 /**
  * The accessible alternative rendered next to (never inside) a shielded block.
  *
+ * `"text"`  — the ORIGINAL words, encrypted into the page behind a time-lock
+ *             puzzle. A button decodes them in the reader's browser.
  * `"audio"` — a build-time-synthesised recording of the ORIGINAL words.
- * `"text"`  — a URL serving the original words as plain text.
  * `"none"`  — an explicit, auditable opt-out; renders nothing and warns not at all.
+ *
+ * NO PLAIN-TEXT URL IS RENDERED ANYWHERE, and `"text"` is not a return to one.
+ * The 0.2.0 shape was `{ mode: "text", href }` — a link to the original words,
+ * sitting in the HTML beside the encoded ones, which any scraper reads for the
+ * cost of following it. That, and the audio mode's `transcript` link, were
+ * removed for a single reason: a URL cannot be offered to a screen reader
+ * without being offered to everyone else.
+ *
+ * What replaces it inverts that. The words ship in the page but ENCRYPTED, and
+ * the key is not in the page either — it is the answer to a puzzle that takes a
+ * deliberate, tunable amount of the reader's CPU to grind out (default 20
+ * seconds; see {@link DEFAULT_SECONDS} in `@shieldfont/core/puzzle` for how that
+ * number was chosen against the cost of OCR). Nobody is denied the text. The
+ * accessible path simply stops being the CHEAPEST path into it, which is the
+ * only property that ever mattered.
+ *
+ * What it does not fix, said plainly: a crawler that wants the words can still
+ * render the page and OCR the pixels for less than the puzzle costs. OCR is the
+ * floor on this package's protection and no amount of cryptography raises it.
+ * And a reader who needs this waits twenty seconds for words every other reader
+ * already has, which is unequal access however carefully it is engineered.
  */
 export type ShieldA11y =
   | {
-      mode: "audio";
-      /** URL of the audio file. Synthesise it AT BUILD TIME — see the docs. */
-      src: string;
-      /** Optional URL of a text transcript, rendered as a second link. */
-      transcript?: string;
+      mode: "text";
+      /**
+       * Grind time in seconds on a reference laptop. Default
+       * {@link DEFAULT_SECONDS} (20). Accepted range 5..120.
+       *
+       * READ THIS BEFORE RAISING IT. Difficulty is bounded ABOVE by the cost of
+       * OCR, not by paranoia: a crawler that finds this puzzle dearer than
+       * rendering the page and reading the pixels simply reads the pixels. Past
+       * roughly 20 seconds you are buying no protection at all and charging it
+       * entirely to disabled readers. Lower it for short blocks if anything.
+       */
+      seconds?: number;
       /** Overrides the default explanatory sentence for this block. */
       note?: string;
-      /** Accessible name for the transcript link. Default "Transcript". */
+      /**
+       * Where the unlocked words go.
+       *
+       * `"hidden"` (default) puts them in the page for assistive technology
+       * only, clipped off-screen, and leaves the encoded block on screen
+       * untouched. A sighted reader sees nothing happen — no layout shift, no
+       * second copy of the text — because they can already read the block
+       * through the font.
+       *
+       * `"visible"` replaces the encoded block with the plain words on screen.
+       * Costs a layout shift, and buys selection, copy-paste and browser
+       * translation of the real text for everyone.
+       *
+       * Note this is NOT `aria-label`. An accessible name is announced as one
+       * unbroken string, cannot be navigated by word or sentence, and is
+       * prohibited on the generic elements this renders — so a paragraph
+       * delivered that way is close to unusable. Both modes ship real text.
+       */
+      reveal?: "hidden" | "visible";
+      /**
+       * Overrides the button's accessible name. The default names the element
+       * type and its position ("Show the plain text for paragraph 2"), which is
+       * what stops several blocks on one page sounding identical.
+       *
+       * Whatever you pass, do NOT put the protected words in it. The button
+       * label ships in the HTML, so a label quoting the text you are hiding
+       * hands it to any scraper for free.
+       */
       label?: string;
       /**
        * Hide the control visually while keeping it in the accessibility tree
        * (clip-path, never `display:none` — that would remove it from the tree,
-       * which is the exact bug this prop exists to fix). Default `false`.
+       * which is the exact bug this prop exists to fix).
+       *
+       * **Defaults to `true` for this mode.** A sighted reader can already read
+       * the block through the font, so an on-screen widget explaining an
+       * unlocking mechanism is, to them, attached to text that looks fine.
+       *
+       * Pass `false` to put it back on screen. Do that if you need WCAG 2.2 SC
+       * 2.4.7: while hidden, a sighted keyboard user Tabs into a control they
+       * cannot see and their focus indicator disappears.
        */
       visualHidden?: boolean;
     }
   | {
-      mode: "text";
-      /** URL of the plain-text version. */
-      href: string;
-      /** Link text. Default "Plain-text version". */
-      label?: string;
+      mode: "audio";
+      /** URL of the audio file. Synthesise it AT BUILD TIME — see the docs. */
+      src: string;
       /** Overrides the default explanatory sentence for this block. */
       note?: string;
-      /** See the note on the audio variant. Default `false`. */
+      /**
+       * Hide the control visually while keeping it in the accessibility tree.
+       * Defaults to `false` HERE — unlike the text variant, which defaults to
+       * `true`. A player nobody can see is a player nobody can press.
+       */
       visualHidden?: boolean;
     }
   | { mode: "none" };
@@ -190,16 +258,23 @@ export interface ShieldProps {
   rotate?: boolean | RotateConfig;
 
   /**
-   * The accessible alternative for this block: an audio version or a
-   * plain-text URL. Rendered OUTSIDE the `aria-hidden` region and BEFORE it in
-   * DOM order, so a screen-reader user reaches it before the silence.
+   * The accessible alternative for this block. Rendered OUTSIDE the
+   * `aria-hidden` region and BEFORE it in DOM order, so a screen-reader user
+   * reaches it before the silence.
    *
-   * `{ mode: "none" }` is an explicit, auditable opt-out. Omitting `a11y`
-   * entirely logs one development-time warning per process.
+   * `{ mode: "text" }` is the recommended one and needs nothing from you: the
+   * original words are encrypted into the page at build time and a button
+   * decodes them in the browser. `{ mode: "audio", src }` wants a file you
+   * synthesised yourself. `{ mode: "none" }` is an explicit, auditable opt-out.
+   * Omitting `a11y` entirely logs one development-time warning per process.
+   *
+   * No mode renders a link to a plain-text copy. See {@link ShieldA11y}.
    *
    * @example
+   *   <Shield a11y={{ mode: "text" }}>{body}</Shield>
+   *   <Shield a11y={{ mode: "text", seconds: 10 }}>{shortPullQuote}</Shield>
    *   <Shield a11y={{ mode: "audio", src: "/audio/post-1.mp3" }}>{body}</Shield>
-   *   <Shield a11y={{ mode: "text", href: "/posts/1/plain" }}>{body}</Shield>
+   *   <Shield a11y={{ mode: "none" }}>{body}</Shield>
    */
   a11y?: ShieldA11y;
 
@@ -410,10 +485,36 @@ interface PassRegistry {
   guards: Set<string>;
   /** `family|weight` pairs already seeded into this pass's guard. */
   weights: Set<string>;
+  /** Whether this pass has already emitted the puzzle solver script. */
+  solvers: Set<string>;
+  /** Whether this pass has already spent its one long explanatory note. */
+  notes: Set<string>;
+  /**
+   * Monotonic counter behind the element IDs the puzzle control needs.
+   *
+   * IDs must be unique within a document, and a content hash alone is not:
+   * two `<Shield>`s wrapping the same sentence hash identically, and the
+   * solver would then hide the wrong block on reveal. The counter
+   * disambiguates them.
+   *
+   * It lives HERE, in pass scope, rather than at module level, because a
+   * module counter would advance across requests and hand the same tree
+   * different IDs on server and client — a hydration mismatch on every page
+   * that uses `withShieldRenderPass` around a hydrated render. Pass scope is
+   * exactly the lifetime an ID needs.
+   */
+  seq: number;
 }
 
 function newPassRegistry(): PassRegistry {
-  return { styles: new Set(), guards: new Set(), weights: new Set() };
+  return {
+    styles: new Set(),
+    guards: new Set(),
+    weights: new Set(),
+    solvers: new Set(),
+    notes: new Set(),
+    seq: 0,
+  };
 }
 
 /** The scope opened by {@link withShieldRenderPass}, if one is open. */
@@ -461,12 +562,33 @@ function currentPass(): PassRegistry | null {
  * `true` when the caller owns the claim and should emit the markup, which is
  * unconditionally the case when no pass scope is active.
  */
-function claim(bucket: keyof PassRegistry, key: string): boolean {
+function claim(bucket: "styles" | "guards" | "weights" | "solvers" | "notes", key: string): boolean {
   const pass = currentPass();
   if (!pass) return true;
   if (pass[bucket].has(key)) return false;
   pass[bucket].add(key);
   return true;
+}
+
+/**
+ * A document-unique ID for one shielded block, for the puzzle control to point
+ * at. Deterministic within a render pass; see {@link PassRegistry.seq}.
+ *
+ * Outside a pass scope there is no counter to draw on, so the hash stands
+ * alone. Two identical strings shielded on one page would then share an ID,
+ * and the consequence is contained: the solver hides whichever block the
+ * document reaches first, so one block keeps showing its (correct, font-
+ * rendered) decoy under the revealed text instead of disappearing. Cosmetic,
+ * and it cannot happen under RSC, which is where this component lives.
+ */
+function blockIdFor(encoded: string): { id: string; ordinal: number } {
+  const pass = currentPass();
+  const base = `${camo.attrName}-${hashString(encoded).toString(36)}`;
+  // The ordinal doubles as the button's disambiguator ("paragraph 2"), so it is
+  // 1-based: it is spoken to a person, not used as an index.
+  if (!pass) return { id: base, ordinal: 1 };
+  const n = pass.seq++;
+  return { id: `${base}-${n}`, ordinal: n + 1 };
 }
 
 /**
@@ -1276,9 +1398,42 @@ function warnIfClientRender(): void {
 // block, outside the hidden subtree and before it in DOM order, so linear
 // navigation reaches the alternative before the silence. That is `a11y`.
 //
-// This is a partial answer and it is worth saying so: an audio track is not a
-// document. It is not navigable by heading, not searchable, not quotable, not
-// skimmable. A blind reader still gets a worse artifact than a sighted one.
+// NO URL IS RENDERED ANYWHERE. Two things shipped in 0.2.0 and both were
+// removed: a `mode: "text"` that linked a URL serving the original words, and
+// an optional `transcript` link on the audio mode. Same reason for both, worth
+// stating once: a URL cannot be offered to a screen reader without being
+// offered to everyone else, and the same crawl that reads the decoy reads the
+// link beside it. One line of scraper code follows it — so a block carrying
+// either was strictly LESS protected than an unwrapped one, while looking
+// protected. No author opts into that knowingly.
+//
+// WHAT REPLACED IT, and it is built: `mode: "text"` now ships the words
+// ENCRYPTED in the page, behind a time-lock puzzle the reader's own browser
+// grinds out on request (see @shieldfont/core/puzzle and ./solver.ts). Nobody
+// is denied the text. The accessible path simply stops being the CHEAPEST path,
+// which is the only property that ever mattered — difficulty is bounded above
+// by what OCR would cost a crawler, so past that it buys nothing and is paid
+// for entirely by disabled readers waiting longer.
+//
+// WHAT IT STILL COSTS, said straight:
+//
+//   - `mode: "audio"` on its own fails WCAG 2.2 SC 1.2.1 (Level A). The text
+//     mode does not rescue it; they are separate alternatives an author picks
+//     between, not a pair. Ship audio alone and there is still no answer to
+//     1.2.1.
+//   - The text mode needs JavaScript, BigInt, crypto.subtle and a secure
+//     origin. It is the one part of this package that does not survive JS being
+//     off, and the font does the rest of the work without any of it.
+//   - The control is invisible by default, so a SIGHTED keyboard user Tabs into
+//     something they cannot see and loses their focus indicator — WCAG 2.2 SC
+//     2.4.7. Deliberate; `visualHidden: false` puts it back on screen.
+//   - A reader who needs this waits while everyone else reads immediately. That
+//     is unequal access however carefully it is engineered, and calling it
+//     solved would be a lie.
+//
+// Nearly every detail of the markup below was settled by listening to it with a
+// real screen reader rather than by reasoning about the spec. Where that is
+// true, the comment says which sentence changed the code.
 
 /**
  * Visually-hidden via CLIP-PATH, never `display:none`.
@@ -1303,11 +1458,35 @@ const VISUALLY_HIDDEN: CSSProperties = {
 /**
  * Default explanatory prose. Real sentences, not a label: "Listen" alone tells
  * a screen-reader user nothing about WHY the article is missing.
+ *
+ * One string rather than the per-mode table this used to be: `"audio"` is the
+ * only mode that renders anything, so a lookup keyed on the mode was a table
+ * with one row.
  */
 const A11Y_NOTE = {
-  audio: "This section is hidden from assistive technology because its text is encoded. The same words are available as audio below.",
-  text: "This section is hidden from assistive technology because its text is encoded. The same words are available as plain text below.",
+  audio:
+    "This section is hidden from assistive technology because its text is encoded. The same words are available as audio below.",
+  // Short on purpose. The first version ran to thirty-three words and opened
+  // with "hidden from assistive technology", which is jargon addressed to the
+  // wrong audience — the listener does not care what the mechanism is called,
+  // they care that a paragraph is missing and that there is a way to get it.
+  // Tested by ear: the long version was heard as noise to skip past.
+  text: "This text is scrambled and is not read aloud. Unlock the real words with the button below.",
 } as const;
+
+/**
+ * The note every text-mode block after the FIRST one on a page gets.
+ *
+ * The long note explains the whole situation, which a reader needs once and not
+ * again. Measured with a screen reader over a two-block page: the full sentence
+ * is spoken in its entirety for every block, so a six-block article makes
+ * somebody listen to the same thirty-three words six times before they can
+ * reach any of the content. That is not thoroughness, it is an obstacle.
+ *
+ * Falls back to the long form outside a render-pass scope, since without one
+ * there is no way to know whether this block is the first.
+ */
+const A11Y_NOTE_REPEAT = "Scrambled text. Unlock the real words below.";
 
 /**
  * Tags for which `<Shield>` renders an INLINE alternative wrapper. A `<div>` or
@@ -1330,6 +1509,13 @@ function isProduction(): boolean {
  * deliberately a warning and not an error, because an error would break every
  * existing install on upgrade. `{ mode: "none" }` silences it: an explicit,
  * auditable opt-out is a decision someone made, which is all we are asking for.
+ *
+ * The message recommends `mode: "text"` first, because it is the one that asks
+ * nothing of the author. What it must never do again is suggest pointing `a11y`
+ * at a plain-text URL: that was this package telling authors to publish the
+ * original words at a crawlable address beside the encoded ones, which undid
+ * the thing they installed it for. `a11y-warning.test.ts` asserts the message
+ * names the mode and never the word `href`.
  */
 function warnIfNoA11y(): void {
   if (warnedMissingA11y || isProduction()) return;
@@ -1338,11 +1524,12 @@ function warnIfNoA11y(): void {
     `${camo.logPrefix} <Shield> rendered with no \`a11y\` prop. The encoded block is ` +
       `aria-hidden, so assistive technology reads NOTHING there — what a sighted reader ` +
       `perceives is not programmatically available (WCAG 2.2 SC 1.3.1). Pass ` +
-      `a11y={{ mode: "audio", src }} with a file synthesised AT BUILD TIME from your ` +
-      `original words, or a11y={{ mode: "text", href }} pointing at a plain-text copy. ` +
-      `Pass a11y={{ mode: "none" }} to opt out explicitly and silence this. ` +
-      `Do NOT reach for browser speechSynthesis: it needs your original text in the ` +
-      `browser, which is the leak this package exists to prevent.`,
+      `a11y={{ mode: "text" }}: it needs nothing from you, seals the original words into ` +
+      `the page at build time, and lets a reader who needs them decode them in their own ` +
+      `browser. Or a11y={{ mode: "audio", src }} with a file synthesised AT BUILD TIME. ` +
+      `Pass a11y={{ mode: "none" }} to opt out explicitly and silence this. Do NOT reach ` +
+      `for browser speechSynthesis: it needs your original text in the browser, which is ` +
+      `the leak this package exists to prevent.`,
   );
 }
 
@@ -1350,42 +1537,276 @@ function warnIfNoA11y(): void {
  * Build the accessible alternative. Returns `null` for `{ mode: "none" }` and
  * for an omitted prop (after warning), so the caller can render it or not.
  *
+ * An explanatory sentence and an `<audio>` element, and that is the whole
+ * output. There is no branch on the mode (`"none"` returns early and the union
+ * has nothing else in it) and there is no `<a>` anywhere: the removed `"text"`
+ * mode and the removed `transcript` link were both a URL to the original words
+ * sitting in the HTML, which any scraper that follows it reads for free. See
+ * the section note above.
+ *
  * Native `<audio controls>`, not a custom button: zero JavaScript, keyboard
  * operable and labelled for free, survives a static export, and hands the user
  * the download and speed controls they already know. `preload="none"` so it
  * costs nothing until someone presses play.
  */
-function renderA11y(a11y: ShieldA11y | undefined, inline: boolean): ReactNode {
+function renderA11y(
+  a11y: ShieldA11y | undefined,
+  inline: boolean,
+  plain: string,
+  blockId: string,
+  tag: string | null,
+  ordinal: number,
+): ReactNode {
   if (!a11y) {
     warnIfNoA11y();
     return null;
   }
   if (a11y.mode === "none") return null;
 
+  const attr = camo.attrName;
   const Wrap = (inline ? "span" : "div") as ElementType;
   const Note = (inline ? "span" : "p") as ElementType;
-  const wrapStyle = a11y.visualHidden ? VISUALLY_HIDDEN : undefined;
-  const note = a11y.note ?? A11Y_NOTE[a11y.mode];
+  // DEFAULT for the text mode: the whole control is screen-reader-only.
+  //
+  // A sighted reader can already read the block perfectly — the font does that
+  // work — so a note and a button explaining an unlocking mechanism are, to
+  // them, an unexplained widget attached to text that looks fine. The audio
+  // mode keeps its player on screen, because a player nobody can see is a
+  // player nobody can press.
+  //
+  // KNOWN COST, and it is a real one: a sighted person navigating by keyboard
+  // without a screen reader will Tab into a control they cannot see, and their
+  // focus indicator vanishes (WCAG 2.2 SC 2.4.7). The standard remedy is the
+  // skip-link pattern — clipped until focused, visible while focused — which
+  // this deliberately does NOT do, because it was asked to be invisible.
+  // `visualHidden: false` restores an on-screen control.
+  const hideWrap = a11y.visualHidden ?? a11y.mode === "text";
+  const wrapStyle = hideWrap ? VISUALLY_HIDDEN : undefined;
+  // Only the text mode repeats per block often enough to be worth shortening,
+  // and only after this pass has spent its one full explanation.
+  const firstOfPage = a11y.mode !== "text" || claim("notes", "long");
+  const note = a11y.note ?? (firstOfPage ? A11Y_NOTE[a11y.mode] : A11Y_NOTE_REPEAT);
 
+  // Bare data attributes as hooks for the solver script. Names derive from the
+  // camouflage attr, so a project that called setCamouflage({ hash }) has no
+  // shared signature with any other project here either.
+  const groupMark = { [`${attr}-group`]: "" } as Record<string, string>;
+
+  // NO `role="group"` and no `aria-label` on this wrapper. Both were here to
+  // "associate" the note with the button, and measured against real VoiceOver
+  // they bought nothing and cost a great deal. Landing on the button produced:
+  //
+  //   "…button. Accessible alternative, group. You are currently on a button
+  //    inside of a group. To click this button press Control-Option-Space. To
+  //    exit this group press Control-Option-Shift-Up-Arrow."
+  //
+  // — roughly twenty words of scaffolding per block, in front of a control
+  // whose own name already says what it does. A note followed by a button reads
+  // perfectly well as two plain siblings, so they are two plain siblings.
+  // `role="presentation"` on top of removing the group role. Dropping
+  // `role="group"` stopped the page ASKING to be a group; VoiceOver announced
+  // the plain <div> as one anyway ("…wrong English. Group. Done. You are
+  // currently on a group."), because that is what it does with a container
+  // holding several children. Presentation takes the box itself out of the
+  // accessibility tree and leaves its contents exactly where they were.
   return (
-    <Wrap
-      className={`${camo.attrName}-alt`}
-      role="group"
-      aria-label="Accessible alternative"
-      style={wrapStyle}
-    >
-      <Note className={`${camo.attrName}-alt-note`}>{note}</Note>
+    <Wrap className={`${attr}-alt`} role="presentation" style={wrapStyle} {...groupMark}>
+      <Note className={`${attr}-alt-note`}>{note}</Note>
       {a11y.mode === "audio" ? (
-        <>
-          <audio controls preload="none" src={a11y.src} aria-label="Audio version" />
-          {a11y.transcript ? (
-            <a href={a11y.transcript}>{a11y.label ?? "Transcript"}</a>
-          ) : null}
-        </>
+        <audio controls preload="none" src={a11y.src} aria-label="Audio version" />
       ) : (
-        <a href={a11y.href}>{a11y.label ?? "Plain-text version"}</a>
+        renderPuzzle(
+          a11y.seconds,
+          blockId,
+          plain,
+          inline,
+          tag,
+          a11y.reveal ?? "hidden",
+          a11y.label,
+          ordinal,
+        )
       )}
     </Wrap>
+  );
+}
+
+/**
+ * The time-lock plain-text control: a button, a progress bar, a live region,
+ * an empty output element, and the sealed payload.
+ *
+ * Every piece of this is load-bearing for someone:
+ *
+ * - The `<button>` ships `hidden`. The solver script unhides it only after
+ *   confirming this browser has BigInt and `crypto.subtle` (the latter is
+ *   absent on insecure origins, a real deployment mistake). A control that
+ *   cannot work is worse than no control, and worst of all for a reader who
+ *   cannot see that pressing it did nothing.
+ * - `<progress>` stays IN the accessibility tree rather than being
+ *   `aria-hidden`. It does not announce on its own, so it costs a screen-reader
+ *   user nothing, and it lets them query exact progress on demand instead of
+ *   waiting for the next milestone.
+ * - The live region is `aria-live="polite"` with NO role. `role="status"` made
+ *   screen readers announce a bare "status" per block on the way past; moving
+ *   to a plain `<p>` traded that for "paragraph", so it is a `<span>` now and
+ *   silent until it has something to say. Politeness is the other half:
+ *   `assertive` would interrupt whatever the reader is listening to, repeatedly,
+ *   for a background task they were told to keep reading through.
+ * - The output element ships `tabIndex={-1}` and the solver promotes it to `0`
+ *   once it has content, making it a real Tab stop. Focus alone was not enough:
+ *   it announced only the element's role and never the words, and Tab then
+ *   skipped straight past them, so a reader who wanted the text again had no way
+ *   back to it. It is also its own `aria-live` region, so arriving speaks it.
+ * - The payload is `<script type="application/json">`, not a data attribute:
+ *   it can be several kilobytes, and attribute values get escaped into
+ *   unreadable soup in view-source.
+ *
+ * The sealed JSON is emitted with `<` escaped. Neither base64 nor a decimal
+ * BigInt can contain `</script`, so this cannot currently fire — it is here so
+ * that a future field carrying freer text cannot silently turn into an HTML
+ * injection.
+ */
+const TAG_NOUN: Record<string, string> = {
+  h1: "heading", h2: "heading", h3: "heading", h4: "heading", h5: "heading", h6: "heading",
+  p: "paragraph", blockquote: "quote", li: "list item", figcaption: "caption",
+};
+
+/**
+ * The button's accessible name.
+ *
+ * Every block used to render the identical sentence, which sounds fine on a
+ * one-block demo and is unusable on a real article: a screen reader announces
+ * "Show the plain text, up to about 20 seconds" once per block with nothing
+ * distinguishing them, so a reader who wants the third one has to activate
+ * buttons until they guess right. Measured over a two-block page before this
+ * existed; the two buttons were indistinguishable by ear.
+ *
+ * The name is built from the element type and this block's position on the
+ * page, both of which the component already knows. It deliberately does NOT
+ * quote the protected words: the label ships in the HTML, so a label containing
+ * the text would hand it to any scraper for free — the exact bypass the whole
+ * mode exists to close.
+ */
+function puzzleLabel(tag: string | null, ordinal: number, seconds: number): string {
+  const noun = (tag && TAG_NOUN[tag]) ?? "section";
+  return `Unlock the plain text for ${noun} ${ordinal} (up to ${seconds} seconds)`;
+}
+
+function renderPuzzle(
+  seconds: number | undefined,
+  blockId: string,
+  plain: string,
+  inline: boolean,
+  tag: string | null,
+  reveal: "hidden" | "visible",
+  label: string | undefined,
+  ordinal: number,
+): ReactNode {
+  const attr = camo.attrName;
+  const solveAttr = `${attr}-solve`;
+  const Note = (inline ? "span" : "p") as ElementType;
+  const target = seconds ?? DEFAULT_SECONDS;
+  const sealed = sealText(plain, { seconds: target });
+
+  // The revealed words go into the SAME element type the shield itself uses, so
+  // <Shield as="h2"> reveals into an <h2>. Without this the output was always a
+  // <p>, which silently dropped the heading: the words came back but the
+  // document outline did not, and heading navigation — the single most-used
+  // way a screen-reader user moves around a page — skipped straight past it.
+  // Only string tags can be mirrored; a custom component gets the neutral
+  // fallback, since we cannot know what it renders or whether it would accept
+  // the attributes this element needs.
+  const Out = (tag ?? (inline ? "span" : "p")) as ElementType;
+
+  const buttonMark = {
+    [solveAttr]: "",
+    [`${solveAttr}-for`]: blockId,
+  } as Record<string, string>;
+
+  // `hidden` AND an inline `display:none`. The attribute alone is only a
+  // default-stylesheet rule, so one ordinary line of a host project's CSS —
+  // `progress { display: block }` in a reset, say — silently un-hides all of
+  // this and puts a dead button and an empty progress bar on every page. An
+  // inline style outranks any author rule that is not `!important`, and the
+  // solver's show() clears both together. Found by looking at a real page; no
+  // markup assertion would have caught it.
+  const OFF: CSSProperties = { display: "none" };
+
+  return (
+    <>
+      {/*
+        "up to N seconds" — a ceiling, not an estimate. `seconds` is a
+        difficulty budget denominated on a deliberately slow reference device,
+        so a current desktop finishes well inside it (measured in Chrome, the
+        20-second default completes in 7.6 s) while an old phone may take
+        longer. "about" was dropped from this string after hearing it read
+        aloud: "up to about twenty seconds" is four words to say something two
+        can, and the live status line replaces it with a real per-device
+        measurement within ~80 ms of the press anyway.
+      */}
+      <button type="button" hidden style={OFF} className={`${attr}-alt-btn`} {...buttonMark}>
+        {label ?? puzzleLabel(tag, ordinal, target)}
+      </button>
+      <progress
+        max={100}
+        value={0}
+        hidden
+        style={OFF}
+        aria-label="Decoding progress"
+        {...({ [`${attr}-bar`]: "" } as Record<string, string>)}
+      />
+      {/*
+        `aria-live` WITHOUT `role="status"`. Both create a polite live region and
+        both announce updates, but the role also puts a named landmark in the
+        tree — so a screen reader passing an as-yet-empty one says the bare word
+        "status" for no reason, once per block. Confirmed with a screen reader
+        over a two-block page: two spurious "status" announcements before the
+        reader reached any content. `aria-atomic` so a progress update is read
+        as a whole rather than diffed against the previous one.
+
+        A <span> rather than the block <Note>, for the same reason one step
+        further: an empty <p> is still announced as "paragraph" on the way past.
+        Removing the role got rid of "status" and left "paragraph" behind. A
+        span carries no boundary, so an unused live region is silent — which is
+        what an unused live region should be.
+      */}
+      <span
+        aria-live="polite"
+        aria-atomic="true"
+        className={`${attr}-alt-status`}
+        {...({ [`${attr}-status`]: "" } as Record<string, string>)}
+      />
+      {/*
+        `aria-live` on the OUTPUT, not just on the status line. Moving focus
+        here was supposed to be enough, and measured with a screen reader it was
+        not: the focus landed and announced the bare word "paragraph", never the
+        words themselves, so a reader pressed the button, heard "Done", and then
+        could not find what they had just waited for. Making the output its own
+        polite region means filling it speaks it. It is the same element either
+        way, so the text stays navigable and re-readable afterwards rather than
+        being a one-shot announcement.
+
+        In `"hidden"` reveal the clip styles are baked in HERE rather than
+        applied by script, so the element is already off-screen the instant it
+        is un-hidden — no frame where a paragraph of text flashes into the
+        layout. The solver only clears `display`, which leaves the clipping in
+        place. `display:none` and `visibility:hidden` are both wrong for this:
+        each would remove the words from the accessibility tree, which is the
+        entire thing being delivered.
+      */}
+      <Out
+        tabIndex={-1}
+        hidden
+        aria-live="polite"
+        style={reveal === "hidden" ? { ...VISUALLY_HIDDEN, ...OFF } : OFF}
+        className={`${attr}-alt-out`}
+        {...({ [`${attr}-out`]: reveal } as Record<string, string>)}
+      />
+      <script
+        type="application/json"
+        {...({ [`${attr}-data`]: "" } as Record<string, string>)}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(sealed).replace(/</g, "\\u003c") }}
+      />
+    </>
   );
 }
 
@@ -1472,9 +1893,31 @@ export function Shield({
   // by randomising the attribute *name*.
   const dataAttrProps: Record<string, string> = { [camo.attrName]: v };
 
+  // Only the puzzle mode needs to address this block by ID (to hide it once the
+  // plain text is on screen), so only that mode pays for one. Claiming an ID
+  // unconditionally would advance the pass counter for every shield on the page
+  // and stamp IDs into markup that has no use for them.
+  const usesPuzzle = a11y?.mode === "text";
+  const { id: blockId, ordinal } = usesPuzzle
+    ? blockIdFor(content as string)
+    : { id: "", ordinal: 1 };
+
   // The accessible alternative. Built here so it lands OUTSIDE the aria-hidden
   // subtree and BEFORE it in DOM order (see the a11y section above).
-  const alt = renderA11y(a11y, typeof Tag === "string" && INLINE_TAGS.has(Tag));
+  //
+  // `children` — the ORIGINAL words — is handed over on purpose. It is what the
+  // puzzle mode seals, and sealing is the one place in this component where the
+  // plaintext is legitimately in play: it goes in, ciphertext comes out, and
+  // only the ciphertext reaches the JSX. Nothing here puts the plaintext in the
+  // markup, and `puzzle.test.ts` asserts it.
+  const alt = renderA11y(
+    a11y,
+    typeof Tag === "string" && INLINE_TAGS.has(Tag),
+    children,
+    blockId,
+    typeof Tag === "string" ? Tag : null,
+    ordinal,
+  );
 
   // Claim this page's font assets. Inside a render pass scope the first
   // <Shield> of a family emits them and the rest emit nothing; with no scope
@@ -1494,6 +1937,12 @@ export function Shield({
   } else if (weightKey && claim("weights", weightKey)) {
     seedScript = fontWeightSeedScript(family, fontWeight as number);
   }
+
+  // The puzzle solver is page-level, not per-block: it sweeps for every solve
+  // button in the document and wires each one. Emitting it per instance would
+  // repeat ~5 kB per shield, and the script's own window flag would make every
+  // copy after the first a no-op anyway.
+  const emitSolver = usesPuzzle && claim("solvers", "solver");
 
   return (
     <>
@@ -1519,6 +1968,22 @@ export function Shield({
       {/* This instance's weight, handed to the watcher an earlier one started. */}
       {seedScript ? <script dangerouslySetInnerHTML={{ __html: seedScript }} /> : null}
       {/*
+        The time-lock solver, once per page. Wires every solve button in the
+        document, including ones that stream in later.
+      */}
+      {emitSolver ? (
+        <script
+          dangerouslySetInnerHTML={{
+            __html: solverScript({
+              attr: camo.attrName,
+              flag: `${camo.guardFlag}s`,
+              logPrefix: camo.logPrefix,
+              storePrefix: `${camo.attrName}-`,
+            }),
+          }}
+        />
+      ) : null}
+      {/*
         The accessible alternative, OUTSIDE the aria-hidden region and BEFORE
         it, so linear navigation reaches it before the silence. Null when the
         author passed `{ mode: "none" }` or omitted `a11y` (which warns in dev).
@@ -1528,13 +1993,23 @@ export function Shield({
         aria-hidden is deliberate: the HTML here holds a decoy, and voicing a
         decoy is worse than voicing nothing — it is fluent, wrong, and gives the
         listener no signal that anything is off. The alternative is the `a11y`
-        prop above, whose audio must be synthesised AT BUILD TIME where the
-        plaintext already lives. Browser speechSynthesis is not an option: on
-        the rendered page it would voice the decoy, and on the original it would
+        prop above: either audio synthesised AT BUILD TIME, or the time-lock
+        text mode, whose plaintext is sealed at build time and opened by the
+        reader's own browser. Browser speechSynthesis is not an option: on the
+        rendered page it would voice the decoy, and on the original it would
         require shipping your plaintext to the browser — the exact leak this
         file warns about a hundred lines up.
+
+        `id` is present only in the puzzle mode, which needs to address this
+        block to hide it once the real words are on screen.
       */}
-      <Tag {...dataAttrProps} className={className} style={finalStyle} aria-hidden="true">
+      <Tag
+        {...dataAttrProps}
+        id={blockId || undefined}
+        className={className}
+        style={finalStyle}
+        aria-hidden="true"
+      >
         {content}
       </Tag>
     </>

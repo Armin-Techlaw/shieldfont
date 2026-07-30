@@ -12,6 +12,34 @@
 export type Mapping = Record<string, string>;
 
 /**
+ * One piece of an encoded string, as produced by `encodeSegments`.
+ *
+ * Concatenating every `encoded` reproduces `encode()` exactly. That is the
+ * point: a UI that wants to *highlight* what changed (a diff overlay, a
+ * swapped-token counter, hover tooltips showing the original) must not
+ * re-tokenise the text with its own regex, because the letter-run and
+ * digit-context rules are subtle enough that any second implementation drifts.
+ * Ask for segments instead and read them.
+ */
+export interface Segment {
+  /** The author's text for this piece, after NFC normalisation. */
+  original: string;
+  /** What the encoder emits for this piece. Equals `original` when unchanged. */
+  encoded: string;
+  /** `encoded !== original` — i.e. this piece is a decoy the reader's font undoes. */
+  swapped: boolean;
+  /**
+   * `"word"`  — a Unicode letter run (a dictionary lookup happened, hit or miss),
+   * `"digit"` — exactly one digit character (likewise, permuted or not),
+   * `"other"` — everything else: punctuation, spaces, symbols.
+   *
+   * So `word` and `digit` together are the tokens the dictionary gets a say
+   * over — the right denominator for a "n of m swapped" readout.
+   */
+  kind: "word" | "digit" | "other";
+}
+
+/**
  * Identifies a specific mapping at a specific version. Used in font name
  * tables (nameID 26), in CDN URLs, and to verify encoder/font compatibility.
  */

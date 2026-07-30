@@ -2,7 +2,7 @@
   "name": "shieldfont-monorepo",
   "version": "0.1.0",
   "private": true,
-  "description": "ShieldFont packages — encoding pipeline for the AI-scraping-resistant web font",
+  "description": "ShieldFont packages \u2014 encoding pipeline for the AI-scraping-resistant web font",
   "workspaces": [
     "packages/core",
     "packages/react",
@@ -11,14 +11,28 @@
   "scripts": {
     "build": "npm run -w @shieldfont/core build && npm run -w @shieldfont/react build",
     "test": "npm run -w @shieldfont/core test && npm run -w @shieldfont/react test",
-    "generate-inter": "python3 scripts/generate_font.py --base-url https://raw.githubusercontent.com/rsms/inter/v4.1/fonts/ttf/Inter-Regular.ttf --cache-name Inter-Regular.ttf --name 'ShieldFont' --prefix shieldfont"
+    "generate-inter": "python3 scripts/generate_font.py --base-url https://raw.githubusercontent.com/rsms/inter/v4.1/fonts/ttf/Inter-Regular.ttf --cache-name Inter-Regular.ttf --name 'ShieldFont' --prefix shieldfont",
+    "test:a11y": "node scripts/a11y-audit.mjs"
   },
-  "keywords": ["font", "ai", "protection", "privacy", "scraping", "agpl"],
+  "keywords": [
+    "font",
+    "ai",
+    "protection",
+    "privacy",
+    "scraping",
+    "agpl"
+  ],
   "license": "AGPL-3.0-or-later",
   "author": "Isaque Seneda and Gabriel Abrucio",
   "homepage": "https://github.com/isaqueseneda/shieldfont",
   "repository": {
     "type": "git",
     "url": "https://github.com/isaqueseneda/shieldfont.git"
+  },
+  "devDependencies": {
+    "@guidepup/virtual-screen-reader": "^0.32.1",
+    "playwright": "^1.49.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
   }
 }

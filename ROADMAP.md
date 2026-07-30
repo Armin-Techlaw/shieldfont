@@ -31,68 +31,213 @@ Live site: <https://shieldfont.org>
 
 ---
 
-## 🔴 Accessibility layer
+## 🟡 Accessibility layer
 
-*Screen readers read the DOM. The DOM contains the scrambled text.
-Without a fix, ShieldFont is exclusionary: it protects content from
-scrapers by making it unreadable to blind users too. This must be
-solved before any general-purpose recommendation. We have not solved
-it. What follows is the partial answer we are shipping first, and an
-open request for a better one.*
+*Nobody hears gibberish. `<Shield>` marks the encoded block
+`aria-hidden="true"`, so assistive software skips it rather than
+voicing a decoy, and the `a11y` prop puts a real alternative in the
+accessibility tree beside it. Since the plain-text mode landed, the
+author has to produce nothing at all for the text route:
+`a11y={{ mode: "text" }}` on its own is a complete configuration. It
+has been driven through a virtual screen reader in CI and by hand with
+real VoiceOver on macOS. What is still open is **NVDA and JAWS**, the
+focus indicator a sighted keyboard user loses to an invisible control,
+and that the CDN and `@shieldfont/core` tiers ship none of this
+machinery.*
 
-**Shipping first: a build-time alternative, rendered outside the
-hidden region.**
+**Shipping now: an alternative rendered outside the hidden region, in
+two shapes.**
 
 `<Shield>` keeps `aria-hidden="true"` on the encoded block, because
 voicing a decoy is worse than voicing nothing: it is fluent, wrong,
 and gives the listener no signal that anything is off. Alongside it,
-a new `a11y` prop renders a real alternative that assistive tech can
-reach:
+the `a11y` prop renders a real alternative that assistive tech can
+reach, as a sibling **outside** the hidden region and **before** it in
+DOM order:
 
+- `{ mode: "text" }` ships the block's real words **encrypted into the
+  page** and gives the reader a button that grinds out the key in their
+  own browser. Nothing to generate, nothing to host, no server. The
+  control is **screen-reader-only by default**: nothing about it appears
+  on screen, the unlocked words go to assistive technology clipped
+  off-screen, and the encoded block stays visible and unchanged. Optional
+  `seconds` (20, range 5..120), `reveal: "hidden" | "visible"`, `label`,
+  `note` and `visualHidden` (default `true` here, `false` for audio).
+  Full reference: [`docs/plain-text-mode.md`](docs/plain-text-mode.md).
 - `{ mode: "audio", src }` renders a native `<audio controls>` plus a
   short prose note explaining why it is there. Generate the file **at
   build time** from your original text.
-- `{ mode: "text", href }` links a plain-text copy on its own URL.
 - `{ mode: "none" }` is an explicit, auditable opt-out. Omitting the
   prop entirely logs one dev-time warning.
 
-**Build-time, never browser-side.** A `speechSynthesis` button reading
-the rendered page would voice the decoy; one reading the original
-would require shipping the original to the browser, which is the leak
-the whole architecture exists to prevent. Synthesis belongs in the
-build, where the plaintext already lives. Free offline paths exist
-(`piper` on CI, `say` on macOS), so this adds no runtime dependency
-and no per-request cost.
+**Why the text mode is not a link.** Two things shipped in `0.2.0` and
+were both removed: a `{ mode: "text", href }` linking a plain-text copy
+on its own URL, and an optional `transcript` link on the audio mode.
+One reason for both. A URL cannot be handed to a screen reader without
+being handed to everyone else, and the same crawl that reads the decoy
+reads the link sitting beside it — one line of scraper code follows it
+and gets the original. A block carrying either was strictly less
+protected than an unwrapped one while still looking protected.
 
-**What this does not fix, and we will not pretend otherwise:** an
-audio track is not a document. It is not navigable by heading, not
-searchable, not quotable, and not skimmable. A blind reader still gets
-a worse artifact than a sighted one. That gap is the actual open
-problem.
+The mode that came back inverts that trade instead of repeating it. The
+words are in the page but closed, and the key is not in the page
+either: it is the answer to a **time-lock puzzle** (Rivest–Shamir–Wagner,
+1996) that the reader's browser has to grind out. `n = p·q`, and the key
+is `2^(2^T) mod n` — T sequential squarings, each needing the answer to
+the one before, so the work **cannot be parallelised**. A crawler with a
+thousand GPUs still pays T sequential steps per block; its only edge is
+a faster single core. The builder holds the trapdoor (it knows `p` and
+`q`, which collapses the tower to two modexps), so sealing costs **62 ms
+per block** against a default budget of twenty seconds of the reader's
+own CPU, and the primes are discarded and never returned. Fresh primes per block per build: solving
+one block teaches nothing about the next, and every redeploy invalidates
+every solution already computed — including your readers' caches, which
+is the same property working in both directions.
+
+**Difficulty is bounded above by OCR, not by paranoia.** A crawler that
+wants the words can always render the page and read the pixels for
+roughly three seconds of server CPU, whether or not this feature exists.
+That is the floor on the whole package's protection and no cryptography
+raises it. So the target was never "expensive", it is **not cheaper than
+OCR** — enough that the accessible path stops being the *shortcut*, and
+no further. Past that point extra difficulty buys nothing (the crawler
+takes the cheaper door) and is paid for entirely by disabled readers
+waiting longer. Default `seconds: 20`, accepted range 5..120. State the
+ceiling wherever you state the default, or someone will "harden" a page
+by raising it.
+
+Measured: 2048-bit modulus, 5,000,000 sequential squarings at the
+default, and **7.6 s to open it in Chrome on a desktop**. The rate used
+for labelling — 250,000 squarings/second — is deliberately conservative,
+roughly a mid-range phone, so `seconds` is a budget denominated on a slow
+device rather than a promise about any particular one.
+
+**What the invisible control costs.** `visualHidden` clips with
+`clip-path` rather than `display:none`, so the control stays in the
+accessibility tree; removing it from the tree is the exact bug the prop
+exists to fix. For `mode: "text"` it now defaults to **`true`** — the
+whole control is screen-reader-only, because a sighted reader can already
+read the block and would otherwise get an unexplained widget attached to
+text that looks fine. The price is real: a sighted person navigating by
+keyboard **without** a screen reader Tabs into a control they cannot see
+and loses their focus indicator, which fails **WCAG 2.2 SC 2.4.7**. The
+skip-link remedy (clipped until focused, visible while focused) was
+deliberately not taken, because the control was asked to be invisible.
+`visualHidden: false` restores an on-screen control. The audio mode keeps
+its player on screen by default: a player nobody can see is a player
+nobody can press.
+
+**React only.** If you use the paste-in CDN stylesheet or
+`@shieldfont/core` directly, none of the above happens for you: you set
+`aria-hidden` on the encoded region yourself, and you supply the
+alternative yourself. Closing that gap for the non-React tiers is part
+of what remains.
+
+**Audio is synthesised at build time, never in the browser.** A
+`speechSynthesis` button reading the rendered page would voice the
+decoy; one reading the original would require shipping the original to
+the browser in the clear, which is the leak the whole architecture
+exists to prevent. Synthesis belongs in the build, where the plaintext
+already lives. Free offline paths exist (`piper` on CI, `say` on
+macOS), so this adds no runtime dependency and no per-request cost.
+(The text mode *does* work in the browser, and does not contradict
+this: what it ships is ciphertext, and the reader's CPU is the price of
+opening it.)
+
+**What this does not fix, and we will not pretend otherwise:**
+
+- **OCR is still cheaper.** The text mode stops the accessible path
+  being a shortcut. It does not stop scraping and it is not a wall.
+- **A reader who needs it waits.** Everyone else has the words
+  instantly. That is unequal access however carefully it is engineered:
+  a compromise, not a solution.
+- **It needs JavaScript**, plus `BigInt` and `crypto.subtle`. The rest
+  of ShieldFont works with JS off — the font does that work — so this is
+  the one part that does not. `crypto.subtle` is also absent on insecure
+  origins, so plain `http://` breaks it.
+- **A sighted keyboard user loses their focus indicator.** The text
+  mode's control is invisible by default, so someone Tabbing through the
+  page without a screen reader lands on something they cannot see —
+  **WCAG 2.2 SC 2.4.7**. Deliberate, not an oversight, and
+  `visualHidden: false` opts out of it. It is an open problem, not a
+  settled one.
+- **Once revealed, the plaintext is in the DOM.** A crawler that runs a
+  real browser, presses the button and waits gets the words, having paid
+  the cost. That is the deal, not a leak.
+- **Audio still fails WCAG 2.2 SC 1.2.1 (Level A).** Audio-only content
+  with no text alternative fails that criterion, the audio mode's
+  `transcript` link was this layer's only answer to it, and the text mode
+  does **not** rescue it — they are separate alternatives an author picks
+  between, so a block using `{ mode: "audio" }` alone still has no way to
+  satisfy 1.2.1. Do not let the good news blur that.
+- An audio track is also still not a document: not navigable by heading,
+  not searchable, not quotable, not skimmable.
 
 **Still open, contributors wanted:**
 
+- **NVDA and JAWS.** The text mode is verified under
+  `@guidepup/virtual-screen-reader` in Playwright and by hand with real
+  **VoiceOver on macOS** — which is where the group chatter, the
+  announcements that cut each other off and the text that could not be
+  re-read were all found. Windows is untouched: **NVDA and JAWS remain
+  unverified**, and every fix VoiceOver forced is a reason to expect
+  they will find their own.
+- **A focus indicator for sighted keyboard users.** The invisible
+  control fails WCAG 2.2 SC 2.4.7 for anyone Tabbing without a screen
+  reader (above). `visualHidden: false` is an escape hatch, not an
+  answer; a design that keeps the control out of a sighted reader's way
+  *and* out of their tab order — or visible once focused without looking
+  like an error — would close this.
+- **Parity for the non-React tiers:** the CDN paste-in and
+  `@shieldfont/core` leave `aria-hidden` and the alternative entirely
+  to the author. Whatever the answer is, it has to work without a
+  React render. The puzzle primitive itself is already framework-free
+  (`@shieldfont/core/puzzle`); the control around it is not.
 - **Paired-sibling ARIA:** every encoded span has a visually-hidden
   sibling containing the plaintext, while the scrambled span gets
   `aria-hidden="true"`. Naive scrapers still get scrambled text; any
   scraper that strips `aria-hidden` nodes gets the original. Someone
-  needs to measure how many real pipelines do that.
+  needs to measure how many real pipelines do that — and note that this
+  is the *inline* version of what `mode: "text"` did with a URL, so it
+  has to clear the same bar: if the plaintext is retrievable for one
+  extra line of scraper code, it is not shippable here either. The
+  time-lock mode clears it by making retrieval cost sequential compute
+  rather than a fetch; a visually-hidden sibling has no such story yet.
 - **Decoder browser extension for assistive tech:** installed by the
   user, decodes ShieldFont-protected pages locally.
 - **A structural answer we have not thought of.** If you work in
   accessibility engineering, this is the highest-value contribution
   available in this project.
 
-Acceptance criteria:
+Acceptance criteria, and where we stand against them:
 
-- NVDA, JAWS and VoiceOver all reach the alternative and play or open
-  it without sighted assistance.
 - The alternative is in the accessibility tree in DOM order *before*
-  the hidden block.
+  the hidden block. **Met** in `<Shield>`, with unit tests over the
+  rendered output.
 - A naive scraper (BeautifulSoup + `.get_text()`) still sees scrambled
-  text, and the audio file is not a transcript in the DOM.
+  text, and the alternative is not plaintext in the DOM. **Met**, and
+  more cleanly than before: the alternative is either an audio file or a
+  ciphertext, and there is no longer any link to follow either. This
+  criterion is what killed the old `{ mode: "text", href }` and the
+  audio mode's `transcript` link, and it is the criterion the new text
+  mode was designed against — retrieval costs sequential compute rather
+  than a fetch, so `.get_text()` gets the decoy and a real crawler pays
+  more than it would pay for OCR.
+- NVDA, JAWS and VoiceOver all reach the alternative and play or open
+  it without sighted assistance. **VoiceOver: partially met**, by hand
+  on macOS, alongside an automated pass under
+  `@guidepup/virtual-screen-reader` in Playwright. The manual session is
+  what found the group chatter, the truncated announcements and the
+  revealed text that could not be re-read, all now fixed. **NVDA and
+  JAWS: not done.** Neither has been run against it.
 - Published test page with a human-reviewed screen-reader recording
-  and automated axe/WCAG scans.
+  and automated axe/WCAG scans. **Not done.** No axe scan has been run
+  and no test page is published.
+- A sighted keyboard user keeps a visible focus indicator throughout
+  (WCAG 2.2 SC 2.4.7). **Not met**, deliberately, at the default
+  `visualHidden: true` for `mode: "text"`. `visualHidden: false` meets
+  it at the cost of an on-screen control.
+- The same guarantees available outside React. **Not started.**
 
 ---
 
@@ -266,25 +411,24 @@ Acceptance criteria:
 
 ---
 
-## 🟠 Benchmark reproducibility: ship the script behind the headline number
+## 🟡 Benchmark reproducibility: extend the script behind the headline number
 
-*Two gaps in the measurement code, both small to close, both worth
-closing before anyone tries to replicate us.*
+*One gap closed, one still open.*
 
-**1. Nothing computes the conditional retention rate.** The number the
-benchmark leads with is *conditional*: of the chunks whose clean version
-already passed the quality gate, what share still passes once encoded.
-`gate_fineweb_edu.py` emits only the raw per-chunk pass/fail and the
-absolute rate. Every conditional figure we publish was recomputed by
-hand from the stored per-chunk scores. That reproduces exactly when we
-do it and not at all when a stranger does.
+**1. ~~Nothing computes the conditional retention rate~~ — partially fixed.**
+The number the benchmark leads with is *conditional*: of the chunks whose
+clean version already passed the quality gate, what share still passes once
+encoded. `gate_fineweb_edu.py` emits only the raw per-chunk pass/fail and the
+absolute rate; every conditional figure used to be recomputed by hand from the
+stored per-chunk scores, which reproduced exactly when we did it and not at
+all when a stranger did.
 
-Deliverable: `benchmarks/v8/scripts/conditional_retention.py`, reading
-the stored per-chunk gate outputs and emitting, per gate and per
-variant, the absolute rate, the conditional retention rate, the
-denominator it was computed over, and a Wilson 95% interval on it. The
-interval matters: at the FineWeb-Edu gate the denominator is 134
-chunks, which is small enough that the interval is the story.
+`benchmark/data/verify.py` now does this for the FineWeb-Edu gate: it reads the
+stored per-chunk scores directly and reproduces 9.70% (13/134) as one command.
+**Still open:** extend it to the other three instrumented gates (per-corpus
+KenLM, Pythia-160M, Wiki-KenLM), and emit a Wilson 95% interval per gate and
+per variant — the interval matters, since at the FineWeb-Edu gate the
+denominator is 134 chunks, small enough that the interval is the story.
 
 **2. The evaluation sample is not deterministic.** `phase2_common.py:68`
 seeds with `random.Random(SEED + hash(corpus) % 1000)`, and Python

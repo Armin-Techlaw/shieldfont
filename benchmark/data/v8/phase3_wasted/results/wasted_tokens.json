@@ -1,0 +1,952 @@
+{
+  "schema_version": 1,
+  "primary_gate": "fineweb_edu",
+  "primary_meaning_loss_factor": "nli_bidir_fail (pooled)",
+  "note": "Pooled NLI used as primary; conditional-on-passing stratification deferred to Phase 3.1 (requires per-chunk score indexing)",
+  "wasted": {
+    "clean": {
+      "cc_news": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.01,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.029,
+          "meaning_loss_pooled_nli": 0.01,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "pythia_160m": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.01,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.01,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        }
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.008,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.074,
+          "meaning_loss_pooled_nli": 0.008,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "pythia_160m": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.008,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.008,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        }
+      },
+      "pg19": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.013,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.031,
+          "meaning_loss_pooled_nli": 0.013,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "pythia_160m": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.013,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.013,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        }
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.015,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.021,
+          "meaning_loss_pooled_nli": 0.015,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "pythia_160m": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.015,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.0,
+          "gate_pass_rate": 0.7,
+          "meaning_loss_pooled_nli": 0.015,
+          "wasted_per_passing_page": 0.0,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.0
+        }
+      }
+    },
+    "v18_a": {
+      "cc_news": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4674,
+          "gate_pass_rate": 0.16,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2608,
+          "wasted_per_adopter_page": 0.0417,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2608
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4674,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2608,
+          "wasted_per_adopter_page": 0.0005,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2608
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4674,
+          "gate_pass_rate": 0.022,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2608,
+          "wasted_per_adopter_page": 0.0057,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2608
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4674,
+          "gate_pass_rate": 0.083,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2608,
+          "wasted_per_adopter_page": 0.0216,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2608
+        }
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4788,
+          "gate_pass_rate": 0.014,
+          "meaning_loss_pooled_nli": 0.519,
+          "wasted_per_passing_page": 0.2485,
+          "wasted_per_adopter_page": 0.0035,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2485
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4788,
+          "gate_pass_rate": 0.01,
+          "meaning_loss_pooled_nli": 0.519,
+          "wasted_per_passing_page": 0.2485,
+          "wasted_per_adopter_page": 0.0025,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2485
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4788,
+          "gate_pass_rate": 0.014,
+          "meaning_loss_pooled_nli": 0.519,
+          "wasted_per_passing_page": 0.2485,
+          "wasted_per_adopter_page": 0.0035,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2485
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4788,
+          "gate_pass_rate": 0.101,
+          "meaning_loss_pooled_nli": 0.519,
+          "wasted_per_passing_page": 0.2485,
+          "wasted_per_adopter_page": 0.0251,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2485
+        }
+      },
+      "pg19": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.3949,
+          "gate_pass_rate": 0.29,
+          "meaning_loss_pooled_nli": 0.311,
+          "wasted_per_passing_page": 0.1228,
+          "wasted_per_adopter_page": 0.0356,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1228
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.3949,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.311,
+          "wasted_per_passing_page": 0.1228,
+          "wasted_per_adopter_page": 0.0002,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1228
+        },
+        "pythia_160m": {
+          "content_coverage": 0.3949,
+          "gate_pass_rate": 0.199,
+          "meaning_loss_pooled_nli": 0.311,
+          "wasted_per_passing_page": 0.1228,
+          "wasted_per_adopter_page": 0.0244,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1228
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.3949,
+          "gate_pass_rate": 0.457,
+          "meaning_loss_pooled_nli": 0.311,
+          "wasted_per_passing_page": 0.1228,
+          "wasted_per_adopter_page": 0.0561,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1228
+        }
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4478,
+          "gate_pass_rate": 0.323,
+          "meaning_loss_pooled_nli": 0.345,
+          "wasted_per_passing_page": 0.1545,
+          "wasted_per_adopter_page": 0.0499,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1545
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4478,
+          "gate_pass_rate": 0.001,
+          "meaning_loss_pooled_nli": 0.345,
+          "wasted_per_passing_page": 0.1545,
+          "wasted_per_adopter_page": 0.0002,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1545
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4478,
+          "gate_pass_rate": 0.075,
+          "meaning_loss_pooled_nli": 0.345,
+          "wasted_per_passing_page": 0.1545,
+          "wasted_per_adopter_page": 0.0116,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1545
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4478,
+          "gate_pass_rate": 0.09,
+          "meaning_loss_pooled_nli": 0.345,
+          "wasted_per_passing_page": 0.1545,
+          "wasted_per_adopter_page": 0.0139,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1545
+        }
+      }
+    },
+    "v18_b": {
+      "cc_news": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4699,
+          "gate_pass_rate": 0.149,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2622,
+          "wasted_per_adopter_page": 0.0391,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2622
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4699,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2622,
+          "wasted_per_adopter_page": 0.0005,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2622
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4699,
+          "gate_pass_rate": 0.024,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2622,
+          "wasted_per_adopter_page": 0.0063,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2622
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4699,
+          "gate_pass_rate": 0.079,
+          "meaning_loss_pooled_nli": 0.558,
+          "wasted_per_passing_page": 0.2622,
+          "wasted_per_adopter_page": 0.0207,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2622
+        }
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4811,
+          "gate_pass_rate": 0.015,
+          "meaning_loss_pooled_nli": 0.495,
+          "wasted_per_passing_page": 0.2381,
+          "wasted_per_adopter_page": 0.0036,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2381
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4811,
+          "gate_pass_rate": 0.011,
+          "meaning_loss_pooled_nli": 0.495,
+          "wasted_per_passing_page": 0.2381,
+          "wasted_per_adopter_page": 0.0026,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2381
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4811,
+          "gate_pass_rate": 0.014,
+          "meaning_loss_pooled_nli": 0.495,
+          "wasted_per_passing_page": 0.2381,
+          "wasted_per_adopter_page": 0.0033,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2381
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4811,
+          "gate_pass_rate": 0.095,
+          "meaning_loss_pooled_nli": 0.495,
+          "wasted_per_passing_page": 0.2381,
+          "wasted_per_adopter_page": 0.0226,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2381
+        }
+      },
+      "pg19": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4006,
+          "gate_pass_rate": 0.288,
+          "meaning_loss_pooled_nli": 0.341,
+          "wasted_per_passing_page": 0.1366,
+          "wasted_per_adopter_page": 0.0393,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1366
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4006,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.341,
+          "wasted_per_passing_page": 0.1366,
+          "wasted_per_adopter_page": 0.0003,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1366
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4006,
+          "gate_pass_rate": 0.16,
+          "meaning_loss_pooled_nli": 0.341,
+          "wasted_per_passing_page": 0.1366,
+          "wasted_per_adopter_page": 0.0219,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1366
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4006,
+          "gate_pass_rate": 0.45,
+          "meaning_loss_pooled_nli": 0.341,
+          "wasted_per_passing_page": 0.1366,
+          "wasted_per_adopter_page": 0.0615,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1366
+        }
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4523,
+          "gate_pass_rate": 0.306,
+          "meaning_loss_pooled_nli": 0.321,
+          "wasted_per_passing_page": 0.1452,
+          "wasted_per_adopter_page": 0.0444,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1452
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4523,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.321,
+          "wasted_per_passing_page": 0.1452,
+          "wasted_per_adopter_page": 0.0003,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1452
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4523,
+          "gate_pass_rate": 0.075,
+          "meaning_loss_pooled_nli": 0.321,
+          "wasted_per_passing_page": 0.1452,
+          "wasted_per_adopter_page": 0.0109,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1452
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4523,
+          "gate_pass_rate": 0.079,
+          "meaning_loss_pooled_nli": 0.321,
+          "wasted_per_passing_page": 0.1452,
+          "wasted_per_adopter_page": 0.0115,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1452
+        }
+      }
+    },
+    "v18_c": {
+      "cc_news": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4658,
+          "gate_pass_rate": 0.157,
+          "meaning_loss_pooled_nli": 0.541,
+          "wasted_per_passing_page": 0.252,
+          "wasted_per_adopter_page": 0.0396,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.252
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4658,
+          "gate_pass_rate": 0.003,
+          "meaning_loss_pooled_nli": 0.541,
+          "wasted_per_passing_page": 0.252,
+          "wasted_per_adopter_page": 0.0008,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.252
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4658,
+          "gate_pass_rate": 0.024,
+          "meaning_loss_pooled_nli": 0.541,
+          "wasted_per_passing_page": 0.252,
+          "wasted_per_adopter_page": 0.006,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.252
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4658,
+          "gate_pass_rate": 0.093,
+          "meaning_loss_pooled_nli": 0.541,
+          "wasted_per_passing_page": 0.252,
+          "wasted_per_adopter_page": 0.0234,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.252
+        }
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4784,
+          "gate_pass_rate": 0.022,
+          "meaning_loss_pooled_nli": 0.504,
+          "wasted_per_passing_page": 0.2411,
+          "wasted_per_adopter_page": 0.0053,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2411
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4784,
+          "gate_pass_rate": 0.01,
+          "meaning_loss_pooled_nli": 0.504,
+          "wasted_per_passing_page": 0.2411,
+          "wasted_per_adopter_page": 0.0024,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2411
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4784,
+          "gate_pass_rate": 0.014,
+          "meaning_loss_pooled_nli": 0.504,
+          "wasted_per_passing_page": 0.2411,
+          "wasted_per_adopter_page": 0.0034,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2411
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4784,
+          "gate_pass_rate": 0.105,
+          "meaning_loss_pooled_nli": 0.504,
+          "wasted_per_passing_page": 0.2411,
+          "wasted_per_adopter_page": 0.0253,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2411
+        }
+      },
+      "pg19": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.388,
+          "gate_pass_rate": 0.334,
+          "meaning_loss_pooled_nli": 0.332,
+          "wasted_per_passing_page": 0.1288,
+          "wasted_per_adopter_page": 0.043,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1288
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.388,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.332,
+          "wasted_per_passing_page": 0.1288,
+          "wasted_per_adopter_page": 0.0003,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1288
+        },
+        "pythia_160m": {
+          "content_coverage": 0.388,
+          "gate_pass_rate": 0.204,
+          "meaning_loss_pooled_nli": 0.332,
+          "wasted_per_passing_page": 0.1288,
+          "wasted_per_adopter_page": 0.0263,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1288
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.388,
+          "gate_pass_rate": 0.494,
+          "meaning_loss_pooled_nli": 0.332,
+          "wasted_per_passing_page": 0.1288,
+          "wasted_per_adopter_page": 0.0636,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1288
+        }
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4497,
+          "gate_pass_rate": 0.319,
+          "meaning_loss_pooled_nli": 0.326,
+          "wasted_per_passing_page": 0.1466,
+          "wasted_per_adopter_page": 0.0468,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1466
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4497,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.326,
+          "wasted_per_passing_page": 0.1466,
+          "wasted_per_adopter_page": 0.0003,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1466
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4497,
+          "gate_pass_rate": 0.076,
+          "meaning_loss_pooled_nli": 0.326,
+          "wasted_per_passing_page": 0.1466,
+          "wasted_per_adopter_page": 0.0111,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1466
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4497,
+          "gate_pass_rate": 0.084,
+          "meaning_loss_pooled_nli": 0.326,
+          "wasted_per_passing_page": 0.1466,
+          "wasted_per_adopter_page": 0.0123,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1466
+        }
+      }
+    },
+    "m15_en": {
+      "cc_news": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4858,
+          "gate_pass_rate": 0.016,
+          "meaning_loss_pooled_nli": 0.835,
+          "wasted_per_passing_page": 0.4056,
+          "wasted_per_adopter_page": 0.0065,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4056
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4858,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.835,
+          "wasted_per_passing_page": 0.4056,
+          "wasted_per_adopter_page": 0.0008,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4056
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4858,
+          "gate_pass_rate": 0.015,
+          "meaning_loss_pooled_nli": 0.835,
+          "wasted_per_passing_page": 0.4056,
+          "wasted_per_adopter_page": 0.0061,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4056
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4858,
+          "gate_pass_rate": 0.001,
+          "meaning_loss_pooled_nli": 0.835,
+          "wasted_per_passing_page": 0.4056,
+          "wasted_per_adopter_page": 0.0004,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4056
+        }
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4879,
+          "gate_pass_rate": 0.0,
+          "meaning_loss_pooled_nli": 0.82,
+          "wasted_per_passing_page": 0.4001,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4001
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4879,
+          "gate_pass_rate": 0.01,
+          "meaning_loss_pooled_nli": 0.82,
+          "wasted_per_passing_page": 0.4001,
+          "wasted_per_adopter_page": 0.004,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4001
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4879,
+          "gate_pass_rate": 0.011,
+          "meaning_loss_pooled_nli": 0.82,
+          "wasted_per_passing_page": 0.4001,
+          "wasted_per_adopter_page": 0.0044,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4001
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4879,
+          "gate_pass_rate": 0.006,
+          "meaning_loss_pooled_nli": 0.82,
+          "wasted_per_passing_page": 0.4001,
+          "wasted_per_adopter_page": 0.0024,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.4001
+        }
+      },
+      "pg19": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.4357,
+          "gate_pass_rate": 0.003,
+          "meaning_loss_pooled_nli": 0.652,
+          "wasted_per_passing_page": 0.2841,
+          "wasted_per_adopter_page": 0.0009,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2841
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.4357,
+          "gate_pass_rate": 0.001,
+          "meaning_loss_pooled_nli": 0.652,
+          "wasted_per_passing_page": 0.2841,
+          "wasted_per_adopter_page": 0.0003,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2841
+        },
+        "pythia_160m": {
+          "content_coverage": 0.4357,
+          "gate_pass_rate": 0.034,
+          "meaning_loss_pooled_nli": 0.652,
+          "wasted_per_passing_page": 0.2841,
+          "wasted_per_adopter_page": 0.0097,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2841
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.4357,
+          "gate_pass_rate": 0.184,
+          "meaning_loss_pooled_nli": 0.652,
+          "wasted_per_passing_page": 0.2841,
+          "wasted_per_adopter_page": 0.0523,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.2841
+        }
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.514,
+          "gate_pass_rate": 0.039,
+          "meaning_loss_pooled_nli": 0.725,
+          "wasted_per_passing_page": 0.3726,
+          "wasted_per_adopter_page": 0.0145,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.3726
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.514,
+          "gate_pass_rate": 0.001,
+          "meaning_loss_pooled_nli": 0.725,
+          "wasted_per_passing_page": 0.3726,
+          "wasted_per_adopter_page": 0.0004,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.3726
+        },
+        "pythia_160m": {
+          "content_coverage": 0.514,
+          "gate_pass_rate": 0.07,
+          "meaning_loss_pooled_nli": 0.725,
+          "wasted_per_passing_page": 0.3726,
+          "wasted_per_adopter_page": 0.0261,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.3726
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.514,
+          "gate_pass_rate": 0.042,
+          "meaning_loss_pooled_nli": 0.725,
+          "wasted_per_passing_page": 0.3726,
+          "wasted_per_adopter_page": 0.0157,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.3726
+        }
+      }
+    },
+    "m0_v3": {
+      "cc_news": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.1973,
+          "gate_pass_rate": 0.014,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1434,
+          "wasted_per_adopter_page": 0.002,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1434
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.1973,
+          "gate_pass_rate": 0.0,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1434,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1434
+        },
+        "pythia_160m": {
+          "content_coverage": 0.1973,
+          "gate_pass_rate": 0.016,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1434,
+          "wasted_per_adopter_page": 0.0023,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1434
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.1973,
+          "gate_pass_rate": 0.001,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1434,
+          "wasted_per_adopter_page": 0.0001,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1434
+        }
+      },
+      "openwebtext": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.2047,
+          "gate_pass_rate": 0.0,
+          "meaning_loss_pooled_nli": 0.751,
+          "wasted_per_passing_page": 0.1537,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1537
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.2047,
+          "gate_pass_rate": 0.001,
+          "meaning_loss_pooled_nli": 0.751,
+          "wasted_per_passing_page": 0.1537,
+          "wasted_per_adopter_page": 0.0002,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1537
+        },
+        "pythia_160m": {
+          "content_coverage": 0.2047,
+          "gate_pass_rate": 0.009,
+          "meaning_loss_pooled_nli": 0.751,
+          "wasted_per_passing_page": 0.1537,
+          "wasted_per_adopter_page": 0.0014,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1537
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.2047,
+          "gate_pass_rate": 0.002,
+          "meaning_loss_pooled_nli": 0.751,
+          "wasted_per_passing_page": 0.1537,
+          "wasted_per_adopter_page": 0.0003,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1537
+        }
+      },
+      "pg19": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.2225,
+          "gate_pass_rate": 0.0,
+          "meaning_loss_pooled_nli": 0.529,
+          "wasted_per_passing_page": 0.1177,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1177
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.2225,
+          "gate_pass_rate": 0.0,
+          "meaning_loss_pooled_nli": 0.529,
+          "wasted_per_passing_page": 0.1177,
+          "wasted_per_adopter_page": 0.0,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1177
+        },
+        "pythia_160m": {
+          "content_coverage": 0.2225,
+          "gate_pass_rate": 0.024,
+          "meaning_loss_pooled_nli": 0.529,
+          "wasted_per_passing_page": 0.1177,
+          "wasted_per_adopter_page": 0.0028,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1177
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.2225,
+          "gate_pass_rate": 0.037,
+          "meaning_loss_pooled_nli": 0.529,
+          "wasted_per_passing_page": 0.1177,
+          "wasted_per_adopter_page": 0.0044,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1177
+        }
+      },
+      "bookcorpus": {
+        "per_corpus_kenlm": {
+          "content_coverage": 0.2688,
+          "gate_pass_rate": 0.033,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1954,
+          "wasted_per_adopter_page": 0.0064,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1954
+        },
+        "fineweb_edu": {
+          "content_coverage": 0.2688,
+          "gate_pass_rate": 0.003,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1954,
+          "wasted_per_adopter_page": 0.0006,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1954
+        },
+        "pythia_160m": {
+          "content_coverage": 0.2688,
+          "gate_pass_rate": 0.064,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1954,
+          "wasted_per_adopter_page": 0.0125,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1954
+        },
+        "wiki_kenlm": {
+          "content_coverage": 0.2688,
+          "gate_pass_rate": 0.042,
+          "meaning_loss_pooled_nli": 0.727,
+          "wasted_per_passing_page": 0.1954,
+          "wasted_per_adopter_page": 0.0082,
+          "clean_wasted_baseline": 0.0,
+          "excess_waste": 0.1954
+        }
+      }
+    }
+  },
+  "falsification_bars": {
+    "F3a": {
+      "name": "v18 wasted_per_passing_page \u2265 15% median (gate=fineweb_edu)",
+      "actual": 0.1939,
+      "bar": 0.15,
+      "pass": true
+    },
+    "F3b": {
+      "name": "v18 excess_waste \u2265 10pp above clean baseline median (gate=fineweb_edu)",
+      "actual": 0.1939,
+      "bar": 0.1,
+      "pass": true
+    },
+    "F3c": {
+      "name": "M15-EN wasted_per_adopter_page \u2265 25% median (gate=fineweb_edu)",
+      "actual": 0.0006,
+      "bar": 0.25,
+      "pass": false
+    }
+  }
+}

@@ -1,0 +1,972 @@
+{
+  "schema_version": 1,
+  "fineweb_threshold": 2.7,
+  "rare_content_zipf_cutoff": 4.0,
+  "zipf_max": 9.0,
+  "cells": {
+    "clean__cc_news": {
+      "variant": "clean",
+      "corpus": "cc_news",
+      "n_total": 1000,
+      "n_passing_finewebedu": 29,
+      "pass_rate_finewebedu": 0.029,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      },
+      "passing": {
+        "n": 29,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      },
+      "failing": {
+        "n": 971,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      }
+    },
+    "clean__openwebtext": {
+      "variant": "clean",
+      "corpus": "openwebtext",
+      "n_total": 1000,
+      "n_passing_finewebedu": 74,
+      "pass_rate_finewebedu": 0.074,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      },
+      "passing": {
+        "n": 74,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      },
+      "failing": {
+        "n": 926,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      }
+    },
+    "clean__pg19": {
+      "variant": "clean",
+      "corpus": "pg19",
+      "n_total": 1000,
+      "n_passing_finewebedu": 31,
+      "pass_rate_finewebedu": 0.031,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      },
+      "passing": {
+        "n": 31,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      },
+      "failing": {
+        "n": 969,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      }
+    },
+    "clean__bookcorpus": {
+      "variant": "clean",
+      "corpus": "bookcorpus",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.0,
+        "total_cov_median": 0.0,
+        "content_cov_mean": 0.0,
+        "content_cov_median": 0.0,
+        "info_cov_mean": 0.0,
+        "info_cov_median": 0.0,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": -0.0,
+        "sem_div_median": 0.0
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 0
+      }
+    },
+    "v18_a__cc_news": {
+      "variant": "v18_a",
+      "corpus": "cc_news",
+      "n_total": 1000,
+      "n_passing_finewebedu": 2,
+      "pass_rate_finewebedu": 0.002,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2746,
+        "total_cov_median": 0.272,
+        "content_cov_mean": 0.4674,
+        "content_cov_median": 0.4697,
+        "info_cov_mean": 0.3342,
+        "info_cov_median": 0.3342,
+        "rare_content_cov_mean": 0.2373,
+        "rare_content_cov_median": 0.2222,
+        "sem_div_mean": 0.268,
+        "sem_div_median": 0.2466
+      },
+      "passing": {
+        "n": 2,
+        "total_cov_mean": 0.2941,
+        "total_cov_median": 0.2941,
+        "content_cov_mean": 0.4511,
+        "content_cov_median": 0.4511,
+        "info_cov_mean": 0.3352,
+        "info_cov_median": 0.3352,
+        "rare_content_cov_mean": 0.1367,
+        "rare_content_cov_median": 0.1367,
+        "sem_div_mean": 0.2175,
+        "sem_div_median": 0.2175
+      },
+      "failing": {
+        "n": 998,
+        "total_cov_mean": 0.2746,
+        "total_cov_median": 0.272,
+        "content_cov_mean": 0.4674,
+        "content_cov_median": 0.4698,
+        "info_cov_mean": 0.3341,
+        "info_cov_median": 0.3342,
+        "rare_content_cov_mean": 0.2375,
+        "rare_content_cov_median": 0.2222,
+        "sem_div_mean": 0.2681,
+        "sem_div_median": 0.2467
+      }
+    },
+    "v18_a__openwebtext": {
+      "variant": "v18_a",
+      "corpus": "openwebtext",
+      "n_total": 1000,
+      "n_passing_finewebedu": 10,
+      "pass_rate_finewebedu": 0.01,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2754,
+        "total_cov_median": 0.2731,
+        "content_cov_mean": 0.4788,
+        "content_cov_median": 0.4793,
+        "info_cov_mean": 0.3389,
+        "info_cov_median": 0.3365,
+        "rare_content_cov_mean": 0.2369,
+        "rare_content_cov_median": 0.2234,
+        "sem_div_mean": 0.2872,
+        "sem_div_median": 0.2685
+      },
+      "passing": {
+        "n": 10,
+        "total_cov_mean": 0.2664,
+        "total_cov_median": 0.2624,
+        "content_cov_mean": 0.4903,
+        "content_cov_median": 0.4563,
+        "info_cov_mean": 0.3347,
+        "info_cov_median": 0.3204,
+        "rare_content_cov_mean": 0.2534,
+        "rare_content_cov_median": 0.202,
+        "sem_div_mean": 0.3153,
+        "sem_div_median": 0.3045
+      },
+      "failing": {
+        "n": 990,
+        "total_cov_mean": 0.2755,
+        "total_cov_median": 0.2733,
+        "content_cov_mean": 0.4787,
+        "content_cov_median": 0.4795,
+        "info_cov_mean": 0.3389,
+        "info_cov_median": 0.3367,
+        "rare_content_cov_mean": 0.2367,
+        "rare_content_cov_median": 0.2247,
+        "sem_div_mean": 0.2869,
+        "sem_div_median": 0.2681
+      }
+    },
+    "v18_a__pg19": {
+      "variant": "v18_a",
+      "corpus": "pg19",
+      "n_total": 1000,
+      "n_passing_finewebedu": 2,
+      "pass_rate_finewebedu": 0.002,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2024,
+        "total_cov_median": 0.1993,
+        "content_cov_mean": 0.3949,
+        "content_cov_median": 0.3983,
+        "info_cov_mean": 0.2514,
+        "info_cov_median": 0.2482,
+        "rare_content_cov_mean": 0.1854,
+        "rare_content_cov_median": 0.1667,
+        "sem_div_mean": 0.2113,
+        "sem_div_median": 0.1907
+      },
+      "passing": {
+        "n": 2,
+        "total_cov_mean": 0.1817,
+        "total_cov_median": 0.1817,
+        "content_cov_mean": 0.3652,
+        "content_cov_median": 0.3652,
+        "info_cov_mean": 0.2212,
+        "info_cov_median": 0.2212,
+        "rare_content_cov_mean": 0.1163,
+        "rare_content_cov_median": 0.1163,
+        "sem_div_mean": 0.1952,
+        "sem_div_median": 0.1952
+      },
+      "failing": {
+        "n": 998,
+        "total_cov_mean": 0.2024,
+        "total_cov_median": 0.1996,
+        "content_cov_mean": 0.3949,
+        "content_cov_median": 0.3984,
+        "info_cov_mean": 0.2515,
+        "info_cov_median": 0.2483,
+        "rare_content_cov_mean": 0.1856,
+        "rare_content_cov_median": 0.1667,
+        "sem_div_mean": 0.2113,
+        "sem_div_median": 0.1907
+      }
+    },
+    "v18_a__bookcorpus": {
+      "variant": "v18_a",
+      "corpus": "bookcorpus",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2269,
+        "total_cov_median": 0.2261,
+        "content_cov_mean": 0.4478,
+        "content_cov_median": 0.4589,
+        "info_cov_mean": 0.2896,
+        "info_cov_median": 0.293,
+        "rare_content_cov_mean": 0.2399,
+        "rare_content_cov_median": 0.2273,
+        "sem_div_mean": 0.2632,
+        "sem_div_median": 0.2502
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 0
+      }
+    },
+    "v18_b__cc_news": {
+      "variant": "v18_b",
+      "corpus": "cc_news",
+      "n_total": 1000,
+      "n_passing_finewebedu": 2,
+      "pass_rate_finewebedu": 0.002,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.276,
+        "total_cov_median": 0.2727,
+        "content_cov_mean": 0.4699,
+        "content_cov_median": 0.4718,
+        "info_cov_mean": 0.3357,
+        "info_cov_median": 0.335,
+        "rare_content_cov_mean": 0.2381,
+        "rare_content_cov_median": 0.2258,
+        "sem_div_mean": 0.2698,
+        "sem_div_median": 0.254
+      },
+      "passing": {
+        "n": 2,
+        "total_cov_mean": 0.3036,
+        "total_cov_median": 0.3036,
+        "content_cov_mean": 0.4625,
+        "content_cov_median": 0.4625,
+        "info_cov_mean": 0.3416,
+        "info_cov_median": 0.3416,
+        "rare_content_cov_mean": 0.131,
+        "rare_content_cov_median": 0.131,
+        "sem_div_mean": 0.2178,
+        "sem_div_median": 0.2178
+      },
+      "failing": {
+        "n": 998,
+        "total_cov_mean": 0.2759,
+        "total_cov_median": 0.2727,
+        "content_cov_mean": 0.4699,
+        "content_cov_median": 0.4718,
+        "info_cov_mean": 0.3357,
+        "info_cov_median": 0.335,
+        "rare_content_cov_mean": 0.2383,
+        "rare_content_cov_median": 0.2261,
+        "sem_div_mean": 0.2699,
+        "sem_div_median": 0.2542
+      }
+    },
+    "v18_b__openwebtext": {
+      "variant": "v18_b",
+      "corpus": "openwebtext",
+      "n_total": 1000,
+      "n_passing_finewebedu": 11,
+      "pass_rate_finewebedu": 0.011,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2767,
+        "total_cov_median": 0.2738,
+        "content_cov_mean": 0.4811,
+        "content_cov_median": 0.482,
+        "info_cov_mean": 0.3404,
+        "info_cov_median": 0.3388,
+        "rare_content_cov_mean": 0.24,
+        "rare_content_cov_median": 0.2279,
+        "sem_div_mean": 0.2908,
+        "sem_div_median": 0.2679
+      },
+      "passing": {
+        "n": 11,
+        "total_cov_mean": 0.2693,
+        "total_cov_median": 0.2672,
+        "content_cov_mean": 0.481,
+        "content_cov_median": 0.4558,
+        "info_cov_mean": 0.3357,
+        "info_cov_median": 0.3348,
+        "rare_content_cov_mean": 0.2368,
+        "rare_content_cov_median": 0.1622,
+        "sem_div_mean": 0.2969,
+        "sem_div_median": 0.2587
+      },
+      "failing": {
+        "n": 989,
+        "total_cov_mean": 0.2767,
+        "total_cov_median": 0.2739,
+        "content_cov_mean": 0.4811,
+        "content_cov_median": 0.4821,
+        "info_cov_mean": 0.3404,
+        "info_cov_median": 0.339,
+        "rare_content_cov_mean": 0.2401,
+        "rare_content_cov_median": 0.2286,
+        "sem_div_mean": 0.2908,
+        "sem_div_median": 0.2683
+      }
+    },
+    "v18_b__pg19": {
+      "variant": "v18_b",
+      "corpus": "pg19",
+      "n_total": 1000,
+      "n_passing_finewebedu": 2,
+      "pass_rate_finewebedu": 0.002,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2054,
+        "total_cov_median": 0.2023,
+        "content_cov_mean": 0.4006,
+        "content_cov_median": 0.4032,
+        "info_cov_mean": 0.2547,
+        "info_cov_median": 0.2515,
+        "rare_content_cov_mean": 0.1887,
+        "rare_content_cov_median": 0.1765,
+        "sem_div_mean": 0.22,
+        "sem_div_median": 0.2059
+      },
+      "passing": {
+        "n": 2,
+        "total_cov_mean": 0.1984,
+        "total_cov_median": 0.1984,
+        "content_cov_mean": 0.4,
+        "content_cov_median": 0.4,
+        "info_cov_mean": 0.2409,
+        "info_cov_median": 0.2409,
+        "rare_content_cov_mean": 0.1163,
+        "rare_content_cov_median": 0.1163,
+        "sem_div_mean": 0.2897,
+        "sem_div_median": 0.2897
+      },
+      "failing": {
+        "n": 998,
+        "total_cov_mean": 0.2054,
+        "total_cov_median": 0.2023,
+        "content_cov_mean": 0.4006,
+        "content_cov_median": 0.4032,
+        "info_cov_mean": 0.2547,
+        "info_cov_median": 0.2515,
+        "rare_content_cov_mean": 0.1889,
+        "rare_content_cov_median": 0.1765,
+        "sem_div_mean": 0.2199,
+        "sem_div_median": 0.2059
+      }
+    },
+    "v18_b__bookcorpus": {
+      "variant": "v18_b",
+      "corpus": "bookcorpus",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2289,
+        "total_cov_median": 0.2278,
+        "content_cov_mean": 0.4523,
+        "content_cov_median": 0.4656,
+        "info_cov_mean": 0.2919,
+        "info_cov_median": 0.2934,
+        "rare_content_cov_mean": 0.2433,
+        "rare_content_cov_median": 0.2353,
+        "sem_div_mean": 0.2681,
+        "sem_div_median": 0.2546
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 0
+      }
+    },
+    "v18_c__cc_news": {
+      "variant": "v18_c",
+      "corpus": "cc_news",
+      "n_total": 1000,
+      "n_passing_finewebedu": 3,
+      "pass_rate_finewebedu": 0.003,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.273,
+        "total_cov_median": 0.272,
+        "content_cov_mean": 0.4658,
+        "content_cov_median": 0.469,
+        "info_cov_mean": 0.3325,
+        "info_cov_median": 0.3329,
+        "rare_content_cov_mean": 0.2387,
+        "rare_content_cov_median": 0.2222,
+        "sem_div_mean": 0.2671,
+        "sem_div_median": 0.2461
+      },
+      "passing": {
+        "n": 3,
+        "total_cov_mean": 0.2681,
+        "total_cov_median": 0.2731,
+        "content_cov_mean": 0.4228,
+        "content_cov_median": 0.4671,
+        "info_cov_mean": 0.3037,
+        "info_cov_median": 0.3246,
+        "rare_content_cov_mean": 0.1118,
+        "rare_content_cov_median": 0.1081,
+        "sem_div_mean": 0.1935,
+        "sem_div_median": 0.2195
+      },
+      "failing": {
+        "n": 997,
+        "total_cov_mean": 0.273,
+        "total_cov_median": 0.272,
+        "content_cov_mean": 0.4659,
+        "content_cov_median": 0.469,
+        "info_cov_mean": 0.3326,
+        "info_cov_median": 0.3329,
+        "rare_content_cov_mean": 0.2391,
+        "rare_content_cov_median": 0.2222,
+        "sem_div_mean": 0.2674,
+        "sem_div_median": 0.2465
+      }
+    },
+    "v18_c__openwebtext": {
+      "variant": "v18_c",
+      "corpus": "openwebtext",
+      "n_total": 1000,
+      "n_passing_finewebedu": 10,
+      "pass_rate_finewebedu": 0.01,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2742,
+        "total_cov_median": 0.271,
+        "content_cov_mean": 0.4784,
+        "content_cov_median": 0.4789,
+        "info_cov_mean": 0.3379,
+        "info_cov_median": 0.3368,
+        "rare_content_cov_mean": 0.2393,
+        "rare_content_cov_median": 0.2273,
+        "sem_div_mean": 0.2834,
+        "sem_div_median": 0.2622
+      },
+      "passing": {
+        "n": 10,
+        "total_cov_mean": 0.2588,
+        "total_cov_median": 0.2548,
+        "content_cov_mean": 0.4883,
+        "content_cov_median": 0.4649,
+        "info_cov_mean": 0.3249,
+        "info_cov_median": 0.305,
+        "rare_content_cov_mean": 0.2241,
+        "rare_content_cov_median": 0.1737,
+        "sem_div_mean": 0.2835,
+        "sem_div_median": 0.2573
+      },
+      "failing": {
+        "n": 990,
+        "total_cov_mean": 0.2743,
+        "total_cov_median": 0.2712,
+        "content_cov_mean": 0.4783,
+        "content_cov_median": 0.4789,
+        "info_cov_mean": 0.3381,
+        "info_cov_median": 0.3372,
+        "rare_content_cov_mean": 0.2394,
+        "rare_content_cov_median": 0.2273,
+        "sem_div_mean": 0.2834,
+        "sem_div_median": 0.2622
+      }
+    },
+    "v18_c__pg19": {
+      "variant": "v18_c",
+      "corpus": "pg19",
+      "n_total": 1000,
+      "n_passing_finewebedu": 2,
+      "pass_rate_finewebedu": 0.002,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.1986,
+        "total_cov_median": 0.1968,
+        "content_cov_mean": 0.388,
+        "content_cov_median": 0.3875,
+        "info_cov_mean": 0.247,
+        "info_cov_median": 0.2439,
+        "rare_content_cov_mean": 0.1888,
+        "rare_content_cov_median": 0.1765,
+        "sem_div_mean": 0.1995,
+        "sem_div_median": 0.1787
+      },
+      "passing": {
+        "n": 2,
+        "total_cov_mean": 0.1906,
+        "total_cov_median": 0.1906,
+        "content_cov_mean": 0.382,
+        "content_cov_median": 0.382,
+        "info_cov_mean": 0.2446,
+        "info_cov_median": 0.2446,
+        "rare_content_cov_mean": 0.1472,
+        "rare_content_cov_median": 0.1472,
+        "sem_div_mean": 0.2109,
+        "sem_div_median": 0.2109
+      },
+      "failing": {
+        "n": 998,
+        "total_cov_mean": 0.1986,
+        "total_cov_median": 0.1968,
+        "content_cov_mean": 0.388,
+        "content_cov_median": 0.3875,
+        "info_cov_mean": 0.247,
+        "info_cov_median": 0.2439,
+        "rare_content_cov_mean": 0.1889,
+        "rare_content_cov_median": 0.1765,
+        "sem_div_mean": 0.1994,
+        "sem_div_median": 0.1787
+      }
+    },
+    "v18_c__bookcorpus": {
+      "variant": "v18_c",
+      "corpus": "bookcorpus",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.2265,
+        "total_cov_median": 0.2264,
+        "content_cov_mean": 0.4497,
+        "content_cov_median": 0.4615,
+        "info_cov_mean": 0.2895,
+        "info_cov_median": 0.2922,
+        "rare_content_cov_mean": 0.2433,
+        "rare_content_cov_median": 0.2308,
+        "sem_div_mean": 0.2616,
+        "sem_div_median": 0.2474
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 0
+      }
+    },
+    "m15_en__cc_news": {
+      "variant": "m15_en",
+      "corpus": "cc_news",
+      "n_total": 1000,
+      "n_passing_finewebedu": 2,
+      "pass_rate_finewebedu": 0.002,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.5182,
+        "total_cov_median": 0.5215,
+        "content_cov_mean": 0.4858,
+        "content_cov_median": 0.4873,
+        "info_cov_mean": 0.4617,
+        "info_cov_median": 0.4657,
+        "rare_content_cov_mean": 0.0098,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.2166,
+        "sem_div_median": 0.1993
+      },
+      "passing": {
+        "n": 2,
+        "total_cov_mean": 0.519,
+        "total_cov_median": 0.519,
+        "content_cov_mean": 0.5083,
+        "content_cov_median": 0.5083,
+        "info_cov_mean": 0.4477,
+        "info_cov_median": 0.4477,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.1807,
+        "sem_div_median": 0.1807
+      },
+      "failing": {
+        "n": 998,
+        "total_cov_mean": 0.5182,
+        "total_cov_median": 0.5215,
+        "content_cov_mean": 0.4857,
+        "content_cov_median": 0.4869,
+        "info_cov_mean": 0.4617,
+        "info_cov_median": 0.4657,
+        "rare_content_cov_mean": 0.0098,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.2166,
+        "sem_div_median": 0.1994
+      }
+    },
+    "m15_en__openwebtext": {
+      "variant": "m15_en",
+      "corpus": "openwebtext",
+      "n_total": 1000,
+      "n_passing_finewebedu": 10,
+      "pass_rate_finewebedu": 0.01,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.5254,
+        "total_cov_median": 0.5292,
+        "content_cov_mean": 0.4879,
+        "content_cov_median": 0.4934,
+        "info_cov_mean": 0.4673,
+        "info_cov_median": 0.4735,
+        "rare_content_cov_mean": 0.0088,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.2278,
+        "sem_div_median": 0.2099
+      },
+      "passing": {
+        "n": 10,
+        "total_cov_mean": 0.556,
+        "total_cov_median": 0.5598,
+        "content_cov_mean": 0.5327,
+        "content_cov_median": 0.526,
+        "info_cov_mean": 0.5082,
+        "info_cov_median": 0.5119,
+        "rare_content_cov_mean": 0.0275,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.2142,
+        "sem_div_median": 0.1955
+      },
+      "failing": {
+        "n": 990,
+        "total_cov_mean": 0.5251,
+        "total_cov_median": 0.5289,
+        "content_cov_mean": 0.4875,
+        "content_cov_median": 0.4933,
+        "info_cov_mean": 0.4669,
+        "info_cov_median": 0.4729,
+        "rare_content_cov_mean": 0.0086,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.228,
+        "sem_div_median": 0.2102
+      }
+    },
+    "m15_en__pg19": {
+      "variant": "m15_en",
+      "corpus": "pg19",
+      "n_total": 1000,
+      "n_passing_finewebedu": 1,
+      "pass_rate_finewebedu": 0.001,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.5202,
+        "total_cov_median": 0.5426,
+        "content_cov_mean": 0.4357,
+        "content_cov_median": 0.4494,
+        "info_cov_mean": 0.4449,
+        "info_cov_median": 0.4663,
+        "rare_content_cov_mean": 0.0148,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.186,
+        "sem_div_median": 0.1725
+      },
+      "passing": {
+        "n": 1,
+        "total_cov_mean": 0.6407,
+        "total_cov_median": 0.6407,
+        "content_cov_mean": 0.5739,
+        "content_cov_median": 0.5739,
+        "info_cov_mean": 0.6071,
+        "info_cov_median": 0.6071,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.1605,
+        "sem_div_median": 0.1605
+      },
+      "failing": {
+        "n": 999,
+        "total_cov_mean": 0.5201,
+        "total_cov_median": 0.5426,
+        "content_cov_mean": 0.4355,
+        "content_cov_median": 0.4493,
+        "info_cov_mean": 0.4448,
+        "info_cov_median": 0.4662,
+        "rare_content_cov_mean": 0.0148,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.186,
+        "sem_div_median": 0.1725
+      }
+    },
+    "m15_en__bookcorpus": {
+      "variant": "m15_en",
+      "corpus": "bookcorpus",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.5411,
+        "total_cov_median": 0.5652,
+        "content_cov_mean": 0.514,
+        "content_cov_median": 0.5373,
+        "info_cov_mean": 0.4966,
+        "info_cov_median": 0.5189,
+        "rare_content_cov_mean": 0.0167,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.26,
+        "sem_div_median": 0.2453
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 0
+      }
+    },
+    "m0_v3__cc_news": {
+      "variant": "m0_v3",
+      "corpus": "cc_news",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.4532,
+        "total_cov_median": 0.4575,
+        "content_cov_mean": 0.1973,
+        "content_cov_median": 0.191,
+        "info_cov_mean": 0.3131,
+        "info_cov_median": 0.3134,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.4648,
+        "sem_div_median": 0.4582
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 1000,
+        "total_cov_mean": 0.4532,
+        "total_cov_median": 0.4575,
+        "content_cov_mean": 0.1973,
+        "content_cov_median": 0.191,
+        "info_cov_mean": 0.3131,
+        "info_cov_median": 0.3134,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.4648,
+        "sem_div_median": 0.4582
+      }
+    },
+    "m0_v3__openwebtext": {
+      "variant": "m0_v3",
+      "corpus": "openwebtext",
+      "n_total": 1000,
+      "n_passing_finewebedu": 1,
+      "pass_rate_finewebedu": 0.001,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.4668,
+        "total_cov_median": 0.4697,
+        "content_cov_mean": 0.2047,
+        "content_cov_median": 0.2006,
+        "info_cov_mean": 0.3244,
+        "info_cov_median": 0.3228,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.4949,
+        "sem_div_median": 0.4873
+      },
+      "passing": {
+        "n": 1,
+        "total_cov_mean": 0.5273,
+        "total_cov_median": 0.5273,
+        "content_cov_mean": 0.2462,
+        "content_cov_median": 0.2462,
+        "info_cov_mean": 0.3879,
+        "info_cov_median": 0.3879,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.5917,
+        "sem_div_median": 0.5917
+      },
+      "failing": {
+        "n": 999,
+        "total_cov_mean": 0.4667,
+        "total_cov_median": 0.4696,
+        "content_cov_mean": 0.2047,
+        "content_cov_median": 0.2,
+        "info_cov_mean": 0.3243,
+        "info_cov_median": 0.3227,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.4948,
+        "sem_div_median": 0.4872
+      }
+    },
+    "m0_v3__pg19": {
+      "variant": "m0_v3",
+      "corpus": "pg19",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.536,
+        "total_cov_median": 0.5688,
+        "content_cov_mean": 0.2225,
+        "content_cov_median": 0.2241,
+        "info_cov_mean": 0.3747,
+        "info_cov_median": 0.3994,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.5286,
+        "sem_div_median": 0.5499
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 1000,
+        "total_cov_mean": 0.536,
+        "total_cov_median": 0.5688,
+        "content_cov_mean": 0.2225,
+        "content_cov_median": 0.2241,
+        "info_cov_mean": 0.3747,
+        "info_cov_median": 0.3994,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.5286,
+        "sem_div_median": 0.5499
+      }
+    },
+    "m0_v3__bookcorpus": {
+      "variant": "m0_v3",
+      "corpus": "bookcorpus",
+      "n_total": 1000,
+      "n_passing_finewebedu": 0,
+      "pass_rate_finewebedu": 0.0,
+      "all": {
+        "n": 1000,
+        "total_cov_mean": 0.5245,
+        "total_cov_median": 0.5473,
+        "content_cov_mean": 0.2688,
+        "content_cov_median": 0.2768,
+        "info_cov_mean": 0.3969,
+        "info_cov_median": 0.4148,
+        "rare_content_cov_mean": 0.0,
+        "rare_content_cov_median": 0.0,
+        "sem_div_mean": 0.5997,
+        "sem_div_median": 0.6258
+      },
+      "passing": {
+        "n": 0
+      },
+      "failing": {
+        "n": 0
+      }
+    }
+  }
+}

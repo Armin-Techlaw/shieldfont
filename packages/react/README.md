@@ -303,21 +303,54 @@ That is the right call and it is still not enough. Un-hiding would make a screen
 So the fix is not to un-hide, it's to put a real alternative *next to* the block. The **`a11y` prop** renders one outside the hidden region and before it in DOM order, so a screen-reader user reaches it before the silence:
 
 ```jsx
+<Shield a11y={{ mode: "text" }}>{body}</Shield>                   {/* the real words, time-locked */}
+<Shield a11y={{ mode: "text", seconds: 20 }}>{body}</Shield>       {/* 20 is the default; 5..120 */}
+<Shield a11y={{ mode: "text", reveal: "visible" }}>{body}</Shield> {/* replace the block on screen */}
 <Shield a11y={{ mode: "audio", src: "/audio/post-1.mp3" }}>{body}</Shield>
-<Shield a11y={{ mode: "audio", src: "/a.mp3", transcript: "/a.txt" }}>{body}</Shield>
-<Shield a11y={{ mode: "text",  href: "/posts/1/plain" }}>{body}</Shield>
 <Shield a11y={{ mode: "none" }}>{body}</Shield>   {/* explicit, auditable opt-out */}
 ```
 
-- `"audio"` renders a native `<audio controls preload="none">` plus a real explanatory sentence (zero JavaScript, keyboard-operable, survives a static export), and a transcript link if you pass one.
-- `"text"` links a plain-text copy on its own URL.
+- `"text"` ships the block's **real words, encrypted into the page**, with a button that grinds out the key in the reader's own browser (a 20-second budget by default, once per block, cached until you next deploy; 7.6 s measured in Chrome on a desktop). Nothing to generate, nothing to host, no server. **[Full reference: `docs/plain-text-mode.md`](../../docs/plain-text-mode.md)** — read it before changing `seconds`.
+- `"audio"` renders a native `<audio controls preload="none">` plus a real explanatory sentence (zero JavaScript, keyboard-operable, survives a static export). `note` replaces that sentence in either mode.
 - `"none"` renders nothing and stays silent. **Omitting `a11y` entirely logs one development-time warning per process** — a warning, not an error, so upgrading breaks nothing.
-- `visualHidden: true` hides the control visually via **clip-path**, never `display:none` (which would remove it from the accessibility tree too — the exact bug this prop exists to fix).
+
+### `ShieldA11y` options
+
+| Option | Modes | Type | Default | What it does |
+|---|---|---|---|---|
+| `seconds` | `text` | `number` | `20` | Grind budget on a deliberately slow reference device. Range **5..120**; `sealText` throws outside it. Read the warning below before raising it. |
+| `reveal` | `text` | `"hidden" \| "visible"` | `"hidden"` | Where the unlocked words go. `"hidden"` puts them in the accessibility tree clipped off-screen and leaves the encoded block on screen untouched — a sighted reader sees nothing happen, because they can already read it. `"visible"` replaces the encoded block on screen: a layout shift, in exchange for selection, copy-paste and browser translation of the real text for everyone. |
+| `label` | `text` | `string` | *auto* | Overrides the button's accessible name. The default names the element type and the block's position — *"Unlock the plain text for paragraph 2 (up to 20 seconds)"* — which is what stops several blocks on one page sounding identical. **Never put the protected words in it:** the label ships in the HTML. |
+| `note` | `text`, `audio` | `string` | *auto* | Overrides the explanatory sentence. In text mode the default long sentence is spoken **once per page**; later blocks get a short form, because hearing the same explanation before every paragraph is an obstacle, not thoroughness. |
+| `visualHidden` | `text`, `audio` | `boolean` | **`true`** for `text`, `false` for `audio` | Clips the control with **clip-path**, never `display:none` (which would remove it from the accessibility tree too — the exact bug this prop exists to fix). Text mode is screen-reader-only by default; audio keeps its player on screen, since a player nobody can see is a player nobody can press. See the focus warning below. |
+
+What the reader actually gets, in the default configuration: a note, then a button whose name is unique to that block; a `<progress>` element that assistive tech can query but that does not chatter; a polite status line that says nothing at all while it is empty; and, when the work finishes, the words themselves — announced automatically on arrival, and a real Tab stop, so they can be re-read as often as the reader wants. The wrapper is `role="presentation"` and carries **no group role**: with one, VoiceOver read out roughly twenty words of "you are currently on a button inside of a group" scaffolding in front of every block.
+
+> [!NOTE]
+> **`mode: "text"` renders no link.** The `0.2.0` shape was `{ mode: "text", href }`, pointing at a plain-text copy on its own URL; that and the audio mode's `transcript` link were both removed, because a URL cannot be offered to a screen reader without being offered to everyone else and the same crawl that reads the decoy reads the link sitting beside it. The mode that replaced it inverts that trade: the words are in the page but **closed**, and the key is the answer to a time-lock puzzle — T sequential squarings that cannot be parallelised, so a crawler with a thousand GPUs still pays them one at a time, per block. Sealing costs 62 ms per block; opening costs the reader their 20-second budget. Nobody is denied the text; the accessible path simply stops being the *cheapest* path in.
+
+> [!WARNING]
+> **The control is invisible by default, and a sighted keyboard user pays for it.** With `visualHidden` defaulting to `true` for `mode: "text"`, someone navigating by keyboard **without** a screen reader Tabs into a control they cannot see and their focus indicator vanishes — a **WCAG 2.2 SC 2.4.7** failure. This is deliberate: a sighted reader can already read the block, so an on-screen widget offering to unlock it is unexplained noise. The usual remedy (clipped until focused, visible while focused) is not applied, because the control was asked to be invisible. Pass `visualHidden: false` to take the other trade.
+
+> [!WARNING]
+> **Difficulty has a ceiling, and `seconds: 20` is near it.** A crawler that wants your words can render the page and OCR the pixels for roughly three seconds of server CPU whether or not this feature exists — that is the floor on ShieldFont's protection, and no cryptography raises it. The goal is therefore *not cheaper than OCR*, not "expensive". Past that point, extra difficulty buys **nothing** (a crawler just takes the cheaper door) and is paid for entirely by disabled readers waiting longer. `sealText` refuses anything above 120 or below 5. If you are tempted to raise it to "harden" a page, that is the mistake this paragraph exists to stop.
 
 > [!IMPORTANT]
 > **Synthesise audio at build time**, where your plaintext already lives — free offline options exist (`piper` on CI, `say` on macOS). Do **not** reach for browser `speechSynthesis`: on the rendered page it would voice the decoy, and on the original it would require shipping your plaintext to the browser, which is the leak this package exists to prevent.
 
-**What this does not fix, and we won't pretend otherwise:** an audio track is not a document. It is not navigable by heading, not searchable, not quotable, not skimmable. A blind reader still gets a worse artifact than a sighted one. That gap is the real open problem, and better ideas are the most useful contribution anyone can make here. Meanwhile: don't wrap navigation, form labels, or essential interactive text.
+**What this does not fix, and we won't pretend otherwise:**
+
+- **OCR is still cheaper** for a crawler that wants your words. `mode: "text"` stops the accessible path being a *shortcut*; it does not stop scraping and it is not a wall.
+- **A reader who needs `mode: "text"` waits.** Everyone else has the words instantly. That is unequal access however carefully it is engineered — a compromise, not a solution.
+- **`mode: "text"` needs JavaScript**, plus `BigInt` and `crypto.subtle`, and a secure (https) origin. Everything else in ShieldFont works with JS off; this does not. `crypto.subtle` is also missing on insecure origins, so plain `http://` breaks it (the control says so rather than blaming the browser).
+- **A sighted keyboard user loses their focus indicator** on the invisible control (WCAG 2.2 SC 2.4.7, above). `visualHidden: false` is the opt-out; there is no fix that keeps both properties yet.
+- **Once revealed, the plaintext is in the DOM.** A crawler that runs a real browser, presses the button and waits gets the words — having paid for them, which is the deal.
+- **`mode: "audio"` alone still fails WCAG 2.2 SC 1.2.1 — Level A.** Audio-only content with no text alternative fails that criterion, and the text mode does **not** rescue it: they are separate alternatives you choose between, not a pair. If you ship audio only, you still have no answer to 1.2.1.
+- An audio track is also still not a document: not navigable by heading, not searchable, not quotable, not skimmable.
+
+**Where the testing stands, exactly.** The text mode is exercised under `@guidepup/virtual-screen-reader` in Playwright and has been driven by hand with **real VoiceOver on macOS** — which is what found the group chatter, the announcements that cut each other off and the revealed text that could not be re-read, all since fixed. **NVDA and JAWS remain unverified.** There is no axe scan and no published test page.
+
+Better ideas here are the most useful contribution anyone can make to this project. Meanwhile: don't wrap navigation, form labels, or essential interactive text.
 
 ## Version
 

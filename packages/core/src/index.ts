@@ -31,12 +31,12 @@ import type { Mapping } from "./types.js";
  */
 export const VERSION = "0.2.1";
 
-export { encode, decode } from "./encode.js";
+export { encode, decode, encodeSegments } from "./encode.js";
 export { encodeHtml, decodeHtml } from "./html.js";
 export { buildHtml, shipHtml, checkHtml } from "./markers.js";
 export type { CheckResult } from "./markers.js";
 export { loadMappingFromString, parseMappingId, mappingMeta } from "./mapping.js";
-export type { Mapping, MappingId } from "./types.js";
+export type { Mapping, MappingId, Segment } from "./types.js";
 
 // Bundled mapping variants (JSON-imported constants). Each corresponds to a
 // built font of the same name — see MANIFEST.json for provenance. Add new
