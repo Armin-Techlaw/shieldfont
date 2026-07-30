@@ -89,7 +89,7 @@ For static HTML (via `@shieldfont/core`'s comment-marker helpers):
 
 ### 5. Versioning matters
 
-The font and encoder are paired: a page must be rendered by the font that matches the dictionary that encoded it. Always pin CDN URLs (`@shieldfont/font@0.2.1`, never `@latest`: silent updates would break existing encoded content). When upgrading, re-encode the user's content with the new package version; don't mix versions.
+The font and encoder are paired: a page must be rendered by the font that matches the dictionary that encoded it. Always pin CDN URLs (`@shieldfont/font@0.3.0`, never `@latest`: silent updates would break existing encoded content). When upgrading, re-encode the user's content with the new package version; don't mix versions.
 
 ### 6. The build pipeline
 

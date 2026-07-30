@@ -6,12 +6,162 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-## [Unreleased]
+## [0.3.0] — the accessible alternative, and a pre-release audit
 
 A plain-text accessible alternative that a scraper cannot read for free. The
 URL-shaped answer is removed and a time-locked one replaces it, so the words
 are in the page for the reader who needs them and cost real sequential compute
 for anyone harvesting at scale.
+
+Shipped alongside it: the fixes from an adversarial pre-1.0 review of the
+encoder, the marker workflow and the docs. Two of those are **plain-text
+leaks** — see *Fixed* below. If you run the comment-marker workflow, read the
+`assertShipped` entry first; it is the one change that alters what your build
+script should look like.
+
+### Added
+
+- **`assertShipped(html)` in `@shieldfont/core` — the deploy gate.** Throws if
+  any shield marker survived, or if a `shield-on` block is missing its
+  `shield-off`. `checkHtml` cannot do this job: it verifies the markers it
+  *finds*, so an unbuilt page and a correctly shipped page both return
+  `{ total: 0, failed: 0 }`. Add it as the last step before you write a file.
+- **`checkHtml` now reports `unpairedBlocks`.** Non-zero means some region was
+  never encoded, even when `failed` is `0`.
+- **`<Shield>` throws on table-context `as` values** (`td`, `th`, `tr`, …). The
+  browser foster-parents our wrapper out of the table, which dropped the cell
+  from the accessibility tree and left a stray one behind. Use
+  `<td><Shield as="span">…</Shield></td>`.
+
+### Fixed
+
+- **LEAK: the documented build recipe never stripped the markers.** The
+  runnable script in `docs/use-anywhere.md` called `buildHtml` and wrote
+  straight to `dist/`, so every protected block deployed with its plain text in
+  the comment beside its decoy — worse than not using ShieldFont at all,
+  because it also publishes a matched plaintext/decoy pair. The recipe now
+  calls `shipHtml` and `assertShipped`.
+- **LEAK: an unpaired `shield-on` shipped a whole block in plain English, and
+  CI went green.** `BLOCK_RE` needs both markers, so an unclosed block was
+  never encoded; `shipHtml` then deleted the orphan marker, erasing the
+  evidence. `assertShipped` catches it.
+- **LEAK: prose containing `-->` broke out of its own marker.** Author text was
+  interpolated into an HTML comment unescaped, so a Mermaid arrow or a roadmap
+  line shipped its tail in clear *and* corrupted the paragraph on screen.
+  `buildHtml` now refuses that input with a message naming the offending text.
+- **A tag name inside an HTML comment silently disabled encoding for the rest
+  of the page.** The tag pattern could not match `<!--`, so `<!-- <pre> -->`
+  incremented the skip depth and never gave it back. Comments are now matched
+  whole, and raw-text elements (`script`, `style`, `textarea`, `title`) are
+  consumed whole so markup-looking text inside them cannot move the counter.
+- **`>` inside an attribute value closed the tag early**, so the rest of the
+  attribute was encoded as text — against this package's own promise that
+  attribute values are never touched. An `aria-label` rewritten that way voices
+  a decoy. The tag grammar is now quote-aware.
+- **HTML character references were corrupted.** The digit rule rewrote the code
+  points inside them: `don&#39;t` rendered as "donTt", `&#169;` became ®,
+  `&#8212;` became ಌ, and `&#75;b&#72;` became `&#60;b&#62;` — plain text the
+  browser then parses as a live `<b>` tag. Named references went the same way
+  (`&copy;` → `&avoid;`). The browser resolves these before the font runs, so
+  no ligature could undo any of it, and `checkHtml` passed on all of them
+  because the string round-tripped. References are now left alone.
+- **`encode("constructor")` returned the source of `Object`**, and
+  `"Constructor"` at the head of a sentence threw. The dictionary lookup walked
+  `Object.prototype`, where `constructor`, `toString`, `valueOf` and
+  `hasOwnProperty` are all reachable and all ordinary English. Own properties
+  only, now.
+- **`buildHtml` was not idempotent.** The marker stored its source trimmed, so
+  boundary whitespace beside an inline element was lost on the next build:
+  `call <code>x</code> and` became `call<code>x</code>and`, a little more each
+  run. Whitespace now stays outside the marker.
+- **`<title>` and `<option>` are no longer encoded.** They render in system
+  chrome — the browser tab, a bookmark, a `<select>` popup — where the ligature
+  table does not apply, so the reader saw the raw decoy.
+- **The font guard ignored the protected element itself.** It walked only
+  descendants, and our font-family arrives as an inline style that loses to any
+  author `!important`. A theme rule like `article p { font-family: Georgia
+  !important }` painted raw decoys to every reader while the guard whose job is
+  to catch exactly that stayed silent.
+- **`mappingMeta()` dropped `mappingId`, `pairs` and `seed`.** It rebuilt a
+  four-field object instead of returning the `_meta` block, so the documented
+  `mappingMeta(alpha)?.mappingId` returned `undefined` in three places that
+  told you to read it.
+- **The a11y ordinal counted across element types**, announcing h2 / p / h2 as
+  "heading 1", "paragraph 2", "heading 3" — a number that is nowhere on the
+  page. Each noun now counts in its own series.
+- **The CDN encoder build inlined the mapping's `_meta` block**, which would
+  have put `"family": "ShieldFont Optik"` and `"seed": 42` into the one
+  artifact whose job is to carry no branding. `_`-prefixed keys are stripped.
+- **The CDN encoder's digit pass was a different algorithm from core's**, not a
+  transcription of it: it scanned the whole encoded string rather than the gaps
+  between words, so a custom mapping whose values contain digits diverged. It
+  is now a faithful port, and the parity test's corpus reaches beyond the
+  dictionary's own keys — which is why it never caught the `constructor` case.
+- **Each variant's font guard inspected every other variant's blocks.** One
+  guard is emitted per variant and auto-rotation puts two or three on a normal
+  page, but every DOM lookup used the bare `data-typeface` attribute — so
+  alpha's guard warned that beta's blocks were "using the wrong font" (they were
+  using beta's font, correctly), and one variant's missing font blanked blocks
+  belonging to variants that had loaded fine. Every lookup is now scoped to its
+  own variant value.
+- **`<Shield>` silently discarded props it does not forward.**
+  `<Shield as={Link} href="/post">` lost `href` and produced a dead link or an
+  unrelated crash from inside the component, naming nothing. Unknown props now
+  throw, listing what was dropped and the shape that works.
+- **`<Shield variant="Alpha">`** — or any near-miss — died as
+  `Cannot convert undefined or null to object` deep in the encoder. It now names
+  the prop and lists the valid values.
+- **`encode(null)` / `encodeHtml(null)`** threw
+  `Cannot read properties of null (reading 'normalize')` from a frame the caller
+  had no reason to recognise. Both now name the offending argument, as does a
+  missing or non-object mapping.
+- **The Tier C encoder link pointed at the GitHub repo**, not the encoder.
+- **`fc-query` was recommended for reading a font's version** without noting it
+  cannot open `.woff2` — it fails with `Can't query face 4294967295`, which
+  looks like a corrupt font and isn't. A working `fontTools` command is given.
+
+### Changed
+
+- **`examples/nextjs-demo` runs.** It could not be installed (`prepack` rather
+  than `prepare`), had no `public/` for the fonts it requests, documented an
+  attribute name that does not exist, named the wrong mapping, and shipped five
+  `aria-hidden` blocks with no alternative.
+- **Docs: the plaintext side doors are documented** — RSS/Atom feeds, JSON-LD,
+  OpenGraph, CMS APIs and newsletters are generated from your source data, not
+  your rendered page, and ship in plain English. On most blog platforms the
+  feed is on by default. This was previously mentioned nowhere.
+- **Docs: the four-corpus benchmark figures are used throughout** (19.4% wasted
+  tokens, 41.8% median, per-corpus NLI). The front door had been quoting the
+  superseded three-corpus cut, which `benchmark/README.md` explicitly retires.
+- **Docs: the community font-naming convention no longer breaches the OFL.**
+  Recommending "ShieldFont Inter" put a Reserved Font Name in a Modified
+  Version's name, which OFL §3 forbids and §5 terminates the licence over.
+  Keep the `ShieldFont` prefix, then use a name of your own.
+- **Docs: `SECURITY.md` has a real reporting channel** (GitHub private
+  advisories) instead of a `security@shieldfont.<tld>` placeholder, and its
+  scope section no longer describes a 400-word dictionary the project does not
+  ship.
+- CI runs the screen-reader audit, and `publish.yml` refuses to publish when
+  the package versions disagree with the pushed tag.
+- **Docs: the README no longer implies a Vite/CRA app can use `<Shield>`.** A
+  client-only SPA has no Node render step, so the component runs in the browser
+  and compiles the plaintext *and* all 38,574 dictionary pairs into the bundle —
+  build clean, page correct, console warning the only tell. The README now says
+  which frameworks qualify, warns about the SPA case, and links
+  `where-encoding-happens.md`, which it previously did not link at all.
+- **Docs: the RSS/side-door warning is in the README**, not only the integration
+  guide — a reader who skims to Quick start was missing it entirely.
+- **Docs: CORS is documented for self-hosted fonts.** A cross-origin font with no
+  `Access-Control-Allow-Origin` is discarded by the browser while curl still
+  reports `200`, and on the CDN and Documents tiers there is no guard, so the
+  reader silently gets the decoy.
+- **Docs: Tier C gained an offline encoding recipe** and the "paste the *encoded*
+  text" warning that Tier D already carried; Tier D now names the font family to
+  pick in Word (`ShieldFont Optik`).
+- **Packages: `engines: >=20.10.0`, `sideEffects: false`**, a real `exports` map
+  and hand-written types for `@shieldfont/font`, and `src/mappings` dropped from
+  the published files (unreachable through `exports`): `@shieldfont/core`
+  unpacked drops from 2.8 MB to 1.9 MB.
 
 ### Added
 

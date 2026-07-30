@@ -31,6 +31,20 @@ jobs:
           TMPDIR: /tmp
         run: npm test
 
+      # The screen-reader audit drives real Chromium and asserts on spoken
+      # phrases. It is the only check that covers the a11y path end to end,
+      # and it was not wired into CI.
+      # One combination is enough: it exercises the browser, not the matrix.
+      - name: Install Playwright Chromium
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22'
+        run: npx playwright install --with-deps chromium
+
+      - name: Accessibility audit
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22'
+        env:
+          TMPDIR: /tmp
+        run: npm run test:a11y
+
   fonts:
     # Gate on the shipped font binaries, not just the TS. A composite whose
     # hmtx left side bearing disagrees with its xMin renders with the last

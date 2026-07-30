@@ -66,7 +66,7 @@ gamma   12037 pairs | in bundle: 12037 (100%)
 maxhide  2535 pairs | in bundle:  2535 (100%)
 ```
 
-All 38,578 pairs, in plain text, e.g. `confidential:"guilty"`. One misplaced
+All 38,574 pairs, in plain text, e.g. `confidential:"guilty"`. One misplaced
 `"use client"` publishes the decoder for **every** shielded page on your site,
 not just the one that leaked.
 
@@ -94,6 +94,25 @@ grep -rn "a sentence from your protected text" out/ .next/ dist/ 2>/dev/null
 
 No output means no leak. Any output is the file that is exposing you. Check the
 JS chunks too, not just the HTML: that is the case people miss.
+
+**Pick your search string carefully, or you will scare yourself.** Only about one
+word in four is swapped, so a *partial* match proves nothing either way — a
+fragment like `"the future of"` survives encoding untouched and will match on a
+perfectly protected page. Search for a **whole sentence containing several
+content words**, or better, take a sentence and check a word you know is in the
+dictionary:
+
+```bash
+# Does a word the dictionary definitely changes survive anywhere?
+node -e "import('@shieldfont/core').then(({encode,alpha})=>{
+  const s='YOUR SENTENCE HERE';
+  console.log('encoded:', encode(s, alpha));
+})"
+```
+
+If `encoded` differs from your sentence, grep for the **original**: any hit is a
+real leak. If it comes back identical, that sentence has no dictionary words in
+it and is not a useful canary — pick another.
 
 `<Shield>` also warns in the console if it detects itself rendering in a browser,
 in development **and** in production. If you see that warning, protection is

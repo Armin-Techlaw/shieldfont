@@ -2,16 +2,17 @@
  * @shieldfont/core — pure encoding/decoding logic for ShieldFont.
  *
  * This package has zero runtime dependencies. It exports the same
- * primitives that every higher-level integration (CLI, React component,
- * framework adapter, server middleware) uses.
+ * primitives that every higher-level integration (the React component, a
+ * framework adapter, your own build step) uses.
  *
  * Quick start:
  *   import { encode, alpha } from "@shieldfont/core";
  *   const encoded = encode("Publish your writing", alpha);
  *
  * For HTML documents containing shield markers, use the build/ship/check
- * helpers from the markers module:
- *   import { buildHtml, shipHtml, checkHtml } from "@shieldfont/core";
+ * helpers from the markers module — and finish with `assertShipped`, which is
+ * the only one of them that can tell a protected page from an unprotected one:
+ *   import { buildHtml, shipHtml, assertShipped } from "@shieldfont/core";
  */
 
 import type { Mapping } from "./types.js";
@@ -23,17 +24,17 @@ import type { Mapping } from "./types.js";
  * `_meta.version`. Each mapping carries its own `_meta.version` / `mappingId`
  * marking the *dictionary generation*, which only moves when the word pairs are
  * rebuilt, so a patch release that ships no new dictionary leaves the mappings
- * on the older stamp (today: package 0.2.0, mappings 0.1.0). The bundled fonts
+ * on the older stamp (today: package 0.3.0, mappings 0.1.0). The bundled fonts
  * are deliberately version-neutral and carry no mappingId at all.
  *
  * To learn which dictionary generation you are running, call
  * `mappingMeta(mapping)`. Do not infer it from VERSION.
  */
-export const VERSION = "0.2.1";
+export const VERSION = "0.3.0";
 
 export { encode, decode, encodeSegments } from "./encode.js";
 export { encodeHtml, decodeHtml } from "./html.js";
-export { buildHtml, shipHtml, checkHtml } from "./markers.js";
+export { buildHtml, shipHtml, checkHtml, assertShipped } from "./markers.js";
 export type { CheckResult } from "./markers.js";
 export { loadMappingFromString, parseMappingId, mappingMeta } from "./mapping.js";
 export type { Mapping, MappingId, Segment } from "./types.js";

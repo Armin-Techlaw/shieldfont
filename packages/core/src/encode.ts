@@ -28,6 +28,63 @@ const IS_DIGIT = /^\d$/;
 const IS_LETTER = /\p{L}/u;
 
 /**
+ * E1 — HTML character references. `&#39;` `&#x2019;` `&copy;` are *markup*, not
+ * prose: the browser resolves each one to a single character before the font
+ * ever runs, so anything we change inside one is a change no ligature can undo.
+ *
+ * Left alone, the tokenizer shreds them. `&copy;` splits into `&` + the word
+ * `copy` + `;`, and `copy` is a dictionary key — so a footer's © turned into
+ * `&avoid;`. The digit rule was worse: it rewrote the code point itself, so
+ * `don&#39;t` became `don&#84;t` ("donTt"), `&#169;` became ®, and `&#75;b&#72;`
+ * became `&#60;b&#62;` — plain text that the parser then reads as a live `<b>`
+ * tag. `checkHtml()` passed on every one of these, because the *string* round
+ * trips faithfully; only the rendered character was wrong.
+ *
+ * So: find the spans first, and treat everything inside one as untouchable.
+ * The `{1,31}` floor on named entities keeps prose like "R&D" and "AT&T" out.
+ */
+const ENTITY_RE = /&(?:#\d{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,31});/g;
+
+/** Byte ranges of every character reference in `s`, ascending and disjoint. */
+function entitySpans(s: string): Array<[number, number]> {
+  const spans: Array<[number, number]> = [];
+  ENTITY_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = ENTITY_RE.exec(s)) !== null) spans.push([m.index, m.index + m[0].length]);
+  return spans;
+}
+
+/** True when offset `i` falls inside a character reference. Binary search. */
+function inEntity(spans: Array<[number, number]>, i: number): boolean {
+  let lo = 0;
+  let hi = spans.length - 1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    const [a, b] = spans[mid]!;
+    if (i < a) hi = mid - 1;
+    else if (i >= b) lo = mid + 1;
+    else return true;
+  }
+  return false;
+}
+
+/**
+ * Dictionary lookup that cannot reach `Object.prototype`.
+ *
+ * A plain object answers to the names it was born with, and one of them is
+ * ordinary English: `encode("constructor")` returned the source text of
+ * `function Object() { [native code] }`, and `"Constructor"` at the head of a
+ * sentence threw outright inside `preserveCase`. `toString`, `valueOf` and
+ * `hasOwnProperty` are reachable the same way. Own-properties only, and the
+ * value still has to be a string.
+ */
+function lookup(mapping: Mapping, key: string): string | undefined {
+  if (!Object.prototype.hasOwnProperty.call(mapping, key)) return undefined;
+  const value = mapping[key];
+  return typeof value === "string" ? value : undefined;
+}
+
+/**
  * Apply the casing of `src` to `target`:
  *   - `src` all uppercase and length > 1 → target uppercased,
  *   - `src` starts uppercase             → target first-char uppercased,
@@ -60,26 +117,59 @@ function isLetterChar(s: string | undefined): boolean {
  * a `[A-Za-z]+` loop that silently skipped every digit.
  */
 export function encodeSegments(text: string, mapping: Mapping): Segment[] {
+  // Validate at the front door. These two are the lowest-level, most-called
+  // functions in the package, and every higher-level helper funnels into them —
+  // so a bad argument here surfaced as `Cannot read properties of null (reading
+  // 'normalize')` from a stack frame the caller has no reason to recognise.
+  // A CMS field that came back null, or a number where a string was meant, is
+  // an ordinary mistake and deserves an ordinary message.
+  if (typeof text !== "string") {
+    throw new TypeError(
+      `ShieldFont: text must be a string, received ${text === null ? "null" : typeof text}. ` +
+        `If this came from a CMS or a database, guard the empty case before encoding.`,
+    );
+  }
+  if (mapping === null || typeof mapping !== "object") {
+    throw new TypeError(
+      `ShieldFont: mapping must be a mapping object, received ${mapping === null ? "null" : typeof mapping}. ` +
+        `Import one from @shieldfont/core: \`import { alpha } from "@shieldfont/core"\`.`,
+    );
+  }
+
   // P1: fold decomposed accents into precomposed letters so \p{L}+ matches whole words.
   const src = text.normalize("NFC");
+  // E1: locate character references once; both passes below consult them.
+  const spans = entitySpans(src);
 
   // 1) Encode words. Everything between two letter runs is set aside verbatim;
   //    by construction those gaps hold no letters at all, which is what makes
   //    the digit pass below able to reason about letter-neighbours locally.
+  //    `offsets` tracks where each piece started, so the digit pass can ask the
+  //    entity question about an absolute position.
   const coarse: Segment[] = [];
+  const offsets: number[] = [];
   const other = (s: string): Segment =>
     ({ original: s, encoded: s, swapped: false, kind: "other" });
   let last = 0;
   for (const m of src.matchAll(WORD_RE)) {
     const at = m.index ?? 0;
-    if (at > last) coarse.push(other(src.slice(last, at)));
+    if (at > last) {
+      coarse.push(other(src.slice(last, at)));
+      offsets.push(last);
+    }
     const word = m[0];
-    const t = mapping[word.toLowerCase()];
+    // E1: a letter run inside a character reference is markup, never prose —
+    // the `copy` of `&copy;`, the `x` and hex digits of `&#x2019;`.
+    const t = inEntity(spans, at) ? undefined : lookup(mapping, word.toLowerCase());
     const enc = t ? preserveCase(word, t) : word;
     coarse.push({ original: word, encoded: enc, swapped: enc !== word, kind: "word" });
+    offsets.push(at);
     last = at + word.length;
   }
-  if (last < src.length) coarse.push(other(src.slice(last)));
+  if (last < src.length) {
+    coarse.push(other(src.slice(last)));
+    offsets.push(last);
+  }
 
   // 2) F1: context-aware digit permutation. A digit's letter-neighbour is
   //    either the character beside it inside its own gap — never a letter — or
@@ -96,15 +186,19 @@ export function encodeSegments(text: string, mapping: Mapping): Segment[] {
     const before = [...(coarse[i - 1]?.encoded ?? "")].pop();
     const after = [...(coarse[i + 1]?.encoded ?? "")][0];
     let buf = "";
+    let at = offsets[i]!; // absolute offset of run[j], for the entity check
     for (let j = 0; j < run.length; j++) {
       const c = run[j]!;
       if (!IS_DIGIT.test(c)) {
         buf += c;
+        at += c.length;
         continue;
       }
-      const swap = mapping[c];
+      const swap = lookup(mapping, c);
       let enc = c;
-      if (swap && IS_DIGIT.test(swap)) {
+      // E1: the digits of `&#39;` are the character's *identity*. Permuting one
+      // rewrites what the browser resolves, and the font never gets a say.
+      if (swap && IS_DIGIT.test(swap) && !inEntity(spans, at)) {
         const left = isLetterChar(j > 0 ? run[j - 1] : before);
         const right = isLetterChar(j < run.length - 1 ? run[j + 1] : after);
         // 0 or 2 letter-neighbours → pre-swap, so the font's chains land on the
@@ -114,6 +208,7 @@ export function encodeSegments(text: string, mapping: Mapping): Segment[] {
       if (buf) out.push(other(buf));
       buf = "";
       out.push({ original: c, encoded: enc, swapped: enc !== c, kind: "digit" });
+      at += c.length;
     }
     if (buf) out.push(other(buf));
   }

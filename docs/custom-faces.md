@@ -4,7 +4,7 @@
 
 A custom mapping and a custom face are two different forks. [Custom mappings](./custom-mappings.md) covers the first: a private dictionary nobody else has. This page covers the second: the typeface your ShieldFont is built on.
 
-You can vary the **base typeface** independently of the mapping. The protocol is typeface-agnostic: `scripts/generate_font.py` accepts any base with **TrueType outlines** (`.ttf`), so you can build against *ShieldFont Optik*, *ShieldFont Inter*, *ShieldFont Garamond*, or your own studio's typeface. (CFF/`.otf` fonts are rejected: convert to `.ttf` first; variable fonts are auto-instanced to their default.) The choice of mapping is what protects your content; the choice of base typeface is purely aesthetic and operational. Forking is the intended mode of use on both axes.
+You can vary the **base typeface** independently of the mapping. The protocol is typeface-agnostic: `scripts/generate_font.py` accepts any base with **TrueType outlines** (`.ttf`), so you can build on Optik, on Inter, on EB Garamond, or on your own studio's typeface. (CFF/`.otf` fonts are rejected: convert to `.ttf` first; variable fonts are auto-instanced to their default.) The choice of mapping is what protects your content; the choice of base typeface is purely aesthetic and operational. Forking is the intended mode of use on both axes.
 
 ---
 
@@ -34,7 +34,12 @@ The pairing rule from the mappings guide applies unchanged here: a page renders 
 
 ## Naming
 
-Recommended naming for community-built ShieldFonts: keep `ShieldFont` as the prefix, follow with the base typeface name: *ShieldFont Inter*, *ShieldFont Garamond*, *ShieldFont YourFoundry*. Same CamelCase everywhere, including the font's internal name table; context tells you whether the word means the protocol or a specific typeface.
+Recommended naming for community-built ShieldFonts: keep `ShieldFont` as the prefix, then add a name **of your own choosing** — *ShieldFont Optik*, *ShieldFont Vellum*, *ShieldFont YourFoundry*. Same CamelCase everywhere, including the font's internal name table; context tells you whether the word means the protocol or a specific typeface.
+
+> [!WARNING]
+> **Do not name your build after the typeface you built it on.** Open font licences generally reserve the original name: Inter, Syne and Young Serif each declare a *Reserved Font Name* in [`LICENSE-FONTS`](../LICENSE-FONTS), and OFL §3 forbids using a Reserved Font Name in a Modified Version — §5 terminates the licence if you do. So a font called "ShieldFont Inter" breaches the very licence that let you build it, and the breach is in the font binary's own name table, where anyone can read it.
+>
+> Name it after your project or your foundry, and credit the base typeface in the font's *Description* field (nameID 10) and in your documentation. That is the field designed for exactly this, and it carries no naming restriction.
 
 ---
 

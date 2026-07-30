@@ -55,14 +55,23 @@ const require = createRequire(import.meta.url);
 /** Short puzzles: this audits behaviour, not the difficulty calibration. */
 const A11Y = { mode: "text", seconds: 5 };
 
+// The ordinal counts within its own noun, not across the page: a listener
+// hunting "the second heading" must hear a number that exists on the page.
+// Two paragraphs are included so that per-noun counting is actually exercised —
+// with one of each tag, a page-wide counter would pass this by accident.
 const BLOCKS = [
   { as: "h2", text: "Manifesto for the open web", noun: "heading 1" },
   {
     as: "p",
-    noun: "paragraph 2",
+    noun: "paragraph 1",
     text: "The future of writing belongs to those who write it, and the shapes that carry those words are not neutral.",
   },
-  { as: "blockquote", noun: "quote 3", text: "A tax on attention is the only tax a crawler cannot refuse to pay." },
+  { as: "blockquote", noun: "quote 1", text: "A tax on attention is the only tax a crawler cannot refuse to pay." },
+  {
+    as: "p",
+    noun: "paragraph 2",
+    text: "Every sentence you publish feeds a machine that never stopped to ask you first.",
+  },
 ];
 
 /** Words the encoder actually swaps here — a screen reader must never say them. */
@@ -179,7 +188,7 @@ try {
   check(!spoken.some((p) => /\bgroup\b/i.test(p)), "no group scaffolding");
 
   const heard = BLOCKS.map((b) => spoken.find((p) => p.includes(b.noun)));
-  check(heard.every(Boolean), "every block's button is named distinctly", heard.filter(Boolean).length + "/3");
+  check(heard.every(Boolean), "every block's button is named distinctly", `${heard.filter(Boolean).length}/${BLOCKS.length}`);
   check(new Set(heard.filter(Boolean)).size === BLOCKS.length, "no two buttons sound alike");
 
   const longNotes = spoken.filter((p) => p.includes("is not read aloud"));

@@ -60,11 +60,23 @@ describe("CDN build is byte-identical to the core encoder", () => {
 
   it("agrees across a generated corpus", () => {
     const words = Object.keys(alpha).filter((k) => /^[a-z]+$/.test(k));
+    // The pool must reach BEYOND the dictionary's own keys. Drawing only from
+    // `words` is why this test stayed green while the two implementations
+    // disagreed on `constructor` (core threw, the CDN emitted Object's source)
+    // — the divergent inputs were the ones the corpus could never generate.
     const pool = [
       ...words.slice(0, 200),
       "ShieldFont", "café", "H3O", "C4H10", "mp3", "3D", "2026", "1568", "M15-EN",
       "0", "1", "5", "9", "-", "—", ",", ".", "(", ")", "'s", "!!", "a", "I", "OF",
       "#", "%", "42nd", "x5y", "$3.50", "v0.2.1",
+      // Inherited Object.prototype names that are also English words.
+      "constructor", "Constructor", "CONSTRUCTOR", "toString", "valueOf",
+      "hasOwnProperty", "__proto__",
+      // E1: character references, and prose that merely looks like one.
+      "&#39;", "&#8212;", "&#169;", "&#x2019;", "&copy;", "&amp;", "&euro;",
+      "&nbsp;", "&#75;b&#72;", "AT&T", "R&D", "Tom & Jerry", "&", ";",
+      // Astral and zero-width neighbours for the digit rule.
+      "😀", "​", "ÅNGSTRÖM", "naïve",
     ];
     const mismatches: string[] = [];
     for (let i = 0; i < 4000; i++) {

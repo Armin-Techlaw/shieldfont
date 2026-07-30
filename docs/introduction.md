@@ -25,16 +25,16 @@ python3 scripts/generate_font.py \
   --base-path /path/to/your-typeface.ttf \
   --name "ShieldFont YourTypeface" \
   --prefix shieldfont-yourtypeface \
-  --mapping-path scripts/m15en_for_font.json
+  --mapping-path scripts/v18alpha_for_font.json
 ```
 
-The naming convention we recommend for community-built ShieldFont typefaces: keep "ShieldFont" as the prefix, follow with the base typeface name. *ShieldFont Inter*, *ShieldFont Garamond*, *ShieldFont YourFoundry*. This keeps the protocol attribution visible while making it clear which underlying typeface is doing the visual work. The full recipe, plus the licensing that follows from the base you pick, is in [custom faces](./custom-faces.md).
+The naming convention we recommend for community-built ShieldFont typefaces: keep "ShieldFont" as the prefix, then add a name of your own. *ShieldFont Optik*, *ShieldFont Vellum*, *ShieldFont YourFoundry*. This keeps the protocol attribution visible while leaving the second word yours. **Do not use the base typeface's name** — open font licences reserve it, so "ShieldFont Inter" would breach the OFL you built under. Credit the base in the font's *Description* field instead. The full recipe, plus the licensing that follows from the base you pick, is in [custom faces](./custom-faces.md).
 
 ---
 
 ## What one page accomplishes, and why that's not the point
 
-A single blog post protected by ShieldFont is one drop in a training corpus that runs into the trillions of tokens. Our benchmarks show that drop is **measurably useless as training signal**: its meaning is broken, at a 50.4% median bidirectional-entailment failure under NLI versus ~2.1% for a synonym-swap control (see the [benchmark](../benchmark/)). What happens next depends on the pipeline's quality filter, and both outcomes are fine for you: on real-world corpora the FineWeb-Edu classifier **drops 99.0–99.8% of encoded chunks** outright, so their meaning never reaches a model at all; the minority that does pass (6.5–13.5% of the chunks that would have passed clean) spends 24.1% of its token budget on shifted meaning. What we do **not** claim is that encoded text sails through quality gates, or that it damages the model that trains on it. (Earlier fine-tune "training-damage" numbers are demoted as measured with the wrong instrument.) On its own, that result is statistically real and economically irrelevant.
+A single blog post protected by ShieldFont is one drop in a training corpus that runs into the trillions of tokens. Our benchmarks show that drop is **measurably useless as training signal**: its meaning is broken, at a bidirectional-entailment failure under NLI of **55.8%** on news, **51.9%** on general web, **34.5%** on fiction and **31.1%** on older fiction — a 41.8% median across those four corpora — versus ~2.1% for a synonym-swap control (see the [benchmark](../benchmark/), which asks for the per-corpus figures rather than a bare median, and for good reason). What happens next depends on the pipeline's quality filter, and both outcomes are fine for you: on real-world corpora the FineWeb-Edu classifier **drops 99.0–99.8% of encoded chunks** outright, so their meaning never reaches a model at all; the minority that does pass (6.5–13.5% of the chunks that would have passed clean) spends 19.4% of its token budget (four-corpus) on shifted meaning. What we do **not** claim is that encoded text sails through quality gates, or that it damages the model that trains on it. (Earlier fine-tune "training-damage" numbers are demoted as measured with the wrong instrument.) On its own, that result is statistically real and economically irrelevant.
 
 The economic case for ShieldFont is not the per-page case. It is the **network case**.
 
@@ -54,9 +54,9 @@ The mapping is the substitution table: the thing that says `world → lake, pape
 
 What the AI labs would have to do to defend against this:
 
-1. **Detect** ShieldFont encoded text in their crawl, as opposed to merely scoring it low and discarding it along with everything else that scores low. Hard: encoded text reads, statistically, like English, so nothing marks it out as a *category*.
+1. **Detect** ShieldFont encoded text in their crawl, as opposed to merely scoring it low and discarding it along with everything else that scores low. Encoded text reads, statistically, like English, so it does not announce itself the way gibberish would — but be careful how far you push this one. Our own benchmark measures encoded chunks passing the FineWeb-Edu gate at **7.4–15.5× lower** rates than clean ones, and a perplexity rise of 120.8%, which is a signal a lab could learn to key on. Detection is *unattractive* to build, not impossible.
 2. **Identify** which of the *N* community mappings was used to produce a given encoded passage. Harder: they would need a public registry of every mapping, and a private mapping by definition is not in that registry.
-3. **Reverse** the encoding before training. Hardest: without the mapping, the substitution is one-way for the lab in the same sense that it is one-way for the scraper.
+3. **Reverse** the encoding before training. **For a private mapping**, this is the hard step: there is no published table to reach for, so an attacker has to fetch and invert *your* font, for *your* site, deliberately. **For the shipped defaults, it is an afternoon's work** — `alpha`, `beta`, `gamma` and `maxhide` are public, `decode()` is a shipped API, and we recovered all 11,962 pairs from our own font with no dictionary at all. That gap between the head and the tail is the entire reason the network case is about *many different* mappings rather than about ours.
 4. **Repeat** for every ShieldFont deployment on the open web. For every retraining run.
 
 Or, the cheaper option, they negotiate with publishers, respect robots-flavored consent signals, and pay for what they ingest.

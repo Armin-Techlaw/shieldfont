@@ -1,6 +1,6 @@
 {
   "name": "@shieldfont/react",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "ShieldFont React component: encodes in Node so your original text never ships to the browser",
   "type": "module",
   "main": "./dist/index.js",
@@ -25,7 +25,8 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "prepare": "npm run build"
   },
   "keywords": [
     "shieldfont",
@@ -44,7 +45,7 @@
     "access": "public"
   },
   "dependencies": {
-    "@shieldfont/core": "^0.2.1"
+    "@shieldfont/core": "^0.3.0"
   },
   "peerDependencies": {
     "react": ">=18.0.0"
@@ -54,5 +55,9 @@
     "react": "^18.3.0",
     "typescript": "^5.4.0",
     "vitest": "^1.6.0"
-  }
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "sideEffects": false
 }

@@ -52,4 +52,21 @@ export interface MappingId {
   variant: string;
   /** Semver string of the encoder package that produced this mapping. */
   version: string;
+
+  // The fields below ride along on the `_meta` block of a bundled mapping and
+  // are returned by `mappingMeta()`. `parseMappingId()` reads a font's nameID
+  // 26, which carries only the four-part identity above, so they are optional.
+
+  /** Full generation stamp, e.g. `"shieldfont-en-v18-alpha@0.1.0"`. */
+  mappingId?: string;
+  /** Word-pair count for this mapping. */
+  pairs?: number;
+  /** Reseed seed, or `null` for a from-scratch build. */
+  seed?: number | null;
+  /** Filename of the font built from this mapping. */
+  font?: string;
+  /** Font family name the mapping was built against. */
+  family?: string;
+  /** Project name. */
+  name?: string;
 }

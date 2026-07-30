@@ -184,11 +184,40 @@ describe("the control is usable by a screen reader", () => {
     ]);
     const labels = trees.map((t) => String(props(findAllTags(t, "button")[0]!).children));
     expect(new Set(labels).size).toBe(3);
+    // Each noun counts from 1 in its own series, because that is what a reader
+    // counts as they move down the page.
     expect(labels[0]).toContain("heading 1");
-    expect(labels[1]).toContain("section 2");
-    expect(labels[2]).toContain("quote 3");
+    expect(labels[1]).toContain("section 1");
+    expect(labels[2]).toContain("quote 1");
     // The cost still has to reach the reader deciding whether to press it.
     for (const l of labels) expect(l).toMatch(/5 seconds/);
+  });
+
+  it("numbers each element type in its own series", () => {
+    // A single page-wide counter announced h2 / p / h2 as "heading 1",
+    // "paragraph 2", "heading 3" — so a listener hunting the second heading
+    // heard a number that is nowhere on the page. Count per noun instead.
+    const trees = withShieldRenderPass(() => [
+      Shield({ children: BODY, as: "h2", a11y: FAST }),
+      Shield({ children: BODY, as: "p", a11y: FAST }),
+      Shield({ children: BODY, as: "h2", a11y: FAST }),
+      Shield({ children: BODY, as: "p", a11y: FAST }),
+    ]);
+    const labels = trees.map((t) => String(props(findAllTags(t, "button")[0]!).children));
+    expect(labels[0]).toContain("heading 1");
+    expect(labels[1]).toContain("paragraph 1");
+    expect(labels[2]).toContain("heading 2");
+    expect(labels[3]).toContain("paragraph 2");
+    // Distinct names are the point; per-noun numbering must not cost that.
+    expect(new Set(labels).size).toBe(4);
+  });
+
+  it("refuses table-context tags rather than breaking the table", () => {
+    // The browser foster-parents our wrapper out of the table, drops the cell
+    // from the accessibility tree, and leaves a stray one behind.
+    expect(() => Shield({ children: BODY, as: "td" })).toThrow(/not supported/);
+    expect(() => Shield({ children: BODY, as: "tr" })).toThrow(/not supported/);
+    expect(() => Shield({ children: BODY, as: "span" })).not.toThrow();
   });
 
   it("never puts the protected words in the button name", () => {

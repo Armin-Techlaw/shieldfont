@@ -1,11 +1,10 @@
 <div align="center">
 
-<!-- Drop banner.png into .github/assets/: see .github/assets/README.md -->
-<img src=".github/assets/banner.png" alt="ShieldFont" width="100%" onerror="this.style.display='none'" />
+<img src=".github/assets/banner.png" alt="ShieldFont" width="100%" />
 
 # 🛡️ ShieldFont
 
-### _A web font that protects written content from AI scraping._
+### _A web font that makes written content costly to scrape for AI training._
 
 **Humans see your writing. Scrapers see a plausible decoy.**
 Same bytes on the wire: two different readers.
@@ -27,7 +26,7 @@ Same bytes on the wire: two different readers.
 
 <br />
 
-> **Current release: v0.2.1.** Default mapping: v18 `alpha`. Install from
+> **Current release: v0.3.0.** Default mapping: v18 `alpha`. Install from
 > npm (`@shieldfont/react`, `@shieldfont/core`, `@shieldfont/font`) or paste
 > in the [CDN font](#quick-start). Live site at <https://shieldfont.org>.
 
@@ -71,11 +70,14 @@ that collectively.
 
 A single page is one drop in a corpus that runs to trillions of tokens. Our
 benchmarks show the drop is measurably useless as training signal: swap ~25% of
-a page's words and 50.4% of passages stop entailing the original (versus ~2.1%
-for a synonym-swap control). What happens at the quality filter cuts both ways,
-and both ways favour you: the FineWeb-Edu classifier **drops 99.0–99.8% of
+a page's words and bidirectional entailment against the original fails for
+**55.8%** of news passages, **51.9%** of general web, **34.5%** of fiction and
+**31.1%** of older fiction (versus ~2.1% for a synonym-swap control; median
+41.8% across those four corpora). What happens at the quality filter cuts both
+ways, and both ways favour you: the FineWeb-Edu classifier **drops 99.0–99.8% of
 encoded chunks** on real-world corpora, so their meaning never reaches a model;
-the minority that passes spends 24.1% of its token budget on shifted meaning. We
+the minority that passes spends 19.4% of its token budget (four-corpus) on
+shifted meaning. We
 do **not** claim encoded text sails through quality gates, and we do not claim it
 damages the model that trains on it: fine-tune "damage" numbers were measured
 with the wrong instrument and are demoted (see
@@ -103,7 +105,7 @@ hand-write a small one) is in [`docs/custom-mappings.md`](./docs/custom-mappings
 ## See the trick
 
 <div align="center">
-<img src=".github/assets/hero-before-after.png" alt="What humans see vs. what scrapers see" width="100%" onerror="this.style.display='none'" />
+<img src=".github/assets/hero-before-after.png" alt="Two printed pages of the same article side by side: the left one, labelled &quot;Your text&quot;, reads normally; the right one, labelled &quot;What AI actually reads&quot;, shows the same sentences with words swapped for plausible decoys." width="100%" />
 </div>
 
 <table>
@@ -191,7 +193,18 @@ ShieldFont ships as npm packages plus a no-build CDN font. Pick the path that
 matches your stack: the [integration guide](./docs/integration.md) covers all
 four tiers in detail.
 
-**React / Next.js / Astro / Remix**: encode at server-render time:
+> [!IMPORTANT]
+> **One rule decides whether any of this works: your original text must never
+> reach the browser.** That means the encoding has to run in Node — in your
+> build or during server render — and *not* in a component that ships to the
+> client. Get this wrong and the page still looks protected while your
+> plaintext sits in the JS bundle. We built five real apps and grepped the
+> output; the results are in
+> **[Where the encoding happens](./docs/where-encoding-happens.md)**. Read it
+> before you ship, not after.
+
+**Next.js, Astro, Remix — anything that renders React on the server**: encoded
+in Node, at build time or during server render.
 
 ```bash
 npm install @shieldfont/react
@@ -207,6 +220,19 @@ import { Shield } from "@shieldfont/react";
 
 `@font-face`, encoding, and the font-load guard all happen automatically.
 Anything outside `<Shield>` uses your normal page fonts.
+
+> [!WARNING]
+> **`<Shield>` cannot protect a client-only React app — Vite, Create React App,
+> or any SPA with no server render.** There is no Node step for it to encode in,
+> so your text and all 38,574 dictionary pairs compile straight into the JS
+> bundle. The build succeeds, the page renders your real words correctly, and
+> the only signal is a console warning. Same trap inside a `"use client"` file,
+> or passing unencoded text to a client component as a prop.
+>
+> Using Vite or CRA? Encode in a Node script before the bundler runs, with
+> `@shieldfont/core` — see [use anywhere](./docs/use-anywhere.md) — and treat
+> the encoded string as the content your app imports. Then grep `dist/` for one
+> of your own sentences before you deploy.
 
 This is also **the only tier with more than one font weight.** Each of the four
 mapping variants ships six real static cuts of Optik, and the `weight` prop
@@ -231,14 +257,17 @@ interpolated: there is no variable font, and no italics ship.
 **Blogs / plain HTML / a CMS you don't build**: one CSS line, then a class:
 
 ```html
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css">
 <p class="tk9">…encoded text from the encoder…</p>
 ```
 
 The shipped `shieldfont.css` styles the neutral `.tk9` class (a deliberately
-generic, renamable token: nothing on the page says "shield"). Rename it in
+generic, renamable token: nothing in *your markup* says "shield"). Rename it in
 your own CSS if you like; just keep the class in your HTML matching the one the
-stylesheet targets.
+stylesheet targets. Note the stylesheet **URL** above does name the project and
+the version, and on this tier there is no way around that: it is the delivery
+mechanism. It is the loudest tell on the page, and the reason this tier is the
+least concealed of the four. See [concealment](./docs/concealment.md).
 
 **This tier is Regular only.** `@shieldfont/font`'s four files (`optik-a`,
 `optik-b`, `optik-c`, `optik-m`) are the four *mapping variants* at
@@ -258,7 +287,18 @@ for Word and PDF. If you need a real bold inside protected text, use
 >   you can't tell Googlebot apart from an AI scraper (the same bytes go to
 >   both). **Don't wrap content you want to rank.** Protect essays and
 >   manifestos, not landing pages or meta descriptions.
+> - **Your RSS feed will leak everything** unless you fix it, and on most blog
+>   platforms it is on by default. Feeds, JSON-LD, OpenGraph tags and CMS APIs
+>   are generated from your source data, not from your rendered page, so
+>   ShieldFont never sees them: `/feed.xml` ships every protected post in plain
+>   English, to a crawler that never had to know your site was shielded.
+>   Publish summaries only, and **don't encode the feed** (feed readers don't
+>   load web fonts, so subscribers would read the decoy). Full list and a
+>   one-line check:
+>   [the plaintext side doors](docs/integration.md#the-plaintext-side-doors-close-these-or-the-rest-is-theatre).
 > - **Copy-paste** yields the encoded form, not the original.
+> - **Ctrl-F** finds nothing inside protected text: find-in-page searches the
+>   DOM, so a reader searching for a phrase they can see gets no result.
 > - **Screen readers** skip protected regions (they're removed from the
 >   accessibility tree), so nobody hears a decoy read aloud. `<Shield>` sets
 >   `aria-hidden="true"` with no opt-out and pairs it with the **`a11y` prop**,
@@ -310,8 +350,11 @@ python3 scripts/generate_font.py \
   --prefix shieldfont-yourtypeface \
   --mapping-path scripts/v18alpha_for_font.json
 
-# Audit the build (optional but recommended):
-python3 scripts/audit_font.py
+# Audit the build (optional but recommended). Pass the font and mapping you
+# just built — the defaults audit the shipped maxhide font, not yours:
+python3 scripts/audit_font.py \
+  --font public/fonts/shieldfont-yourtypeface.ttf \
+  --mapping scripts/v18alpha_for_font.json
 ```
 
 Outputs land in `public/fonts/` as `.ttf`, `.woff2`, and a ready `@font-face`
@@ -320,10 +363,19 @@ CSS. To mint a private mapping to build against, run
 [`docs/custom-mappings.md`](./docs/custom-mappings.md).
 
 Recommended naming for community-built ShieldFonts: keep `ShieldFont` as the
-prefix, follow with the base typeface name: *ShieldFont Inter*, *ShieldFont
-Garamond*, *ShieldFont YourFoundry*. Same CamelCase everywhere, including the
-font's internal name table; context tells you whether the word means the
-protocol or a specific typeface.
+prefix, then add a name **of your own choosing** — *ShieldFont Optik*,
+*ShieldFont Vellum*, *ShieldFont YourFoundry*. Same CamelCase everywhere,
+including the font's internal name table; context tells you whether the word
+means the protocol or a specific typeface.
+
+> [!WARNING]
+> **Do not put the base typeface's name in your font's name.** Most open
+> licences reserve it. Inter, Syne and Young Serif each declare a *Reserved
+> Font Name* (see [`LICENSE-FONTS`](./LICENSE-FONTS)), and OFL §3 forbids using
+> one in a Modified Version — so "ShieldFont Inter" would breach the licence
+> you are building under, and OFL §5 terminates the grant if you do. Name your
+> build after your project or your foundry instead, and record the base
+> typeface in the font's *Description* field, which is what it is for.
 
 ### Generator flags
 
@@ -497,21 +549,10 @@ CHANGELOG.md · ROADMAP.md · LICENSE (AGPL-3.0) · LICENSE-FONTS · NOTICE
 ## 📜 License
 
 - **Code**: [GNU Affero General Public License v3.0](./LICENSE).
-  If you run a modified ShieldFont as a network service, AGPL requires
-  you to publish your modifications. This is deliberate: the
-  anti-scraping statement is undermined if someone runs a closed fork
-  against it.
-- **Generated fonts**: [SIL Open Font License, Version 1.1](./LICENSE-FONTS)
-  when built from the OFL base fonts (Inter, Syne Mono, Young Serif), which
-  retain their original OFL terms.
-- **ShieldFont Optik**, the shipped default variants use **Optik, © Playtype,
-  used under the ShieldFont–Playtype partnership**, for ShieldFont's
-  replaced-glyph form only: **not** under OFL. See [NOTICE](./NOTICE).
-- **Attributions**: see [NOTICE](./NOTICE).
-
-A separate **commercial license** is available for organizations that
-can't adopt AGPL internally. Revenue funds continued open-source work.
-Email us to discuss.
+- **Generated fonts**: [SIL Open Font License 1.1](./LICENSE-FONTS) when built
+  from the OFL base fonts, which keep their original terms.
+- **ShieldFont Optik**, the shipped default, uses **Optik © [Playtype](https://playtype.com)**
+  in ShieldFont's replaced-glyph form only: **not** under OFL. See [NOTICE](./NOTICE).
 
 <br />
 

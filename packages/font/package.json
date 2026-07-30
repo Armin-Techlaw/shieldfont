@@ -1,16 +1,21 @@
 {
   "name": "@shieldfont/font",
-  "version": "0.2.1",
-  "description": "ShieldFont web fonts + paste-in CSS + browser encoder: the no-build / CDN distribution. Serve via jsDelivr from npm: https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css",
+  "version": "0.3.0",
+  "description": "ShieldFont web fonts + paste-in CSS + browser encoder: the no-build / CDN distribution. Serve via jsDelivr from npm: https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css",
   "type": "module",
   "main": "./shieldfont-encoder.js",
   "exports": {
     ".": {
+      "types": "./shieldfont-encoder.d.ts",
+      "import": "./shieldfont-encoder.js",
+      "default": "./shieldfont-encoder.js"
+    },
+    "./shieldfont-encoder.js": {
+      "types": "./shieldfont-encoder.d.ts",
       "import": "./shieldfont-encoder.js",
       "default": "./shieldfont-encoder.js"
     },
     "./shieldfont.css": "./shieldfont.css",
-    "./shieldfont-encoder.js": "./shieldfont-encoder.js",
     "./optik-a.woff2": "./optik-a.woff2",
     "./optik-b.woff2": "./optik-b.woff2",
     "./optik-c.woff2": "./optik-c.woff2",
@@ -28,7 +33,8 @@
     "LICENSE",
     "LICENSE-FONTS",
     "NOTICE",
-    "README.md"
+    "README.md",
+    "shieldfont-encoder.d.ts"
   ],
   "keywords": [
     "shieldfont",
@@ -47,5 +53,10 @@
   },
   "publishConfig": {
     "access": "public"
-  }
+  },
+  "engines": {
+    "node": ">=20.10.0"
+  },
+  "sideEffects": false,
+  "types": "./shieldfont-encoder.d.ts"
 }

@@ -1,6 +1,7 @@
 # ShieldFont Benchmark (public, minimal core)
 
-ShieldFont swaps ~1 in 4 words on a page (measured: **24.4%** of all tokens,
+ShieldFont swaps ~1 in 4 words on a page (measured: **24.4%** of all tokens
+— 24.48% exact, reported to one decimal to match the white paper —
 **48.4%** of content words) for a *grammatically-matched but semantically-wrong*
 decoy. A human never sees the swap — the font's ligature
 table renders every decoy back to the original word shape. A machine reading

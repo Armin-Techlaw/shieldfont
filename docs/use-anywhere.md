@@ -2,9 +2,17 @@
 
 Not using React? ShieldFont's engine is a tiny, zero-dependency JavaScript
 library: **`@shieldfont/core`**. Call it wherever you already generate HTML: a
-Vue/Svelte/Angular server render, an Astro/11ty/Hugo/Jekyll build hook, an Eleventy
-filter, a Python or Ruby template (via a subprocess), a Cloudflare/Vercel build
-step: anywhere the encoding runs **before the bytes reach the browser**.
+Vue/Svelte/Angular server render, an Astro/11ty/Hugo/Jekyll build, a Python or
+Ruby template (via a subprocess), a Cloudflare/Vercel build step: anywhere the
+encoding runs **before the bytes reach the browser**.
+
+> **What you get here is a library and a recipe, not a plugin.** There is no
+> Eleventy plugin, Astro integration or Vue directive shipped today — the
+> [post-build script below](#editable-copy-across-builds-the-comment-marker-workflow)
+> is the supported path, and it is framework-agnostic on purpose: run your SSG,
+> then walk its output directory. It is about thirty lines and it is the same
+> thirty lines for every generator. If you write a proper adapter for yours,
+> [`ADAPTERS.md`](../ADAPTERS.md) is where to add it.
 
 > **Two tools, don't confuse them.** The **Encoder** (`@shieldfont/core`, JS) turns
 > text into encoded decoys. The **Font Builder** (`scripts/generate_font.py`,
@@ -25,7 +33,7 @@ source exposed. The encoded form is what you store, serve, and cache.
 npm install @shieldfont/core
 ```
 
-Zero runtime dependencies. Ships ESM + CJS + types.
+Zero runtime dependencies. Ships ESM + types (ESM only — `require()` will fail).
 
 ## 2. Encode your text
 
@@ -111,10 +119,18 @@ cp node_modules/@shieldfont/font/optik-a.woff2 public/fonts/
 }
 ```
 
+> **Keep the font on the same origin as the page, or set CORS.** A relative path
+> like `/fonts/optik-a.woff2` is fine. Move it to a separate asset domain and the
+> browser blocks the font unless the response carries
+> `Access-Control-Allow-Origin` — and it fails *silently*: curl reports `200`, the
+> browser drops the font, and on this tier there is no guard, so your reader is
+> shown the decoy as if nothing happened. Check with
+> `curl -I -H "Origin: https://your-site.example" <font-url>`.
+
 **Or CDN (zero setup, version-pinned):**
 
 ```css
-@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css');
+@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css');
 ```
 
 The CDN bundle already declares `@font-face` for `'Optik'` and ships the `.tk9`
@@ -166,13 +182,25 @@ exactly what a build step should do: no separate tool needed.
 ```js
 // scripts/shield.mjs — run in your build (e.g. after your SSG emits dist/)
 import { readFileSync, writeFileSync, globSync } from "node:fs"; // globSync: Node 22+, or use fast-glob
-import { buildHtml, alpha } from "@shieldfont/core";
+import { buildHtml, shipHtml, assertShipped, alpha } from "@shieldfont/core";
 
 for (const file of globSync("dist/**/*.html")) {
   const raw = readFileSync(file, "utf8");
-  writeFileSync(file, buildHtml(raw, alpha)); // re-derive decoy from the source-of-truth comment
+  const built = buildHtml(raw, alpha);   // re-derive decoy from the source-of-truth comment
+  const shipped = shipHtml(built);       // strip the comments — they hold your PLAIN TEXT
+  assertShipped(shipped);                // throws rather than deploying plain text
+  writeFileSync(file, shipped);
 }
 ```
+
+> [!IMPORTANT]
+> **`shipHtml` is not optional, and `assertShipped` is why.** The comment
+> markers hold your original sentences verbatim. Write `buildHtml`'s output
+> straight to `dist/` and every protected paragraph deploys with its plain text
+> attached — worse than not using ShieldFont at all, because it also publishes
+> a matched plaintext/decoy pair. `assertShipped` throws on any marker that
+> survived, and on an unpaired `shield-on`/`shield-off` block, which is never
+> encoded at all. Keep both lines.
 
 Author your HTML with the plain English in the comment; `buildHtml` regenerates
 the visible decoy every run (idempotent), so the visible text never drifts:
@@ -191,12 +219,20 @@ normalizes them into per-text-node markers.
 <!-- shield-off -->
 ```
 
-Two more helpers complete the pipeline:
+The rest of the pipeline:
 
 ```js
-checkHtml(html, alpha); // → { total, passed, failed, mismatches } — verify round-trip; fail CI on mismatch
-shipHtml(html);         // strip every <!-- shield: … --> comment so deployed HTML carries zero signal
+checkHtml(html, alpha); // → { total, passed, failed, mismatches, unpairedBlocks }
+shipHtml(html);         // strip every <!-- shield: … --> comment before deploy
+assertShipped(html);    // throw if any marker survived — the actual deploy gate
 ```
+
+**Use `assertShipped` as the gate, not `checkHtml`.** `checkHtml` verifies the
+markers it *finds*, so it cannot tell a protected page from an unprotected one:
+a page that was never built, a block missing its `shield-off`, and a page
+shipped correctly all return `{ total: 0, failed: 0 }`. Read `unpairedBlocks`
+if you use it directly — a non-zero value means some region was never encoded,
+even when `failed` is `0`.
 
 A typical `package.json`:
 

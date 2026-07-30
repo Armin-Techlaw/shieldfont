@@ -29,6 +29,21 @@ jobs:
       - name: Install
         run: npm install
 
+      # A tag that disagrees with the package versions publishes the wrong
+      # number to npm, and npm has no undo. Check before building.
+      - name: Version matches the tag
+        if: github.event_name == 'push'
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          for pkg in core react font; do
+            VER=$(node -p "require('./packages/$pkg/package.json').version")
+            if [ "$VER" != "$TAG" ]; then
+              echo "✗ @shieldfont/$pkg is $VER but the tag is v$TAG" >&2
+              exit 1
+            fi
+          done
+          echo "✓ all three packages are $TAG"
+
       - name: Build all packages
         run: npm run build
 

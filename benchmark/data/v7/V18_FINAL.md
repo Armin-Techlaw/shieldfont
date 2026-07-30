@@ -2,7 +2,7 @@
 
 **Decision: v18 = `v15_0_1_0_0_0_0` unchanged.** The mega-orthogonal sweep exhaustively falsified every hypothesis for improving v15 on the (sem-div × content × KenLM-band × pass_27) Pareto frontier.
 
-This document is the internal retrospective. The abridged public version sits in the white paper at § 14.6.
+This document is the internal retrospective. The abridged public version sits in the white paper's § 13 appendix (section numbers have shifted since this note was written; check the paper's current contents list rather than trusting "§ 14.6").
 
 ---
 

@@ -80,7 +80,7 @@ The output lands in `public/fonts/`.
 2. **Fork** the repo, branch from `main`.
 3. **Keep PRs focused.** One concern per PR.
 4. **Sign the CLA** (see below) the first time you contribute.
-5. **Update docs** if you change behavior. CLI flag changes → `README.md`.
+5. **Update docs** if you change behavior. Generator flag changes (`scripts/generate_font.py`) → `README.md`.
    Generator output changes → note in the PR description.
 6. **Describe the change**: what and why, not how. The diff shows how.
 

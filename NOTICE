@@ -28,10 +28,17 @@ Base fonts used by the ShieldFont generator (for fonts you build yourself)
 - Datatype — bundled for experimentation. Licensing per upstream;
   contributors should verify before redistribution.
 
-A ShieldFont built from these OFL base fonts is a derivative work that does
-not use their Reserved Font Names. Rendering is modified via injected
-OpenType GSUB ligature rules; glyph outlines from each base font remain
-intact.
+A ShieldFont built from these OFL base fonts is a derivative work — a
+Modified Version in OFL terms. Rendering is modified via injected OpenType
+GSUB ligature rules; glyph outlines from each base font remain intact.
+
+If you build one, YOU MUST NOT put the base typeface's Reserved Font Name
+in the name of your font, including its internal name table. OFL §3 forbids
+it and §5 terminates the licence for a breach, so a build named e.g.
+"ShieldFont Inter" would lose the very grant that permitted it. Name your
+build after your own project or foundry and credit the base typeface in the
+Description field (nameID 10), which carries no such restriction. See
+docs/custom-faces.md.
 
 --------------------------------------------------------------------------
 Optik — the typeface behind the shipped default variants

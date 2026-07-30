@@ -112,7 +112,7 @@ Every bundled mapping carries a `_meta` block, and the package exports its versi
 
 ```ts
 import { VERSION, alpha, mappingMeta } from "@shieldfont/core";
-VERSION;                        // "0.2.1"  (the npm package version)
+VERSION;                        // "0.3.0"  (the npm package version)
 mappingMeta(alpha)?.mappingId;  // "shieldfont-en-v18-alpha@0.1.0"  (the dictionary generation)
 ```
 
@@ -146,7 +146,9 @@ build the matching font with `generate_font.py`. See `docs/custom-mappings.md`.
 ## Honest limits
 
 Protected text is a **decoy in the DOM**, so search engines index the decoy: don't wrap content you need ranked (you can't tell Googlebot from an AI scraper).
-Copy-paste yields the decoy; give screen-reader users unprotected copy; and
+Copy-paste yields the decoy. For screen readers, use `<Shield>`'s `a11y` prop
+(React) or supply your own alternative — **never a link to a plain-text copy**,
+which any scraper follows for free. And
 `alpha` deliberately keeps common function words, so coverage is partial by
 design (a short sentence may change only ~2 of ~11 words).
 

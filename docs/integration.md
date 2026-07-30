@@ -4,7 +4,7 @@ ShieldFont ships in four flavors depending on how you build pages. Pick the one 
 
 | Tier | Audience | Install | Encoding happens... | Weights |
 |---|---|---|---|---|
-| [**A. JSX** (`<Shield>` component)](#tier-a-jsx-with-shieldfontreact) **· recommended for any site with a build** | React / Next.js / Astro / Remix | `npm i @shieldfont/react` | At server-render time | **Six real cuts, 400 to 900** |
+| [**A. JSX** (`<Shield>` component)](#tier-a-jsx-with-shieldfontreact) **· recommended for any site with a build** | Next.js, Astro, Remix — React rendered **on the server**. **Not Vite/CRA:** see the warning below. | `npm i @shieldfont/react` | In Node: build time or server render | **Six real cuts, 400 to 900** |
 | [**B. Any framework / build step**](#tier-b-any-framework--build-step-shieldfontcore) | Vue, Svelte, Astro/11ty/Hugo builds, CI pipelines | `npm i @shieldfont/core` | In your build or server render | Regular (400) only |
 | [**C. CSS @import + paste**](#tier-c-css-import--paste) **· for experimenting** | Blogs, hosted CMSes, plain HTML | one-line `@import` in your site CSS | At encoder time (browser tool) | Regular (400) only |
 | [**D. Downloadable font**](#tier-d-download-microsoft-word--pdf) | Microsoft Word, Pages, InDesign, PDF authors (**not** Google Docs) | download the font + use the web encoder | At Word/PDF render time via OpenType ligatures | Regular (400) only |
@@ -12,6 +12,9 @@ ShieldFont ships in four flavors depending on how you build pages. Pick the one 
 All four tiers build on the same v18 dictionary family, and `alpha` is the default everywhere. One difference worth knowing before you pick: **Tier A rotates by default.** Left unset, `<Shield>` picks `alpha`, `beta`, or `gamma` per block of text by content hash; Tiers B, C and D encode with whichever single mapping you pin, and the browser-based encoder behind Tier C emits `alpha`.
 
 **The second difference is weights, and it surprises people.** Tier A is the only tier that ships more than one weight. `@shieldfont/react` bundles six real static cuts of Optik per mapping variant, Regular 400 through Black 900. Tiers B, C and D all render through `@shieldfont/font` or the downloadable font, and both of those are **Regular (400) only**: `optik-a.woff2`, `optik-b.woff2`, `optik-c.woff2` and `optik-m.woff2` are the four mapping variants at one weight. If your design needs a real bold inside protected text, that is a reason to pick Tier A. The full list is in [Weights: the six cuts (Tier A only)](#weights-the-six-cuts-tier-a-only).
+
+> [!WARNING]
+> **Tier A needs a server render or a static export. A client-only SPA (Vite, Create React App, `ReactDOM.render`) cannot use it.** With no Node render step there is nothing to encode in, so `<Shield>` runs in the browser: your text *and* all 38,574 dictionary pairs compile into the JS bundle. The build succeeds, the page shows your real words, and the only signal is a console warning. If that is your stack, use **Tier B** — encode with `@shieldfont/core` in a Node script before the bundler runs, and import the encoded string as your content. The measured leak table for every rendering shape is in [Where the encoding happens](./where-encoding-happens.md).
 
 > **How much each tier reveals differs.** React hides the most (neutral font family `Optik`, neutral filenames, no version, no telltale class); the downloadable font is branded on purpose. For the concealment / protection-level story tier by tier, see [Concealment & camouflage](./concealment.md).
 
@@ -24,11 +27,34 @@ Protected text ships as `aria-hidden` decoy words in the DOM. Read this before y
 - **SEO: the big one.** Search engines index the *decoy* text, not your real words. You **cannot** distinguish Googlebot from an AI scraper, the same bytes go to both, so **don't wrap content you want to rank** (landing pages, product copy, meta descriptions, headings that double as SEO titles). Wrap the durable prose you'd rather keep out of a training set: essays, manifestos, long-form.
 - **Copy-paste** yields the encoded form, not the original.
 - **Screen readers** skip protected regions: they're removed from the accessibility tree. `<Shield>` sets `aria-hidden="true"` unconditionally and **there is no prop to turn it off**, because voicing a decoy is worse than voicing nothing. Nobody hears gibberish. What ships alongside it is the **`a11y` prop**, which renders a real alternative as a sibling *outside* the hidden region and *before* it in DOM order: `{ mode: "text" }` ships the block's real words **encrypted into the page**, with a button that grinds the key out in the reader's own browser (a 20-second budget per block by default, 7.6 s measured in Chrome, nothing for you to generate or host); `{ mode: "audio", src }` points at a build-time recording you produce; `{ mode: "none" }` is an explicit opt-out. The text control is **screen-reader-only by default** — nothing appears on screen, the unlocked words go to assistive technology clipped off-screen, and the encoded block is left as it is (`reveal: "visible"` swaps that for an on-screen replacement, `visualHidden: false` for an on-screen control). **No mode renders a link** — a public plain-text URL sitting in the HTML is a free, one-line bypass for any scraper that follows it, which is why the `0.2.0` `{ mode: "text", href }` was removed and why its replacement makes retrieval cost sequential compute instead of a fetch. Difficulty is capped by the cost of OCR rather than by paranoia, so raising `seconds` buys nothing. Two costs to weigh before you switch it on: `mode: "text"` needs JavaScript plus `BigInt`, `crypto.subtle` and an https origin, and an invisible control means a sighted keyboard user with no screen reader Tabs into something they cannot see and loses their focus indicator (**WCAG 2.2 SC 2.4.7**). Verified by hand with real VoiceOver on macOS; **NVDA and JAWS are not.** [`docs/plain-text-mode.md`](./plain-text-mode.md) has the numbers and the full limits. **React only:** if you use the CDN stylesheet or `@shieldfont/core` directly, set `aria-hidden` and supply the alternative yourself.
-- **The default dictionaries are public.** `alpha`/`beta`/`gamma`/`maxhide` ship as plaintext JSON in `@shieldfont/core`, and `@shieldfont/font` publishes a browser encoder (`shieldfont-encoder.js`, 277 KB) with all 11,970 `alpha` pairs inlined. Anyone can fetch either from npm or the CDN. Defaults are a convenience, not a secret; if you want a dictionary nobody else has, see [custom mappings](./custom-mappings.md).
+- **The default dictionaries are public.** `alpha`/`beta`/`gamma`/`m15en` (the `maxhide` dictionary) ship as plaintext JSON in `@shieldfont/core`, and `@shieldfont/font` publishes a browser encoder (`shieldfont-encoder.js`, 277 KB) with all 11,970 `alpha` pairs inlined. Anyone can fetch either from npm or the CDN. Defaults are a convenience, not a secret; if you want a dictionary nobody else has, see [custom mappings](./custom-mappings.md).
 - **The font is invertible.** It has to reach the browser to render your page, and its composite glyphs are drawn from the original words' own letters, so anyone who downloads it can read the substitution table back out. We recovered all 11,962 word pairs from our own shipped font with no dictionary (the remaining 8 entries are single-digit swaps, which have no word glyph to read). What that attack actually requires is knowing in advance that a page is shielded, identifying and fetching the right font, matching it to the right part of the page, and having already built an OpenType inverter to do it with, which is **one-time engineering** of one to three engineer-weeks. Mass scraping does none of those things: it fetches many sites without examining any of them individually. This is the load-bearing caveat: ShieldFont raises the cost for scrapers that don't stop to inspect; it does not make text unrecoverable, and a determined attacker aiming at one specific site will succeed.
 - **JS off + font 404.** The fail-loud font guard is JavaScript; with JS disabled and the font missing, a human sees the raw decoy text.
 - **Coverage is partial by design.** The default `alpha` mapping deliberately leaves common function words in place, so a short sentence may change only ~2 of its ~11 words. The output is a *plausible decoy*, not gibberish.
 - **English only, for now.** The shipped dictionaries (`alpha`/`beta`/`gamma` and the coverage-max `maxhide`) are English; multilingual mappings are on the [roadmap](../ROADMAP.md). Leave non-English content unwrapped.
+- **Ctrl-F stops working inside protected text.** Find-in-page searches the DOM, so a reader who can plainly see a phrase on screen will search for it and find nothing. There is no fix; it is the same gap the whole design rests on.
+- **AI assistants will describe your page incorrectly to your own readers.** This is the mechanism working, not failing: an assistant reads the DOM, so someone who asks one to summarise your essay gets a confident summary of the decoy. Worth knowing before you shield something you also want discussed accurately.
+
+### The plaintext side doors (close these, or the rest is theatre)
+
+ShieldFont only protects text that goes through it. Every one of these is generated from your CMS or your source data rather than from your rendered page, so it ships in **plain English** no matter how carefully the page itself is shielded — and a mass crawler fetches them by default, without ever knowing your site uses ShieldFont.
+
+| Side door | What leaks | What to do |
+|---|---|---|
+| **RSS / Atom feed** (`/feed.xml`, `/rss`, `/atom.xml`) | Usually the **entire post body**, every post | Publish title + summary only, not full content. **Do not encode the feed** — feed readers don't load web fonts, so subscribers would read the decoy. |
+| **JSON-LD** (`<script type="application/ld+json">`) | `headline`, often `articleBody` | Use the decoy text, or omit `articleBody`. The encoder skips `<script>` deliberately, so it will never do this for you. |
+| **OpenGraph / Twitter cards** (`og:description`, `og:title`) | Your summary, and often the opening paragraph | Write these by hand from text you're happy to publish. |
+| **Sitemaps with content, AMP pages, `.txt` mirrors** | Whatever your generator puts there | Audit once at launch. |
+| **Email newsletters** | The full post, to a list you don't control | Same as the feed: this is a distribution channel, not a shielded page. |
+| **Your CMS's public API** (Ghost Content API, WP REST) | Everything, in JSON | Restrict or disable the endpoint if you don't use it. |
+
+The one-line check, run against your built site:
+
+```bash
+grep -rn "a distinctive sentence from a protected post" dist/ public/ out/ 2>/dev/null
+```
+
+Any hit outside the shielded page itself is a side door. `/feed.xml` is the usual culprit, and on most blog platforms it is on by default.
 
 ### What to wrap, and what to skip
 
@@ -40,6 +66,8 @@ Wrapping should be intentional, block by block: don't auto-encode every text nod
 - Headings that are also page titles (those should match the meta title)
 - Form placeholders and error messages
 - Anything an end-user might paste into translation software
+- Text that is duplicated in an attribute on the same element (a link whose visible label repeats its own `href`, an `alt` that repeats its caption). Attributes are skipped by design and the visible text is encoded by design, so the pair sits side by side in the source.
+- **Anything inside `<a>` if you're using `a11y={{ mode: "text" }}`.** The control renders a `<button>`, a button inside a link is not legal HTML, and the browser resolves it by sending the click to the link. `<Shield>` cannot detect this — a server component sees its own props, never its parent — so this one is on you. Shield the paragraph around the link instead.
 
 Protect:
 
@@ -180,6 +208,22 @@ import { setFontHost } from "@shieldfont/react";
 setFontHost("/static/shieldfont"); // your own path or your OWN CDN — not jsDelivr
 ```
 
+> [!IMPORTANT]
+> **Serving the font from a different origin? It needs CORS headers.** Fonts are
+> fetched under the same cross-origin rules as `fetch()`, so a font on
+> `assets.example.com` used by `www.example.com` is **blocked unless the response
+> carries `Access-Control-Allow-Origin`** — and the failure is quiet: the request
+> shows `200` in curl and in the network panel, the browser discards it anyway,
+> and the reader gets whatever your fallback stack renders. On the React tier the
+> load guard catches this and blanks the block; on the CDN and Documents tiers
+> **there is no guard, so the reader silently reads the decoy.**
+>
+> Same-origin paths like `/fonts/...` are unaffected — this only applies when the
+> host differs. If you use a separate asset domain or bucket, set:
+> `Access-Control-Allow-Origin: https://your-site.example` (or `*`), and confirm
+> with `curl -I -H "Origin: https://your-site.example" <font-url>` that the header
+> comes back.
+
 **How the filenames decode.** The letter picks the mapping variant: `optik-a`
 is alpha (the default), `optik-b` is beta, `optik-c` is gamma, `optik-m` is
 maxhide. The weight is the
@@ -271,7 +315,7 @@ The lowest-friction path for blogs, hosted CMSes (WordPress, Ghost, Squarespace)
 ### Step 1: One-time install (paste into your site's CSS)
 
 ```css
-@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css');
+@import url('https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css');
 ```
 
 Where to put it depends on your platform:
@@ -279,7 +323,7 @@ Where to put it depends on your platform:
 - **WordPress**: Appearance → Customize → Additional CSS (Customizer plan and above), or your theme's `style.css`.
 - **Ghost**: Settings → Code injection → Site header (or the Custom CSS field if your theme exposes one).
 - **Squarespace**: Design → Custom CSS (this panel is available on every plan; the Code Injection panel is gated to Business+ but you don't need it for this).
-- **Plain HTML / static sites**: either drop the `@import` into your existing stylesheet, or use `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">` in `<head>`. The `<link>` form is marginally faster (parses in parallel with HTML): prefer it if you have `<head>` access.
+- **Plain HTML / static sites**: either drop the `@import` into your existing stylesheet, or use `<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css">` in `<head>`. The `<link>` form is marginally faster (parses in parallel with HTML): prefer it if you have `<head>` access.
 
 This stylesheet declares `@font-face` for `'Optik'` and ships a `.tk9` utility class.
 
@@ -300,7 +344,7 @@ This stylesheet declares `@font-face` for `'Optik'` and ships a `.tk9` utility c
 
 ### Step 2: Per-paragraph paste (anywhere in body content)
 
-Encode your text in the [encoder](https://github.com/isaqueseneda/shieldfont) (visit the site, paste plain English on the left, copy the embed on the right), then paste the result into your post body:
+Encode your text in the [encoder](https://shieldfont.org/encoder) (paste plain English on the left, copy the encoded text on the right), then paste the result into your post body:
 
 ```html
 <p class="tk9">
@@ -309,6 +353,36 @@ Encode your text in the [encoder](https://github.com/isaqueseneda/shieldfont) (v
 ```
 
 That's the entire embed. No `<link>`, no inline `style`, no `<script>`: just a paragraph with a class. This shape survives the strictest CMS sanitizers, including WordPress KSES for non-admin authors.
+
+> [!WARNING]
+> **Paste the *encoded* text, never your plain English.** The mapping is its own
+> inverse, so plain English pasted into a `.tk9` element fires the ligatures
+> backwards: you see a *decoy* on screen while the page source holds your real
+> words — the exact opposite of what you wanted, with no error to warn you. If a
+> paragraph looks subtly wrong on screen, that is the symptom. Encode first.
+
+**No internet, or you'd rather not paste your draft into a web page?** The same
+encoder ships inside the `@shieldfont/font` package as a plain ES module, so you
+can run it locally as a one-off authoring tool. Save this as `encode.html`, open
+it in your browser, and use it exactly like the hosted one:
+
+```html
+<textarea id="in" rows="8" cols="60">Paste your plain English here.</textarea>
+<button onclick="go()">Encode</button>
+<textarea id="out" rows="8" cols="60"></textarea>
+<script type="module">
+  import { encode, alpha } from "https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont-encoder.js";
+  window.go = () => {
+    document.getElementById("out").value =
+      encode(document.getElementById("in").value, alpha);
+  };
+</script>
+```
+
+This is an *authoring tool*: you copy its output into your CMS by hand. It is
+**not** a way to encode your live pages — encoding in a visitor's browser
+protects nothing, because the page you served already contained your plain
+English. See [Where the encoding happens](./where-encoding-happens.md).
 
 ### Where this works, and where it doesn't
 
@@ -351,9 +425,9 @@ Regular. Real weights ship in [Tier A](#weights-the-six-cuts-tier-a-only) only.
 
 **Workflow:**
 
-1. Install `shieldfont-alpha.ttf` on your system.
+1. Install `shieldfont-alpha.ttf` on your system (double-click → *Install*, or drop it into Font Book on macOS).
 2. **Encode your text first.** Open the [encoder](https://shieldfont.org/encoder), paste your plain English, and copy the **encoded** output.
-3. Paste the **encoded** text into Word / Pages / InDesign, then set the ShieldFont font on those paragraphs. The font's GSUB ligatures render the encoded words back to glyphs *shaped like the originals*, so a human reading the page sees your original English, while the document's underlying text stream stays the encoded decoy.
+3. Paste the **encoded** text into Word / Pages / InDesign, then set the font on those paragraphs. **In the font menu it is called `ShieldFont Optik`** — that is the family name inside the file, so it is what you search for. (The `maxhide` download is `ShieldFont Optik Max`.) If you don't see it, quit and reopen the app: Word only rescans fonts at launch. The font's GSUB ligatures render the encoded words back to glyphs *shaped like the originals*, so a human reading the page sees your original English, while the document's underlying text stream stays the encoded decoy.
 4. Export to PDF. The decoy (encoded) form is what's stored in the PDF's text layer; readers still see the original through the font.
 5. Email the PDF. If your recipient's email provider scrapes attachments to train AI models, the encoded text is useless training data.
 
@@ -368,7 +442,7 @@ For documents you'll edit later, also keep a plain-English source copy somewhere
 Every CDN URL we publish is **version-pinned and immutable**. No "latest" channels: silently upgrading the mapping would break existing encoded content.
 
 ```
-✅ https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css
+✅ https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css
 ❌ https://cdn.jsdelivr.net/npm/@shieldfont/font@latest/shieldfont.css
 ```
 

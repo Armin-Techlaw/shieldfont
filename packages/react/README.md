@@ -1,6 +1,6 @@
 # @shieldfont/react
 
-A React **server component** for [ShieldFont](https://github.com/isaqueseneda/shieldfont): encodes its children at server-render time and ships them to the browser through a bundled font.
+A React **server component** for [ShieldFont](https://github.com/isaqueseneda/shieldfont): encodes its children in Node — at build time or during server render — and ships only the encoded form to the browser, rendered through a bundled font.
 
 **Encoded text is what reaches the browser.** Scrapers reading the HTML source see the encoded form. Humans, rendering through the font, see the original.
 
@@ -73,7 +73,20 @@ Note: α/β/γ have slightly different pair counts (11,970 / 12,034 / 12,036), s
 
 | Prop | Type | Default | Purpose |
 |---|---|---|---|
-| `as` | `ElementType` | `"div"` | Element to render. `"span"` for inline, `"h1"`…`"h6"` for headings, `"article"`/`"section"` to wrap a block. It only picks the wrapper tag; it does not change what gets encoded. |
+| `as` | `ElementType` | `"div"` | **An HTML tag name.** `"span"` for inline, `"h1"`…`"h6"` for headings, `"article"`/`"section"` to wrap a block. It only picks the wrapper tag; it does not change what gets encoded. Table-context tags (`td`, `th`, `tr`, …) **throw** — the browser moves the wrapper out of the table and the cell disappears from the accessibility tree. |
+
+> **`<Shield>` forwards only the props in this table.** It is not a polymorphic
+> pass-through, so anything else — `href`, `id`, `onClick`, `aria-*` — is not
+> rendered, and passing one **throws** rather than disappearing quietly. That
+> makes `<Shield as={Link} href="/post">` an error instead of a dead link. Put
+> the element that needs its own props on the outside:
+>
+> ```jsx
+> <Link href="/post"><Shield as="span">The title of the post</Shield></Link>
+> ```
+>
+> The same applies to a custom component: it would receive none of its required
+> props, so wrap rather than substitute.
 | `variant` | `"alpha" \| "beta" \| "gamma" \| "maxhide"` | *auto-rotate* | Pin a mapping, or leave unset to auto-rotate α/β/γ. |
 | `weight` | `"regular"` \| `"medium"` \| `"demibold"` \| `"bold"` \| `"extrabold"` \| `"black"` \| `number` (1..1000) | inherit | Font weight. Six real cuts of Optik ship per variant; a number snaps to the nearest one and that resolved value is what gets emitted. See [Weights](#weights-what-actually-ships). |
 | `lineHeight` | `number \| string` | inherit | Line-height passthrough. |
@@ -82,7 +95,7 @@ Note: α/β/γ have slightly different pair counts (11,970 / 12,034 / 12,036), s
 | `style` | `CSSProperties` | n/a | Merges with the internal font-family scope. |
 | `rotate` | `boolean \| RotateConfig` | `false` | Mix a **time period** into the variant choice. See [Time-based rotation](#time-based-rotation-optional). |
 | `a11y` | `ShieldA11y` | *(none — warns in dev)* | The accessible alternative rendered outside the hidden region. See [Accessibility](#accessibility-read-this). |
-| `children` | `ReactNode` | required | A plain string, or a JSX tree. |
+| `children` | `string` | required | A plain string. **Anything else throws** — see [What gets encoded](#what-gets-encoded-inside-shield). |
 
 Precedence when several of these could pick the variant, highest first: an explicit **`variant`** prop (always pins) → the **`rotate`** prop → module-level **`setRotation()`** → the content hash.
 
@@ -151,12 +164,26 @@ Only the faces a page actually uses are downloaded; declaring six faces per vari
 - For mixed content, use one `<Shield>` per text block.
 
 ```jsx
+// ❌ THROWS — children are JSX, not a string.
 <Shield as="article">
   <h2>Chapter One</h2>
   <p>Text with <em>emphasis</em> is all encoded.</p>
-  <MyWidget />                {/* opaque — not encoded */}
+  <MyWidget />
 </Shield>
+
+// ✅ One <Shield> per text block.
+<article>
+  <Shield as="h2">Chapter One</Shield>
+  <Shield as="p">Text without inline markup is encoded.</Shield>
+  <MyWidget />
+</article>
 ```
+
+`as` also refuses table-context tags (`td`, `th`, `tr`, …): the browser moves
+our wrapper out of the table and the cell disappears from the accessibility
+tree, so `<Shield>` throws rather than let that happen silently. Put a plain
+`<td>` in your markup and shield its contents:
+`<td><Shield as="span">…</Shield></td>`.
 
 ## Time-based rotation (optional)
 
@@ -356,7 +383,7 @@ Better ideas here are the most useful contribution anyone can make to this proje
 
 ```jsx
 import { VERSION } from "@shieldfont/react";   // re-exported from @shieldfont/core
-console.log(VERSION);   // "0.2.1" — the package version
+console.log(VERSION);   // "0.3.0" — the package version
 ```
 
 Use it to confirm which encoder you're running. It is **not** a dictionary

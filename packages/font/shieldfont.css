@@ -1,10 +1,10 @@
-/* ShieldFont v0.2.1 — paste-in CSS for the no-build / CDN install.
+/* ShieldFont v0.3.0 — paste-in CSS for the no-build / CDN install.
  *
  * 1) Add this stylesheet (pick one):
- *      @import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css");
+ *      @import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css");
  *    or
- *      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">
- *    Always pin the version (@0.2.1), never @latest.
+ *      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css">
+ *    Always pin the version (@0.3.0), never @latest.
  *
  * 2) Encode your text FIRST. This CSS only renders decoy words back to the
  *    originals for humans — the HTML source must already contain the encoded
@@ -22,7 +22,7 @@
   src: url("optik-a.woff2") format("woff2");
   font-weight: normal;
   font-style: normal;
-  font-display: block; /* never flash the raw decoy text */
+  font-display: block; /* block ~3s rather than flash the decoy; see README */
 }
 @font-face {
   font-family: "Optik Beta";

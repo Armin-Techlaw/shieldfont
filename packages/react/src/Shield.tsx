@@ -294,6 +294,15 @@ export interface ShieldProps {
 // alpha/beta/gamma are independent re-seeds of the v18 pool (the auto-rotation
 // pool); `maxhide` is the M15 maximum-coverage dictionary (opt-in only, still
 // backed by the m15en mapping exported from @shieldfont/core).
+/**
+ * Every prop `<Shield>` understands. Anything else is rejected rather than
+ * silently discarded — see the check at the top of the component.
+ */
+const SHIELD_PROPS = new Set([
+  "as", "variant", "weight", "lineHeight", "size",
+  "className", "style", "rotate", "a11y", "children",
+]);
+
 const MAPPINGS: Record<ShieldVariant, Record<string, string>> = {
   alpha: alpha as Record<string, string>,
   beta: beta as Record<string, string>,
@@ -504,6 +513,17 @@ interface PassRegistry {
    * exactly the lifetime an ID needs.
    */
   seq: number;
+
+  /**
+   * Per-noun counters for the spoken ordinal, keyed by the word a reader
+   * actually hears ("heading", "paragraph", "quote").
+   *
+   * `seq` cannot do this job. It counts every block on the page, so a page of
+   * h2 / p / h2 announced "heading 1", "paragraph 2", "heading 3" — and a
+   * listener looking for the second heading hears a number that does not exist
+   * on the page. That is precisely the confusion the label was added to fix.
+   */
+  nouns: Map<string, number>;
 }
 
 function newPassRegistry(): PassRegistry {
@@ -514,6 +534,7 @@ function newPassRegistry(): PassRegistry {
     solvers: new Set(),
     notes: new Set(),
     seq: 0,
+    nouns: new Map(),
   };
 }
 
@@ -581,14 +602,19 @@ function claim(bucket: "styles" | "guards" | "weights" | "solvers" | "notes", ke
  * rendered) decoy under the revealed text instead of disappearing. Cosmetic,
  * and it cannot happen under RSC, which is where this component lives.
  */
-function blockIdFor(encoded: string): { id: string; ordinal: number } {
+function blockIdFor(encoded: string, noun: string): { id: string; ordinal: number } {
   const pass = currentPass();
   const base = `${camo.attrName}-${hashString(encoded).toString(36)}`;
   // The ordinal doubles as the button's disambiguator ("paragraph 2"), so it is
-  // 1-based: it is spoken to a person, not used as an index.
+  // 1-based: it is spoken to a person, not used as an index. It counts within
+  // its own noun, while the id keeps using the page-wide `seq` — the id has to
+  // be unique across the document, the ordinal has to match what a reader
+  // counts as they move down the page.
   if (!pass) return { id: base, ordinal: 1 };
   const n = pass.seq++;
-  return { id: `${base}-${n}`, ordinal: n + 1 };
+  const seen = (pass.nouns.get(noun) ?? 0) + 1;
+  pass.nouns.set(noun, seen);
+  return { id: `${base}-${n}`, ordinal: seen };
 }
 
 /**
@@ -929,7 +955,12 @@ function resolveWeight(weight: ShieldWeight | undefined): number | undefined {
  *   ours, since an override font has no GSUB ligature table and will show the
  *   encoded text on screen.
  */
-function fontGuardScript(family: string, host: string, seedWeight: number | null): string {
+function fontGuardScript(
+  family: string,
+  host: string,
+  seedWeight: number | null,
+  variant: ShieldVariant,
+): string {
   const flag = camo.guardFlag;
   const attr = camo.attrName;
   const failedAttr = `${attr}-failed`;
@@ -940,6 +971,14 @@ var FLAG   = ${JSON.stringify(flag)};
 var FAMILY = ${JSON.stringify(family)};
 var HOST   = ${JSON.stringify(host)};
 var ATTR   = ${JSON.stringify(attr)};
+// One guard is emitted per FAMILY, and auto-rotation puts two or three families
+// on a normal page. Selecting on the bare attribute made every guard inspect
+// every OTHER variant's elements too, which produced two bugs on the default
+// configuration: a stream of console warnings claiming beta's blocks were using
+// "the wrong font" (they were using beta's font, correctly), and — far worse —
+// one variant's font 404ing blanked the blocks belonging to variants that had
+// loaded fine. Scope every lookup to this guard's own variant.
+var SEL    = '[' + ATTR + '=' + ${JSON.stringify(JSON.stringify(variant))} + ']';
 var FAILED = ${JSON.stringify(failedAttr)};
 var PFX    = ${JSON.stringify(prefix)};
 var SEED   = ${seedWeight === null ? "null" : String(seedWeight)};
@@ -956,18 +995,18 @@ function fail(reason){
   if (done) return; done = true;
   console.error(
     PFX + ' Font "' + FAMILY + '" failed to load (' + reason + '). ' +
-    'Replacing every [' + ATTR + '] element with a fallback message. ' +
+    'Replacing every ' + SEL + ' element with a fallback message. ' +
     'Verify the font is reachable at ' + HOST + '/.'
   );
   var css =
-    '[' + ATTR + ']{font-size:0!important;line-height:0!important;}' +
-    '[' + ATTR + ']::before{content:' + JSON.stringify(FALLBACK) + ';' +
+    SEL + '{font-size:0!important;line-height:0!important;}' +
+    SEL + '::before{content:' + JSON.stringify(FALLBACK) + ';' +
     'display:inline-block;font:italic 1rem/1.5 system-ui,sans-serif;opacity:0.65;}';
   var sheet = document.createElement('style');
   sheet.setAttribute(FAILED, '1');
   sheet.appendChild(document.createTextNode(css));
   (document.head || document.documentElement).appendChild(sheet);
-  var els = document.querySelectorAll('[' + ATTR + ']');
+  var els = document.querySelectorAll(SEL);
   for (var i = 0; i < els.length; i++) {
     var el = els[i];
     el.setAttribute('aria-label', FALLBACK);
@@ -975,11 +1014,19 @@ function fail(reason){
   }
 }
 function checkDescendants(){
-  var roots = document.querySelectorAll('[' + ATTR + ']:not([' + FAILED + '])');
+  var roots = document.querySelectorAll(SEL + ':not([' + FAILED + '])');
   var warnings = 0;
   for (var i = 0; i < roots.length; i++) {
     var root = roots[i];
-    var all = root.querySelectorAll('*');
+    // The protected element ITSELF, then its descendants. Checking only
+    // descendants was the whole bug: our font-family arrives as an inline
+    // style, which loses to any author !important, so a theme rule such as
+    // "article p { font-family: Georgia !important }" painted raw decoys to
+    // every reader while this guard, whose entire job is to catch exactly
+    // that, stayed silent -- the element carrying the override was the root.
+    var all = [root];
+    var kids = root.querySelectorAll('*');
+    for (var n = 0; n < kids.length; n++) all.push(kids[n]);
     for (var j = 0; j < all.length; j++) {
       var el = all[j];
       var hasText = false;
@@ -1025,7 +1072,7 @@ function firstFamily(value){
   return String(value || '').split(',')[0].trim().replace(/^["']|["']$/g, '');
 }
 function sweepDom(){
-  var els = document.querySelectorAll('[' + ATTR + ']');
+  var els = document.querySelectorAll(SEL);
   for (var i = 0; i < els.length; i++) {
     var cs = window.getComputedStyle(els[i]);
     if (firstFamily(cs.fontFamily) !== FAMILY) continue;
@@ -1335,7 +1382,21 @@ function resolveVariant(
   rotate: boolean | RotateConfig | undefined,
   content: string,
 ): ShieldVariant {
-  if (variant) return variant;
+  if (variant) {
+    // A near-miss reached the encoder as an undefined mapping and died there
+    // with `Cannot convert undefined or null to object` — a stack with no
+    // mention of the prop that caused it. `variant="Alpha"` and
+    // `variant="max-hide"` are exactly the mistakes a person makes, and
+    // TypeScript does not catch either one in a JS codebase or behind a cast.
+    if (!Object.prototype.hasOwnProperty.call(MAPPINGS, variant)) {
+      throw new Error(
+        `<Shield variant="${String(variant)}"> is not a mapping. ` +
+          `Valid values: ${Object.keys(MAPPINGS).map((v) => `"${v}"`).join(", ")}. ` +
+          `Note the dictionary is "maxhide", not "m15en" — that is the internal name.`,
+      );
+    }
+    return variant;
+  }
   if (rotate === true) return variantFor(content);
   if (rotate === false) return autoVariant(content);
   if (rotate) return variantFor(content, rotate);
@@ -1686,9 +1747,13 @@ const TAG_NOUN: Record<string, string> = {
  * the text would hand it to any scraper for free — the exact bypass the whole
  * mode exists to close.
  */
+/** The word a reader hears for this element. Also the ordinal's counter key. */
+function nounFor(tag: string | null): string {
+  return (tag && TAG_NOUN[tag]) ?? "section";
+}
+
 function puzzleLabel(tag: string | null, ordinal: number, seconds: number): string {
-  const noun = (tag && TAG_NOUN[tag]) ?? "section";
-  return `Unlock the plain text for ${noun} ${ordinal} (up to ${seconds} seconds)`;
+  return `Unlock the plain text for ${nounFor(tag)} ${ordinal} (up to ${seconds} seconds)`;
 }
 
 function renderPuzzle(
@@ -1829,21 +1894,39 @@ function renderPuzzle(
  *     Manifesto
  *   </Shield>
  */
-export function Shield({
-  as,
-  variant,
-  weight,
-  lineHeight,
-  size,
-  className,
-  style,
-  rotate,
-  a11y,
-  children,
-}: ShieldProps) {
+export function Shield(props: ShieldProps) {
+  const {
+    as,
+    variant,
+    weight,
+    lineHeight,
+    size,
+    className,
+    style,
+    rotate,
+    a11y,
+    children,
+  } = props;
+
   // Fail loud in dev if this server component is being rendered on the client
   // (a "use client" boundary or a client-only React app ships the plaintext).
   warnIfClientRender();
+
+  // <Shield> is not a polymorphic pass-through: it renders a known set of
+  // attributes and DROPS everything else. That silence is the problem — the
+  // natural mistake is `<Shield as={Link} href="/post">`, where `href` vanishes
+  // and you get either a dead link or an unrelated crash from inside the
+  // component, with nothing pointing at the cause. Name what is being dropped.
+  const unknown = Object.keys(props).filter((k) => !SHIELD_PROPS.has(k));
+  if (unknown.length > 0) {
+    throw new Error(
+      `<Shield> received ${unknown.map((k) => `\`${k}\``).join(", ")}, which it does not forward — ` +
+        `the element would render without ${unknown.length > 1 ? "them" : "it"}. ` +
+        `<Shield> accepts only: ${[...SHIELD_PROPS].join(", ")}. ` +
+        `To wrap protected text in something that needs its own props, put that element ` +
+        `outside: <Link href="/post"><Shield as="span">…</Shield></Link>.`,
+    );
+  }
 
   // Children must be a plain string. Anything else (nested JSX, an array from
   // `{interpolation}`, a number) is rejected rather than encoded best-effort:
@@ -1854,6 +1937,29 @@ export function Shield({
     throw new Error(
       "<Shield> children must be a plain string. Nested JSX would leak unencoded text into the HTML. " +
         "Split mixed content into separate <Shield> instances.",
+    );
+  }
+
+  // Tags whose only legal parent is a table part. <Shield> wraps its output in
+  // a <div> when it needs a sibling for the a11y control, and a <div> is not
+  // legal inside <tr> — so the HTML parser foster-parents the wrapper out of
+  // the table, leaves the mirror element behind as a phantom extra cell, and
+  // the shielded cell disappears from the accessibility tree entirely.
+  //
+  // This is self-detectable (the component can see its own `as`), so it throws.
+  // Its sibling failure — a <Shield> with a11y nested inside an <a>, where the
+  // rendered <button> is illegal and the click navigates instead of unlocking —
+  // is NOT: a server component sees its props, never its parent. That one can
+  // only be documented; see "what to wrap, and what to skip".
+  const TABLE_CONTEXT_TAGS = new Set([
+    "td", "th", "tr", "thead", "tbody", "tfoot", "caption", "colgroup", "col",
+  ]);
+  if (typeof as === "string" && TABLE_CONTEXT_TAGS.has(as.toLowerCase())) {
+    throw new Error(
+      `<Shield as="${as}"> is not supported: the browser moves our wrapper out of the table, ` +
+        `which drops the cell from the accessibility tree and leaves a stray one behind. ` +
+        `Put a plain <${as}> in your markup and shield its contents instead: ` +
+        `<${as}><Shield as="span">…</Shield></${as}>`,
     );
   }
 
@@ -1899,7 +2005,7 @@ export function Shield({
   // and stamp IDs into markup that has no use for them.
   const usesPuzzle = a11y?.mode === "text";
   const { id: blockId, ordinal } = usesPuzzle
-    ? blockIdFor(content as string)
+    ? blockIdFor(content as string, nounFor(typeof Tag === "string" ? Tag : null))
     : { id: "", ordinal: 1 };
 
   // The accessible alternative. Built here so it lands OUTSIDE the aria-hidden
@@ -1961,7 +2067,7 @@ export function Shield({
       {emitGuard ? (
         <script
           dangerouslySetInnerHTML={{
-            __html: fontGuardScript(family, fontHost, fontWeight ?? null),
+            __html: fontGuardScript(family, fontHost, fontWeight ?? null, v),
           }}
         />
       ) : null}

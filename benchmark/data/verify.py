@@ -92,7 +92,9 @@ def swap_rate():
     corpora = ["cc_news", "openwebtext", "pg19", "bookcorpus"]
     covs = [d["cells"][f"v18_a__{c}"]["all"]["total_cov_mean"] for c in corpora]
     print(f"  per-corpus total_cov_mean: {[round(100 * c, 2) for c in covs]}")
-    print(f"  four-corpus mean (published as 24.4%): {pct(sum(covs) / len(covs), 2)}")
+    # The headline rounds DOWN to one decimal (24.48 -> 24.4), matching the
+    # white paper. Printed to 2dp here so the exact value is on the record.
+    print(f"  four-corpus mean: {pct(sum(covs) / len(covs), 2)}  (headline: 24.4%)")
 
 
 def filter_survival():

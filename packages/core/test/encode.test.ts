@@ -209,3 +209,74 @@ describe("decode is the inverse of encode", () => {
     });
   }
 });
+
+describe("E1 — HTML character references are markup, not prose", () => {
+  it("leaves numeric references intact", () => {
+    // The browser resolves these before the font runs, so a swapped digit is a
+    // changed character no ligature can undo: `don&#39;t` rendered as "donTt".
+    for (const s of ["don&#39;t", "a&#8212;b", "&#169; 2026", "&#x2019;"]) {
+      expect(encode(s, m)).toContain(s.replace(/2026/, ""));
+    }
+    expect(encode("don&#39;t", m)).toBe("don&#39;t");
+    expect(encode("a&#8212;b", m)).toBe("a&#8212;b");
+  });
+
+  it("never manufactures a tag out of plain text", () => {
+    // &#75;b&#72; → &#60;b&#62; would be parsed by the browser as a live <b>.
+    expect(encode("&#75;b&#72;", m)).toBe("&#75;b&#72;");
+  });
+
+  it("leaves named references intact", () => {
+    for (const s of ["&copy;", "&amp;", "&euro;", "&nbsp;"]) {
+      expect(encode(s, m)).toBe(s);
+    }
+  });
+
+  it("still permutes digits and words outside a reference", () => {
+    expect(encode("2026", m)).not.toBe("2026");
+    expect(encode("of writing", m)).not.toBe("of writing");
+  });
+
+  it("does not mistake prose ampersands for references", () => {
+    expect(encode("AT&T and R&D", m)).toBe(encode("AT&T and R&D", m));
+    expect(encode("Tom & Jerry", m)).toContain("&");
+  });
+});
+
+describe("prototype keys are not dictionary entries", () => {
+  it("passes 'constructor' through instead of returning Object's source", () => {
+    expect(encode("constructor", m)).toBe("constructor");
+    expect(encode("The constructor signed off.", m)).toContain("constructor");
+  });
+
+  it("does not throw on a capitalised prototype key", () => {
+    expect(() => encode("Constructor of the bridge", m)).not.toThrow();
+    expect(() => encode("TOSTRING", m)).not.toThrow();
+  });
+
+  it("passes the other inherited names through", () => {
+    expect(encode("toString valueOf hasOwnProperty", m))
+      .toBe("toString valueOf hasOwnProperty");
+  });
+});
+
+describe("argument validation (regression)", () => {
+  it("names the bad argument instead of failing inside the encoder", () => {
+    // These used to surface as `Cannot read properties of null (reading
+    // 'normalize')` from a frame the caller has no reason to recognise. A CMS
+    // field that came back null is an ordinary mistake.
+    expect(() => encode(null as unknown as string, m)).toThrow(/text must be a string, received null/);
+    expect(() => encode(undefined as unknown as string, m)).toThrow(/received undefined/);
+    expect(() => encode(42 as unknown as string, m)).toThrow(/received number/);
+    expect(() => encodeSegments(null as unknown as string, m)).toThrow(/text must be a string/);
+  });
+
+  it("rejects a missing or non-object mapping", () => {
+    expect(() => encode("x", null as unknown as typeof m)).toThrow(/mapping must be a mapping object/);
+    expect(() => encode("x", 42 as unknown as typeof m)).toThrow(/mapping must be a mapping object/);
+  });
+
+  it("still accepts the empty string", () => {
+    expect(encode("", m)).toBe("");
+  });
+});

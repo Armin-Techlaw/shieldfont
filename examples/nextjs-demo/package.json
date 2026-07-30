@@ -7,7 +7,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "verify": "next build && cat .next/server/app/page.html | head -80"
+    "verify": "next build",
+    "copy-fonts": "mkdir -p public/fonts && cp ../../packages/react/fonts/*.woff2 public/fonts/",
+    "predev": "npm run copy-fonts",
+    "prebuild": "npm run copy-fonts"
   },
   "dependencies": {
     "@shieldfont/react": "file:../../packages/react",

@@ -304,3 +304,21 @@ describe("precedence: variant > rotate > setRotation > content hash", () => {
     expect(css).toContain("Optik Beta");
   });
 });
+
+describe("variant validation (regression)", () => {
+  it("rejects a near-miss instead of dying inside the encoder", () => {
+    // `variant="Alpha"` reached the encoder as an undefined mapping and threw
+    // `Cannot convert undefined or null to object`, with nothing in the stack
+    // naming the prop that caused it.
+    expect(() => Shield({ children: "x", variant: "Alpha" as never, a11y: { mode: "none" } }))
+      .toThrow(/is not a mapping/);
+    expect(() => Shield({ children: "x", variant: "m15en" as never, a11y: { mode: "none" } }))
+      .toThrow(/"maxhide", not "m15en"/);
+  });
+
+  it("accepts every documented variant", () => {
+    for (const v of ["alpha", "beta", "gamma", "maxhide"] as const) {
+      expect(() => Shield({ children: "x", variant: v, a11y: { mode: "none" } })).not.toThrow();
+    }
+  });
+});

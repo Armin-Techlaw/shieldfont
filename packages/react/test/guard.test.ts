@@ -82,7 +82,10 @@ async function runGuard(script: string, opts: RunOptions = {}) {
     head,
     createElement: () => ({ text: "", setAttribute() {}, appendChild(n: { text: string }) { this.text = n.text; } }),
     createTextNode: (text: string) => ({ text }),
-    querySelectorAll: (sel: string) => (sel.startsWith("[data-typeface]") ? els : []),
+    // The guard scopes every lookup to its own variant, so the real selector is
+    // `[data-typeface="alpha"]` (plus an optional `:not([…-failed])`), never the
+    // bare attribute. Matching on the prefix keeps this stub honest to that.
+    querySelectorAll: (sel: string) => (sel.startsWith("[data-typeface") ? els : []),
     fonts: {
       load: (shorthand: string) => {
         loads.push(shorthand);
@@ -195,7 +198,7 @@ describe("a failed non-400 face fails as loudly as a failed 400 face", () => {
     expect(errors[0]).toContain('Font "Optik" failed to load');
     expect(sheets).toHaveLength(1);
     expect(sheets[0]).toContain(JSON.stringify(blanked));
-    expect(sheets[0]).toContain("[data-typeface]::before");
+    expect(sheets[0]).toContain('[data-typeface="alpha"]::before');
     expect(els[0]!.attrs["data-typeface-failed"]).toBe("1");
     expect(els[0]!.attrs["aria-label"]).toBe(blanked);
   });
@@ -358,5 +361,63 @@ describe("one live watcher per family, not one per page", () => {
     seedLoads.push(...spy.mock.calls.map((c) => String(c[0])));
 
     expect(seedLoads).toEqual(["900"]);
+  });
+});
+
+describe("each variant's guard minds only its own blocks (regression)", () => {
+  // Auto-rotation puts two or three variants on a normal page, and one guard is
+  // emitted per variant. Selecting on the bare attribute made every guard
+  // inspect every other variant's elements, which produced a stream of console
+  // warnings claiming beta's blocks used "the wrong font" — and, far worse, let
+  // one variant's 404 blank the blocks of variants that had loaded fine.
+  it("scopes every DOM lookup to its own variant value", () => {
+    const scripts: string[] = [];
+    for (const v of ["alpha", "beta", "gamma", "maxhide"] as const) {
+      const tree = Shield({ children: "The future of writing", variant: v, a11y: { mode: "none" } });
+      const found = JSON.stringify(tree).match(/var SEL[^;]+;/g) ?? [];
+      scripts.push(...found);
+    }
+    expect(scripts.length).toBeGreaterThan(0);
+    for (const line of scripts) {
+      // The selector must carry a variant value, never the bare attribute.
+      expect(line).toMatch(/ATTR \+ '=' \+/);
+    }
+  });
+
+  it("emits a different selector per variant", () => {
+    const sel = (v: "alpha" | "beta") => {
+      const tree = Shield({ children: "The future of writing", variant: v, a11y: { mode: "none" } });
+      return (JSON.stringify(tree).match(/var SEL[^;]+;/) ?? [""])[0];
+    };
+    expect(sel("alpha")).not.toBe(sel("beta"));
+    expect(sel("alpha")).toContain("alpha");
+    expect(sel("beta")).toContain("beta");
+  });
+});
+
+describe("unforwarded props are rejected, not dropped (regression)", () => {
+  it("names the prop it would have discarded", () => {
+    // `<Shield as={Link} href="/post">` used to lose `href` in silence: a dead
+    // link, or an unrelated crash from inside the component, with nothing
+    // naming the cause. That contradicted the package's fail-loud rule.
+    expect(() => Shield({ children: "x", href: "/post", a11y: { mode: "none" } } as never))
+      .toThrow(/received `href`, which it does not forward/);
+    expect(() => Shield({ children: "x", id: "a", title: "b", a11y: { mode: "none" } } as never))
+      .toThrow(/`id`, `title`/);
+  });
+
+  it("suggests the shape that actually works", () => {
+    expect(() => Shield({ children: "x", href: "/p", a11y: { mode: "none" } } as never))
+      .toThrow(/<Link href="\/post"><Shield as="span">/);
+  });
+
+  it("accepts every documented prop", () => {
+    expect(() =>
+      Shield({
+        children: "x", as: "p", variant: "alpha", weight: 500, lineHeight: 1.6,
+        size: "1rem", className: "c", style: { color: "red" }, rotate: false,
+        a11y: { mode: "none" },
+      }),
+    ).not.toThrow();
   });
 });

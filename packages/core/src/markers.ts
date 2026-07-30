@@ -1,5 +1,4 @@
-import { encode, decode } from "./encode.js";
-import { encodeHtml } from "./html.js";
+import { encode } from "./encode.js";
 import type { Mapping } from "./types.js";
 
 /**
@@ -95,10 +94,25 @@ export interface CheckResult {
     expected: string;
     actual: string;
   }>;
+  /**
+   * Unpaired `shield-on` / `shield-off` markers.
+   *
+   * `BLOCK_RE` needs both halves, so a block missing its `shield-off` is never
+   * encoded at all — and `total` counts markers, not intentions, so it reported
+   * a clean `0` for a page whose every word was still in plain English. Treat
+   * any non-zero value here as a failure even when `failed` is 0.
+   */
+  unpairedBlocks: number;
 }
 
 export function checkHtml(html: string, mapping: Mapping): CheckResult {
-  const result: CheckResult = { total: 0, passed: 0, failed: 0, mismatches: [] };
+  const result: CheckResult = {
+    total: 0,
+    passed: 0,
+    failed: 0,
+    mismatches: [],
+    unpairedBlocks: 0,
+  };
   for (const match of html.matchAll(MARKER_RE)) {
     const source = (match[1] ?? "").trim();
     const actual = (match[2] ?? "").trim();
@@ -110,7 +124,56 @@ export function checkHtml(html: string, mapping: Mapping): CheckResult {
       result.mismatches.push({ source, expected, actual });
     }
   }
+  const on = (html.match(/<!--\s*shield-on\s*-->/g) ?? []).length;
+  const off = (html.match(/<!--\s*shield-off\s*-->/g) ?? []).length;
+  result.unpairedBlocks = Math.abs(on - off);
   return result;
+}
+
+/**
+ * `assertShipped` — the last gate before deploy. Throws if any shield marker
+ * survived, which is the difference between a protected page and a page that
+ * publishes your plain text next to its own decoy.
+ *
+ * Call it on every file you are about to write, after `shipHtml`:
+ *
+ * ```js
+ * const shipped = shipHtml(buildHtml(raw, alpha));
+ * assertShipped(shipped);          // throws rather than deploying plain text
+ * writeFileSync(file, shipped);
+ * ```
+ *
+ * `checkHtml` cannot do this job: it verifies the markers it *finds*, so a page
+ * that was never built and a page shipped correctly both come back
+ * `{ total: 0, failed: 0 }` — success and total failure, spelled identically.
+ */
+export function assertShipped(html: string): void {
+  const problems: string[] = [];
+
+  const sources = (html.match(/<!--\s*shield:/g) ?? []).length;
+  const closers = (html.match(/<!--\s*\/shield\s*-->/g) ?? []).length;
+  const on = (html.match(/<!--\s*shield-on\s*-->/g) ?? []).length;
+  const off = (html.match(/<!--\s*shield-off\s*-->/g) ?? []).length;
+
+  if (sources > 0) {
+    problems.push(
+      `${sources} un-stripped <!-- shield: … --> marker(s): your original text is in this HTML, ` +
+        `beside its decoy. Run shipHtml() as the last step before writing the file.`,
+    );
+  }
+  if (closers > 0 && sources === 0) {
+    problems.push(`${closers} orphaned <!-- /shield --> marker(s).`);
+  }
+  if (on > 0 || off > 0) {
+    problems.push(
+      `${on} <!-- shield-on --> and ${off} <!-- shield-off --> marker(s) survived. ` +
+        `An unpaired block is never encoded, so that whole region ships as plain text.`,
+    );
+  }
+
+  if (problems.length > 0) {
+    throw new Error(`assertShipped: ${problems.join(" ")}`);
+  }
 }
 
 // -- internal helpers --
@@ -121,31 +184,53 @@ export function checkHtml(html: string, mapping: Mapping): CheckResult {
  * `<!-- shield: PLAIN -->ENCODED<!-- /shield -->` marker.
  */
 function normalizeBlock(inner: string, mapping: Mapping): string {
-  const TAG_RE = /<([!/]?[a-zA-Z][^>]*?)>/gs;
+  // Same token grammar as html.ts — comments matched whole, quoted attribute
+  // values consumed atomically. See the commentary on TOKEN_RE there for what
+  // the old letter-only tag pattern silently did to both.
+  const TOKEN_RE = /<!--[\s\S]*?-->|<([!/]?[a-zA-Z](?:[^>"']|"[^"]*"|'[^']*')*)>/g;
   const SKIP_TAGS = new Set([
     "script", "style", "code", "pre", "textarea", "svg", "math", "noscript",
+    "title", "option",
   ]);
+  const RAW_TEXT_TAGS = new Set(["script", "style", "textarea", "title"]);
 
   const out: string[] = [];
   let inSkip = 0;
   let last = 0;
-  TAG_RE.lastIndex = 0;
+  TOKEN_RE.lastIndex = 0;
   let m: RegExpExecArray | null;
-  while ((m = TAG_RE.exec(inner)) !== null) {
+  while ((m = TOKEN_RE.exec(inner)) !== null) {
     const segment = inner.slice(last, m.index);
     out.push(inSkip === 0 ? wrapSegment(segment, mapping) : segment);
     out.push(m[0]);
-    const tagBody = m[1] ?? "";
-    const tagMatch = /^(\/?)([a-zA-Z]+)/.exec(tagBody);
-    if (tagMatch) {
-      const closing = tagMatch[1] === "/";
-      const name = tagMatch[2]?.toLowerCase() ?? "";
-      if (SKIP_TAGS.has(name)) {
-        if (closing && inSkip > 0) inSkip--;
-        else if (!closing && !tagBody.trimEnd().endsWith("/")) inSkip++;
-      }
-    }
     last = m.index + m[0].length;
+
+    const tagBody = m[1];
+    if (tagBody === undefined) continue;
+    const tagMatch = /^(\/?)([a-zA-Z]+)/.exec(tagBody);
+    if (tagMatch === null) continue;
+
+    const closing = tagMatch[1] === "/";
+    const name = tagMatch[2]?.toLowerCase() ?? "";
+    const selfClosing = tagBody.trimEnd().endsWith("/");
+    if (!SKIP_TAGS.has(name)) continue;
+
+    if (RAW_TEXT_TAGS.has(name) && !closing && !selfClosing) {
+      const rest = inner.slice(last);
+      const end = new RegExp(`</${name}\\s*>`, "i").exec(rest);
+      if (end === null) {
+        out.push(rest);
+        last = inner.length;
+      } else {
+        out.push(rest.slice(0, end.index), end[0]);
+        last += end.index + end[0].length;
+      }
+      TOKEN_RE.lastIndex = last;
+      continue;
+    }
+
+    if (closing && inSkip > 0) inSkip--;
+    else if (!closing && !selfClosing) inSkip++;
   }
   const tail = inner.slice(last);
   out.push(inSkip === 0 ? wrapSegment(tail, mapping) : tail);
@@ -159,8 +244,29 @@ function normalizeBlock(inner: string, mapping: Mapping): string {
 function wrapSegment(segment: string, mapping: Mapping): string {
   // If the segment is purely whitespace or punctuation, skip wrapping.
   if (!/[a-zA-Z0-9]/.test(segment)) return segment;
+
+  // Keep boundary whitespace OUTSIDE the marker. MARKER_RE trims what it
+  // captures, so a space stored inside the comment is gone by the next build:
+  // `call <code>x</code> and` became `call<code>x</code>and`, a little more on
+  // every run. That is also what broke the documented idempotency guarantee.
+  const lead = /^\s*/.exec(segment)?.[0] ?? "";
+  const trail = /\s*$/.exec(segment)?.[0] ?? "";
+  const core = segment.slice(lead.length, segment.length - trail.length);
+
+  // A comment delimiter in the author's prose ends the marker early, which
+  // ships the tail of their real sentence to the browser AND corrupts the
+  // paragraph on screen. Refuse loudly instead: a build that stops is
+  // recoverable, a page that silently leaks is not.
+  if (core.includes("-->") || core.includes("<!--")) {
+    throw new Error(
+      "shield: cannot wrap text containing an HTML comment delimiter — the marker " +
+        "would end early and ship your plain text. Rewrite the arrow (e.g. '→', '-&gt;') " +
+        `or move this text out of the shielded block. Offending text: ${JSON.stringify(core.slice(0, 80))}`,
+    );
+  }
+
   // If the encoded form equals the source, no substitution happened — skip.
-  const encoded = encode(segment, mapping);
-  if (encoded === segment) return segment;
-  return `<!-- shield: ${segment.trim()} -->${encoded}<!-- /shield -->`;
+  const encoded = encode(core, mapping);
+  if (encoded === core) return segment;
+  return `${lead}<!-- shield: ${core} -->${encoded}<!-- /shield -->${trail}`;
 }

@@ -13,13 +13,13 @@ The **no-build / CDN** distribution of ShieldFont: the web fonts, a paste-in
 
 ```html
 <link rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">
+      href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css">
 ```
 or in your CSS:
 ```css
-@import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css");
+@import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css");
 ```
-Always pin the version (`@0.2.1`), never `@latest`: a site that paste-installs a
+Always pin the version (`@0.3.0`), never `@latest`: a site that paste-installs a
 URL is pinned to whatever it pasted.
 
 ## Three steps
@@ -72,12 +72,27 @@ Every cut encodes identically: for a given variant the word substitutions and
 digit rules are the same at all six weights, so the weight changes only how the
 text looks. There is no variable font anywhere in ShieldFont, and no italics.
 
-## In-browser encoder (optional)
+## The encoder module (for tooling — never for your page content)
+
+> [!WARNING]
+> **Encoding in the browser protects nothing.** Scrapers read the HTML your
+> server sent; they do not run JavaScript. If the encoding happens in the
+> visitor's browser, then the page you served contained your **plain English**,
+> and that is exactly what a crawler takes — while the page still looks
+> protected to you. Encode before the HTML is served: in a build step, or with
+> `@shieldfont/react` during server render. See
+> [Where the encoding happens](https://github.com/isaqueseneda/shieldfont/blob/main/docs/where-encoding-happens.md).
+
+The module is published so you can build **authoring tools** with it — an
+encoder box, a preview pane, a CMS plugin that encodes before saving. In every
+one of those the output is written back to your source, not rendered live to a
+visitor.
 
 ```html
+<!-- An authoring tool: paste text, copy the encoded result into your CMS. -->
 <script type="module">
   import { encode, alpha } from
-    "https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont-encoder.js";
+    "https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont-encoder.js";
   document.querySelector("#out").textContent = encode("Your text here", alpha);
 </script>
 ```
@@ -91,8 +106,11 @@ text looks. There is no variable font anywhere in ShieldFont, and no italics.
   the decoy flash; but a pure-CSS page has **no JavaScript fail-loud guard**, so
   if the font never loads the decoy eventually shows. Need fail-loud behavior?
   Use [`@shieldfont/react`](https://www.npmjs.com/package/@shieldfont/react).
-- Copy-paste yields the decoy text; screen readers should be given unprotected
-  copy.
+- Copy-paste yields the decoy text. Screen readers need an alternative you
+  supply yourself on this tier: set `aria-hidden` on the protected block and put
+  the real words beside it in a form a scraper cannot just fetch. **Never link a
+  plain-text copy** — a URL in the HTML is a one-line bypass. `@shieldfont/react`
+  ships this as the `a11y` prop; the CDN tier does not.
 - **Regular (400) only.** Bold, medium and the rest are a `@shieldfont/react`
   feature; nothing on this tier renders a heavier cut. See
   [Weights](#weights-this-package-is-regular-only) above.
@@ -101,7 +119,7 @@ text looks. There is no variable font anywhere in ShieldFont, and no italics.
 
 Every font file self-reports its generation in the name table
 (nameID 5 reads `Version 18.0`, the mapping generation the font was built
-against). This npm package is versioned separately: currently `0.2.1`.
+against). This npm package is versioned separately: currently `0.3.0`.
 
 ## License
 

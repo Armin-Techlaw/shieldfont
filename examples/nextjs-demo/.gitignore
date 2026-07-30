@@ -1,0 +1,8 @@
+node_modules/
+.next/
+out/
+
+# Copied from packages/react/fonts by `npm run copy-fonts` (wired to
+# predev/prebuild). Generated, not source — the originals are tracked in
+# packages/react/fonts/.
+public/fonts/

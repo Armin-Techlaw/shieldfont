@@ -51,3 +51,51 @@ describe("encodeHtml", () => {
     expect(out).not.toContain(" of "); // 'of' BEFORE <code> should be encoded
   });
 });
+
+describe("HTML comments are inert (regression)", () => {
+  it("does not let a tag name inside a comment disable encoding", () => {
+    // The old tag pattern could not match `<!--`, so the `<pre>` written inside
+    // this comment incremented the skip depth and never gave it back — every
+    // text node to the end of the document shipped in plain English.
+    const out = encodeHtml(`<p>of writing</p><!-- <pre> --><p>of writing</p>`, m);
+    expect(out).not.toContain(`<p>of writing</p><!-- <pre> --><p>of writing</p>`);
+    expect(out.split("<!-- <pre> -->")[1]).not.toContain("of writing");
+  });
+
+  it("leaves comment bodies untouched", () => {
+    expect(encodeHtml(`<!-- of writing -->`, m)).toBe(`<!-- of writing -->`);
+  });
+
+  it("does not count a tag written inside a raw-text element", () => {
+    // <script> content is CDATA: this page contains no <textarea>.
+    const out = encodeHtml(`<script>var t = "<textarea>";</script><p>of writing</p>`, m);
+    expect(out).toContain(`<script>var t = "<textarea>";</script>`);
+    expect(out.split("</script>")[1]).not.toContain("of writing");
+  });
+});
+
+describe("attribute values survive a > inside them (regression)", () => {
+  it("does not encode an attribute containing a greater-than sign", () => {
+    const input = `<img alt="of writing > of writing">`;
+    expect(encodeHtml(input, m)).toBe(input);
+  });
+
+  it("still encodes the text after such a tag", () => {
+    const out = encodeHtml(`<img alt="a > b"><p>of writing</p>`, m);
+    expect(out).toContain(`alt="a > b"`);
+    expect(out).not.toContain(`<p>of writing</p>`);
+  });
+});
+
+describe("system-chrome tags are skipped (regression)", () => {
+  it("leaves <title> and <option> alone — the OS draws them, not our font", () => {
+    expect(encodeHtml(`<title>of writing</title>`, m)).toBe(`<title>of writing</title>`);
+    expect(encodeHtml(`<option>of writing</option>`, m)).toBe(`<option>of writing</option>`);
+  });
+});
+
+describe("encodeHtml argument validation (regression)", () => {
+  it("names the bad argument", () => {
+    expect(() => encodeHtml(null as unknown as string, m)).toThrow(/html must be a string/);
+  });
+});

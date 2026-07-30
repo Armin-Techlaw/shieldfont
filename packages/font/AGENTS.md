@@ -127,7 +127,7 @@ pin the version: never `@latest` (a silent mapping update would break existing
 encoded content):
 
 ```html
-<!-- GOOD --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.2.1/shieldfont.css">
+<!-- GOOD --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css">
 <!-- BAD  --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@latest/shieldfont.css">
 ```
 

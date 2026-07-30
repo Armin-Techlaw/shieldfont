@@ -47,7 +47,12 @@ export function parseMappingId(json: string): MappingId | null {
 export function mappingMeta(mapping: Mapping): MappingId | null {
   const meta = (mapping as Record<string, unknown>)["_meta"];
   if (!meta || typeof meta !== "object") return null;
-  const { lang, mapping: fam, variant, version } = meta as Partial<MappingId>;
+  const block = meta as Partial<MappingId>;
+  const { lang, mapping: fam, variant, version } = block;
   if (!lang || !fam || !variant || !version) return null;
-  return { lang, mapping: fam, variant, version };
+  // Return the block itself, not a four-field reconstruction of it. Rebuilding
+  // dropped `mappingId`, `pairs` and `seed` — and `mappingId` is precisely the
+  // field three documented examples tell you to read, so every one of them
+  // printed `undefined`.
+  return { ...block, lang, mapping: fam, variant, version };
 }

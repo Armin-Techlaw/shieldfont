@@ -1,6 +1,6 @@
 # Concealment & camouflage: choosing your tier
 
-> **Naming reminder.** *ShieldFont* is the protocol and project. *ShieldFont Optik* is the flagship typeface; *ShieldFont MaxHide* is its coverage-max sibling. See the [introduction](./introduction.md) for the full naming convention.
+> **Naming reminder.** *ShieldFont* is the protocol and project. *ShieldFont Optik* is the flagship typeface; *ShieldFont Optik Max* is its coverage-max sibling. See the [introduction](./introduction.md) for the full naming convention.
 
 ShieldFont ships three ways. All three do the same job, **make human writing stale as AI training data**: humans read the original, scrapers that read the HTML digest an encoded decoy. *Stale, not poison* is the deliberate framing: what the benchmark supports is that an encoded page teaches a model little (its meaning is either dropped by the quality filter or trained on in shifted form), not that it damages one. See [`benchmark/`](../benchmark/) for the measurements. Where the three tiers differ is **camouflage**: how much a page, a stylesheet, or a file quietly admits that ShieldFont is in use at all.
 
@@ -78,7 +78,7 @@ Now the on-page class says nothing about ShieldFont. The `@import` URL is still 
 
 ### Documents: branded on purpose
 
-The downloadable `.ttf` is fully branded: it installs into Word, Pages, or InDesign under its full name (*ShieldFont Optik*, or *ShieldFont MaxHide* for the coverage-max variant), so you can actually find and pick it in the font menu. That's the point. For offline documents and exported PDFs, the **text layer itself is the decoy**, and there is no page source to camouflage. Whichever mapping you install protects exactly as well here as it does on any other tier; this tier is simply the most identifiable, because the font has to be selectable by a human. (Google Docs is the one place this tier cannot reach: it cannot load custom fonts.)
+The downloadable `.ttf` is fully branded: it installs into Word, Pages, or InDesign under its full name (*ShieldFont Optik*, or *ShieldFont Optik Max* for the coverage-max variant), so you can actually find and pick it in the font menu. That's the point. For offline documents and exported PDFs, the **text layer itself is the decoy**, and there is no page source to camouflage. Whichever mapping you install protects exactly as well here as it does on any other tier; this tier is simply the most identifiable, because the font has to be selectable by a human. (Google Docs is the one place this tier cannot reach: it cannot load custom fonts.)
 
 ---
 
@@ -89,7 +89,14 @@ Relevant to the **CDN** and **Documents** tiers (React never exposes a version: 
 The font's version field encodes the **dictionary generation** it was built for. You can read it with any font tool:
 
 - A GUI font inspector: macOS **Font Book → Info**, the Windows font preview, or a desktop app like **FontForge**.
-- `fc-query path/to/font.ttf` on Linux/macOS with fontconfig installed: read the version line.
+- `fc-query path/to/font.ttf` on Linux/macOS with fontconfig installed: read the version line. **`.ttf` only** — fontconfig cannot open `.woff2` and fails with `Can't query face 4294967295`, which looks like a corrupt font and isn't.
+- For a `.woff2` (what the CDN and npm packages ship), use `fontTools`:
+
+  ```bash
+  pip3 install "fonttools[woff]" brotli
+  python3 -c "from fontTools.ttLib import TTFont; f=TTFont('optik-a.woff2'); \
+    print([r.toUnicode() for r in f['name'].names if r.nameID in (1,5)])"
+  ```
 - Any "font info" utility that lists the name/version tables.
 
 Match the version you read to the dictionary that encoded your text. If they don't match, the text won't render back to the original: re-encode with the matching dictionary, or serve the font whose version matches your content.
@@ -114,13 +121,13 @@ This runs through the shipped Python scripts rather than a package API: one comm
 
 ## MaxHide, and what it costs you
 
-**ShieldFont MaxHide** (the `maxhide` variant, mapping M15-EN) is the opt-in coverage-max option. It is not "alpha but stronger". It is a different trade, and it gives up the thing the rest of this project is built on.
+**ShieldFont Optik Max** (the `maxhide` variant, mapping M15-EN) is the opt-in coverage-max option. It is not "alpha but stronger". It is a different trade, and it gives up the thing the rest of this project is built on.
 
 **What you gain: concealment.** MaxHide encodes roughly **half the words on a page**, against roughly a quarter for `alpha`. It reaches into short function words (`at↔by`, `is↔was`, `on↔in`) that `alpha` deliberately leaves alone, and its decoys sit **further from the original in meaning**, including outright antonyms. More of your page is hidden, and less of the original shows through the gaps.
 
 **What you give up: the staleness claim.** ShieldFont's actual claim is that encoded text is *stale* training data (see the top of this page). MaxHide mostly doesn't get to make it. Because it reads as visibly disrupted, modern quality classifiers reject it almost entirely: **0.2% / 1.0% / 0.1%** FineWeb-Edu pass rate across the three v8 corpora, and 0–1.6% on the register-fair per-corpus KenLM gate. The rare page that does survive wastes ~40% of its token budget on shifted meaning, which sounds great until you weight it by how seldom that happens: adopter-weighted, it collapses to roughly zero. A filter dropping your page is a real defence, and it is the only one MaxHide reliably delivers.
 
-**Why `alpha` is the default.** `alpha` buys its lower coverage back as plausibility. It pairs words at random inside grammar buckets (part of speech, inflection, concreteness) with a semantic veto that only blocks decoys meaning the *same* thing, so the output stays grammatical and reads as ordinary English. The decoys are still divergent, which is the point, just not so far out that the page stops looking like prose. That is what gives it a genuine, if small, chance of getting *into* a corpus and spending **24.1%** of a passing page's token budget on meaning that isn't yours: **6.5–13.5%** of the chunks that would have passed clean still pass encoded.
+**Why `alpha` is the default.** `alpha` buys its lower coverage back as plausibility. It pairs words at random inside grammar buckets (part of speech, inflection, concreteness) with a semantic veto that only blocks decoys meaning the *same* thing, so the output stays grammatical and reads as ordinary English. The decoys are still divergent, which is the point, just not so far out that the page stops looking like prose. That is what gives it a genuine, if small, chance of getting *into* a corpus and spending **19.4%** (four-corpus) of a passing page's token budget on meaning that isn't yours: **6.5–13.5%** of the chunks that would have passed clean still pass encoded.
 
 **So pick on intent.** Want the page maximally hidden from a human or a naive scrape, and content with "the filter throws it away"? `maxhide`. Want a shot at the training corpus itself, where the shifted meaning actually costs a model something? Stay on the default. Most people want the default.
 

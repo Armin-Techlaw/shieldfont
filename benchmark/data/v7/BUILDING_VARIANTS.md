@@ -373,12 +373,16 @@ Run `scripts/fetch_corpora.py` to populate them.
 
 ## See also
 
-- [`METHODOLOGY.md`](./METHODOLOGY.md) — pre-registered v7 protocol
 - [`V18_FINAL.md`](./V18_FINAL.md) — v18 retrospective + Pareto record
-- [`SUBSTITUTION_RULESET.md`](./SUBSTITUTION_RULESET.md) — the K-rules
-  in detail
-- [`docs/custom-mappings.md`](../../docs/custom-mappings.md) — public-
+- [`V12_K_LENS_FINDINGS.md`](./V12_K_LENS_FINDINGS.md) — the K-rules in detail
+- [`benchmark/README.md`](../../README.md) — the public benchmark, including
+  the v7 methodology this note assumes
+- [`docs/custom-mappings.md`](../../../docs/custom-mappings.md) — public-
   facing Path A / Path B summary
-- [`MAPPINGS.md`](../../MAPPINGS.md) — mapping family taxonomy M0..M15
-- [`docs/integration.md`](../../docs/integration.md) — deploying the
+- [`MAPPINGS.md`](../../../MAPPINGS.md) — mapping family taxonomy M0..M15
+- [`docs/integration.md`](../../../docs/integration.md) — deploying the
   font to your site
+
+> `METHODOLOGY.md` and `SUBSTITUTION_RULESET.md` were internal v7-era notes and
+> are not part of the public repo; the material that survived review is in
+> `benchmark/README.md` and `benchmark/PROVENANCE.md`.

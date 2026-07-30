@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildHtml, shipHtml, checkHtml } from "../src/markers.js";
+import { buildHtml, shipHtml, checkHtml, assertShipped } from "../src/markers.js";
 import M15EN_ALPHA from "../src/mappings/m15en.json" with { type: "json" };
 
 const m = M15EN_ALPHA as Record<string, string>;
@@ -72,5 +72,48 @@ describe("checkHtml — verifies marker round-trip", () => {
     const result = checkHtml(tampered, m);
     expect(result.failed).toBe(1);
     expect(result.mismatches[0]?.source).toBe("of writing");
+  });
+});
+
+describe("wrapSegment guards (regression)", () => {
+  it("is idempotent around inline elements — no whitespace erosion", () => {
+    // The source used to be stored trimmed, so the space before `and` was lost
+    // on the next build and words slowly fused to their neighbouring tags.
+    const src = `<!-- shield-on --><p>call <code>x</code> and of writing</p><!-- shield-off -->`;
+    const once = buildHtml(src, m);
+    expect(buildHtml(once, m)).toBe(once);
+    // The word itself may be swapped; what must survive is the space beside the
+    // inline element, which is what used to erode one build at a time.
+    expect(shipHtml(once)).toMatch(/<\/code> \S/);
+    expect(shipHtml(once)).not.toContain(`</code>`.concat(`but`));
+  });
+
+  it("refuses to wrap prose containing a comment delimiter", () => {
+    // Interpolating this into a comment ends the marker early: the tail of the
+    // author's real sentence lands in the shipped HTML *and* on screen.
+    expect(() =>
+      buildHtml(`<!-- shield-on --><p>design --> of writing</p><!-- shield-off -->`, m),
+    ).toThrow(/comment delimiter/);
+  });
+});
+
+describe("assertShipped — the deploy gate", () => {
+  it("passes on correctly shipped HTML", () => {
+    const built = buildHtml(`<!-- shield-on --><p>of writing</p><!-- shield-off -->`, m);
+    expect(() => assertShipped(shipHtml(built))).not.toThrow();
+  });
+
+  it("throws when shipHtml was never run", () => {
+    const built = buildHtml(`<!-- shield-on --><p>of writing</p><!-- shield-off -->`, m);
+    expect(() => assertShipped(built)).toThrow(/un-stripped/);
+  });
+
+  it("catches an unpaired shield-on, which checkHtml reports as clean", () => {
+    // The block is never encoded, so the page ships entirely in plain English —
+    // and checkHtml, which only verifies the markers it finds, returns 0/0/0.
+    const orphan = `<!-- shield-on --><p>of writing</p>`;
+    expect(checkHtml(orphan, m).failed).toBe(0);
+    expect(checkHtml(orphan, m).unpairedBlocks).toBe(1);
+    expect(() => assertShipped(orphan)).toThrow(/shield-on/);
   });
 });

@@ -1,6 +1,6 @@
 {
-  "_comment": "Maps each encoder-mapping VARIANT to its built font. The mapping JSON at src/mappings/<variant>.json is EMITTED by scripts/generate_font.py (post make_injective) — it IS the exact mapping the font was built from, so encoder and font can never diverge. DO NOT hand-edit the mapping files. Add beta/gamma entries here when their fonts are built.",
-  "_comment_version": "The `version` field below is the DICTIONARY GENERATION stamp, not the npm package version. scripts/stamp_mapping_meta.py mirrors it into each mapping's _meta.version / mappingId, so it must only move when the word pairs are rebuilt and the fonts re-emitted. The packages version independently (currently 0.2.1); see packages/core/src/index.ts. Bumping this by hand without re-running the font build would make the mappings claim a generation no shipped font matches.",
+  "_comment": "Maps each encoder-mapping VARIANT to its built font. The mapping JSON at src/mappings/<variant>.json is EMITTED by scripts/generate_font.py (post make_injective) \u2014 it IS the exact mapping the font was built from, so encoder and font can never diverge. DO NOT hand-edit the mapping files. Add beta/gamma entries here when their fonts are built.",
+  "_comment_version": "The `version` field below is the DICTIONARY GENERATION stamp, not the npm package version. scripts/stamp_mapping_meta.py mirrors it into each mapping's _meta.version / mappingId, so it must only move when the word pairs are rebuilt and the fonts re-emitted. The packages version independently (currently 0.3.0); see packages/core/src/index.ts. Bumping this by hand without re-running the font build would make the mappings claim a generation no shipped font matches.",
   "version": "0.1.0",
   "variants": {
     "alpha": {
@@ -10,7 +10,7 @@
       "pairs": 11970,
       "source": "v18 = v15_0_1_0_0_0_0",
       "seed": 42,
-      "status": "production default (v0.1 beta)",
+      "status": "production default (CDN + all packages)",
       "note": "6 orphan collisions auto-dropped by make_injective; F1+P1 edge cases handled in encode.ts",
       "built": "2026-07-13"
     },
@@ -21,7 +21,7 @@
       "pairs": 12034,
       "source": "v18 re-seed 1",
       "seed": 1,
-      "status": "React package only (not CDN)",
+      "status": "shipped in @shieldfont/react and @shieldfont/font (optik-b); not emitted by the web encoder",
       "note": "3 orphan collisions auto-dropped; in-bucket re-pairing of the v18 pool at seed 1",
       "built": "2026-07-13"
     },
@@ -32,7 +32,7 @@
       "pairs": 12036,
       "source": "v18 re-seed 2",
       "seed": 2,
-      "status": "React package only (not CDN)",
+      "status": "shipped in @shieldfont/react and @shieldfont/font (optik-c); not emitted by the web encoder",
       "note": "4 orphan collisions auto-dropped; in-bucket re-pairing of the v18 pool at seed 2",
       "built": "2026-07-13"
     },
@@ -42,11 +42,16 @@
       "woff2": "public/fonts/shieldfont-maxhide.woff2",
       "pairs": 2534,
       "source": "M15-EN",
-      "status": "coverage-maxing variant — advanced/opt-in (React variant=\"maxhide\"), kept low-key in docs",
+      "status": "coverage-maxing variant \u2014 advanced/opt-in (React variant=\"maxhide\"), kept low-key in docs",
       "user_variant": "maxhide",
       "shipped_as": "shieldfont-maxhide.woff2",
-      "aka": ["m15en", "maxhide", "coverage-maxing"],
-      "built": "2026-07-24"
+      "aka": [
+        "m15en",
+        "maxhide",
+        "coverage-maxing"
+      ],
+      "built": "2026-07-24",
+      "_meta_font_note": "_meta.font in the mapping JSON reads shieldfont-max.woff2 for historical reasons; the shipped file is shieldfont-maxhide.woff2 (optik-m on the CDN)."
     }
   }
 }

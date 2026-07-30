@@ -79,7 +79,7 @@ transitions, so M15-EN detonates exactly what those gates score hardest, at
 over twice the volume.
 
 > ⚠️ **"Maximum concealment" is only half true.** M15-EN leads on coverage, on
-> NLI meaning loss, and on waste per surviving page (~40% against α's 24.1%).
+> NLI meaning loss, and on waste per surviving page (~40% against α's 19.4%).
 > It **loses** on embedding semantic divergence: **0.217 / 0.228 / 0.186**
 > against v18-α's **0.268 / 0.287 / 0.211** on CC-News / OpenWebText / PG-19.
 > The accurate phrase is "maximum coverage and maximum measured meaning
