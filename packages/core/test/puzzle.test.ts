@@ -162,7 +162,17 @@ describe("round trip", () => {
     // reader voicing silent corruption is the exact failure this package exists
     // to avoid, and it would be indistinguishable from working.
     await expect(browserSolve({ ...sealed, n: (BigInt(sealed.n) + 2n).toString() })).rejects.toThrow();
-    expect(() => solveText({ ...sealed, ct: sealed.ct.replace(/^./, "A") })).toThrow();
+    // Tamper the BYTES, not the encoding. `ct` is base64, so overwriting its
+    // first character with a literal "A" was a 1-in-64 flake: a ciphertext that
+    // already began with "A" came back byte-identical, decrypted correctly, and
+    // the assertion failed for the one reason it was not testing. Decoding and
+    // inverting a byte is unconditional.
+    const raw = Buffer.from(sealed.ct, "base64");
+    raw[0] = (raw[0] as number) ^ 0xff;
+    const tampered = raw.toString("base64");
+    expect(tampered).not.toBe(sealed.ct);
+    expect(Buffer.from(tampered, "base64").equals(Buffer.from(sealed.ct, "base64"))).toBe(false);
+    expect(() => solveText({ ...sealed, ct: tampered })).toThrow();
   });
 
   it("agrees on an answer that needs zero-padding", async () => {

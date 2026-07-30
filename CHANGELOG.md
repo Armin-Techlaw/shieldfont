@@ -162,6 +162,11 @@ script should look like.
   and hand-written types for `@shieldfont/font`, and `src/mappings` dropped from
   the published files (unreachable through `exports`): `@shieldfont/core`
   unpacked drops from 2.8 MB to 1.9 MB.
+- **A flaky test in the puzzle suite.** The tamper-rejection case overwrote the
+  first character of the base64 ciphertext with a literal `"A"`, so a payload
+  that already began with `"A"` was left byte-identical, decrypted correctly, and
+  failed the assertion for the one reason it was not testing — roughly 1 run in
+  64, which is how it reached CI. It now decodes and inverts a byte.
 - The example app builds the workspace packages itself (`predev`/`prebuild`)
   rather than relying on a package `prepare` script. A `prepare` on
   `@shieldfont/react` runs `tsc` during `npm install`, before
