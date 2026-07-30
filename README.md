@@ -533,6 +533,8 @@ scripts/
   generate_font.py     base font + mapping → a ShieldFont (.ttf / .woff2 / .css)
   reseed_mapping.py    mint a private mapping from your own seed
   audit_font.py        strict HarfBuzz round-trip verifier → public/audit.html
+  subset_font.py       prune a built font to the words your site actually uses
+                       (~825 KB → ~197 KB for a 2,000-word vocabulary)
   fix_composite_lsb.py repairs composite side bearings in an already-built font
   v18{alpha,beta,gamma}_for_font.json, m15en_for_font.json   font-build inputs
 

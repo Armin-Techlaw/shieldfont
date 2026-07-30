@@ -208,6 +208,13 @@ import { setFontHost } from "@shieldfont/react";
 setFontHost("/static/shieldfont"); // your own path or your OWN CDN — not jsDelivr
 ```
 
+> **Shipping less font.** A full ShieldFont carries its whole dictionary — about
+> 825 KB of woff2 per variant. `scripts/subset_font.py` prunes a built font to
+> the words your own content can actually trigger (a 2,000-word vocabulary lands
+> around 197 KB). It is a build-time tool, not wired into this package, and it
+> emits a matching pruned mapping you **must** encode with. See
+> [shrinking the font](./custom-faces.md#shrinking-the-font-to-what-your-site-actually-uses).
+
 > [!IMPORTANT]
 > **Serving the font from a different origin? It needs CORS headers.** Fonts are
 > fetched under the same cross-origin rules as `fetch()`, so a font on

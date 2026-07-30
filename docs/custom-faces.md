@@ -32,6 +32,50 @@ The pairing rule from the mappings guide applies unchanged here: a page renders 
 
 ---
 
+## Shrinking the font to what your site actually uses
+
+A full ShieldFont carries every pair in its dictionary: ~12,000 source words × 3 case variants ≈ 36,000 composite glyphs, about **825 KB** of woff2 (5 MB as `.ttf`). Almost no site uses more than a fraction of that vocabulary, so `scripts/subset_font.py` reads your own content, works out which pairs it can actually trigger, and drops the rest:
+
+| Vocabulary kept | woff2 |
+|---|---|
+| 500 pairs | ~82 KB |
+| 2,000 pairs | ~197 KB |
+| 5,000 pairs | ~402 KB |
+| full dictionary | ~825 KB |
+
+A typical site with 2,000 distinct swappable words ships **197 KB instead of about 1 MB**.
+
+```bash
+python3 scripts/subset_font.py \
+  --font public/fonts/shieldfont-alpha.ttf \
+  --mapping public/fonts/shieldfont-alpha.map.json \
+  --content 'app/**/*.tsx' --content content/ \
+  --out public/fonts/shieldfont-alpha-subset \
+  --keep-min 500 --report
+```
+
+It also accepts `--wordlist top-2000.txt` or piped content (`--stdin --format html`). `--css` writes a matching `@font-face`.
+
+> [!IMPORTANT]
+> **Encode with the emitted `<out>.map.json`, and nothing else.** Every run writes the mapping *pruned to match the font*. If the encoder still knows a pair the font no longer carries, it writes that decoy into your HTML, the font has no rule for it, and **the reader sees raw gibberish** — a silent failure that looks fine to you and is broken for everyone else. Encoding with the pruned mapping makes an uncovered word fall back to plain text instead: unprotected, but correct. That is why the mapping is an *output* of this tool rather than something you are trusted to trim yourself.
+
+**When your content changes**, three cases, only one of which hurts:
+
+- **Rebuild font + mapping together** → correct, full coverage.
+- **Rebuild neither** → correct. New words are absent from the pruned mapping, so the encoder leaves them alone and they ship as plain text. You lose protection on the new words; nothing breaks.
+- **New font with a stale mapping** (or with the full dictionary as the encoder mapping) → **broken.** Readers see raw decoys.
+
+Guard the third case in CI. Each run writes `<out>.subset.json` with a `contentHash` over every input file and a `subsetId` over the kept words, and stamps the same `subsetId` into the pruned mapping's `_meta`. Re-run the tool and diff the manifest: if `contentHash` moved, the font and its mapping must be rebuilt and deployed **together**. `--keep-min N` buys headroom for words your content does not have yet — insurance, not a safety net.
+
+**Two things to know before you reach for this:**
+
+- **It is not wired into the npm packages.** `@shieldfont/react` bundles the full fonts, and there is no prop or flag that subsets them. This is a build-time tool you run yourself against a built font, and then self-host the output.
+- **Subset per site, not per page.** A font per URL defeats HTTP caching and gives every page a distinct font fingerprint, which is the opposite of what [concealment](./concealment.md) is trying to achieve.
+
+Why `pyftsubset` alone will not do this: GSUB layout closure walks the ligature table and pulls every word composite straight back in, so the font stays at ~36k glyphs at every vocabulary size. The layout rules have to be pruned first — and symmetrically across all five lookups, or a half-fired substitution is left un-revertible. That is the work this script does.
+
+---
+
 ## Naming
 
 Recommended naming for community-built ShieldFonts: keep `ShieldFont` as the prefix, then add a name **of your own choosing** — *ShieldFont Optik*, *ShieldFont Vellum*, *ShieldFont YourFoundry*. Same CamelCase everywhere, including the font's internal name table; context tells you whether the word means the protocol or a specific typeface.
