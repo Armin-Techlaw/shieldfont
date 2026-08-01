@@ -16,11 +16,14 @@ WHY THIS EXISTS
 WHAT IT CHECKS
   1. Every script loads — catches syntax errors, bad imports, and failures in
      module-level code (stamp_mapping_meta.py reads MANIFEST.json on import).
-  2. Every module-level Path constant aimed inside the repo still resolves.
-     Constants naming something a script *writes* (HTML_OUT, OUTPUT_DIR) or a
-     cache it fills on demand (FONT_CACHE_DIR) are legitimately absent in a
-     fresh clone, so for those only the parent folder must exist — see LENIENT.
-  3. Four self-contained scripts actually run, into a temp dir. The other five:
+  2. Every module-level Path constant aimed inside the repo still resolves —
+     unless git ignores it, which means it is a build artifact (the whole of
+     public/ is generated) and is legitimately absent from a fresh clone. Ask
+     git rather than guessing from the constant's name: a first attempt matched
+     names like *_OUT and passed locally, where public/ happened to be full,
+     then failed in CI where it does not exist at all.
+  3. Four self-contained scripts actually run, into a temp dir. Their inputs
+     must be tracked files for the same reason. The other five:
      fix_composite_lsb.py is already exercised by the neighbouring CI step;
      generate_font.py downloads a base font over the network; audit_font.py and
      subset_font.py need a full HarfBuzz/content setup; stamp_mapping_meta.py
@@ -34,7 +37,6 @@ Usage:
 """
 import json
 import runpy
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -43,11 +45,6 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = sorted(p for p in (ROOT / "scripts").glob("*.py")
                  if p.name != Path(__file__).name)
-
-# Constants whose target is produced rather than consumed: require the parent
-# folder, not the thing itself. Kept deliberately narrow — anything not matching
-# here must exist, so a renamed *file* fails too, not just a renamed folder.
-LENIENT = ("_OUT", "OUT_", "OUTPUT", "CACHE", "TMP", "TEMP")
 
 failures: list[str] = []
 
@@ -75,23 +72,51 @@ def load(script: Path) -> dict | None:
         sys.argv, sys.path = saved_argv, saved_path
 
 
-def check_paths(script: Path, ns: dict) -> None:
+def in_repo_paths(script: Path, ns: dict) -> list[tuple[str, Path]]:
+    found = []
     for name, value in sorted(ns.items()):
         if name.startswith("_") or not isinstance(value, Path):
             continue
         if not value.is_absolute():
             continue
         try:  # only constants aimed inside the repo; /tmp scratch is not ours
-            rel = value.relative_to(ROOT)
+            value.relative_to(ROOT)
         except ValueError:
             continue
-        if any(m in name.upper() for m in LENIENT):
-            if not value.parent.is_dir():
-                fail(f"{script.name}: {name} writes into a folder that does "
-                     f"not exist — {rel}")
-        elif not value.exists():
-            fail(f"{script.name}: {name} points at something that does not "
-                 f"exist — {rel}")
+        found.append((name, value))
+    return found
+
+
+PROBE = ".smoke-probe"
+
+
+def git_ignored(paths: list[Path]) -> set[Path] | None:
+    """Which of these does the repo generate rather than commit? None if git
+    cannot answer.
+
+    Ignored means generated — everything under public/ is built by
+    generate_font.py and never committed — so a fresh clone not having it is
+    correct, not a fault.
+
+    Each path is asked about twice: itself, and a child that cannot exist. The
+    child is what catches a *directory* whose contents are all generated:
+    `public/fonts/*` ignores everything inside public/fonts without ignoring
+    the folder itself, so asking only about the folder says "not ignored" and
+    a fresh clone, which has no public/ at all, fails for no reason.
+    """
+    if not paths:
+        return set()
+    queries = [str(p) for p in paths] + [str(p / PROBE) for p in paths]
+    try:
+        proc = subprocess.run(["git", "check-ignore", "--stdin"], cwd=ROOT,
+                              input="\n".join(queries),
+                              capture_output=True, text=True)
+    except OSError:
+        return None
+    if proc.returncode not in (0, 1):  # 0 = some ignored, 1 = none; 128 = no git
+        return None
+    hits = {line for line in proc.stdout.splitlines() if line}
+    return {p for p in paths if str(p) in hits or str(p / PROBE) in hits}
 
 
 def run(label: str, argv: list[str]) -> bool:
@@ -124,20 +149,19 @@ def end_to_end(tmp: Path) -> None:
         if len(json.loads(mapping.read_text())) < 1000:
             fail("build_alpha_mapping.py: implausibly small mapping")
 
-    # The font pair runs against a copy of a shipped font. --no-shape skips the
-    # HarfBuzz render check; we are asking whether the script runs, not whether
-    # the glyphs are right — audit_font.py owns that question.
-    src = ROOT / "public/fonts/optik-regular.ttf"
-    if not src.is_file():
-        fail(f"shipped font missing — {src.relative_to(ROOT)}")
+    # The font pair runs against a font the repo actually commits. Everything
+    # under public/ is generated and gitignored, so a fresh clone has none of
+    # it. --no-shape skips the HarfBuzz render check; we are asking whether the
+    # script runs, not whether the glyphs are right — audit_font.py owns that.
+    font = ROOT / "packages/font/optik-m.woff2"
+    if not font.is_file():
+        fail(f"shipped font missing — {font.relative_to(ROOT)}")
         return
-    font = tmp / "font.ttf"
-    shutil.copy(src, font)
 
     run("drop_glyph_names.py", ["scripts/drop_glyph_names.py", str(font),
-                                "--out", str(tmp / "dropped.ttf"), "--no-shape"])
+                                "--out", str(tmp / "dropped.woff2"), "--no-shape"])
     run("stamp_font_version.py", ["scripts/stamp_font_version.py", str(font),
-                                  "alpha", "--out", str(tmp / "stamped.ttf"),
+                                  "alpha", "--out", str(tmp / "stamped.woff2"),
                                   "--no-shape"])
 
 
@@ -145,10 +169,27 @@ def main() -> int:
     print(f"[smoke] {len(SCRIPTS)} scripts in scripts/")
 
     print("[smoke] loading each script and checking its paths")
+    constants: list[tuple[Path, str, Path]] = []
     for script in SCRIPTS:
         ns = load(script)
         if ns is not None:
-            check_paths(script, ns)
+            constants += [(script, n, v) for n, v in in_repo_paths(script, ns)]
+
+    ignored = git_ignored([v for _, _, v in constants])
+    if ignored is None:
+        print("[smoke] git cannot say what is generated — checking parent "
+              "folders only")
+    for script, name, value in constants:
+        rel = value.relative_to(ROOT)
+        if ignored is None:
+            if not value.parent.is_dir():
+                fail(f"{script.name}: {name} sits in a folder that does not "
+                     f"exist — {rel}")
+        elif value in ignored:
+            continue  # generated artifact; absent from a fresh clone by design
+        elif not value.exists():
+            fail(f"{script.name}: {name} points at something that does not "
+                 f"exist — {rel}")
 
     print("[smoke] running the self-contained scripts for real")
     with tempfile.TemporaryDirectory() as tmp:

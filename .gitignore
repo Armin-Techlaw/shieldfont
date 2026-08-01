@@ -65,5 +65,11 @@ public/fonts/optik-regular.*
 public/fonts/camo/
 public/fonts/BEFORE-*
 
+# Base fonts generate_font.py downloads and caches (FONT_CACHE_DIR); rebuilt on
+# demand from --base-url, so committing them would only pin a stale copy. No
+# trailing slash: the directory does not exist until a build runs, and a
+# dir-only pattern cannot match a path that is not there yet.
+scripts/fonts
+
 # Local-only working files (never commit) — e.g. RECONCILE-MANIFEST.local.md, TODO-BEFORE-RELEASE.local.md
 *.local.md
