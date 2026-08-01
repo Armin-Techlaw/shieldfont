@@ -8,7 +8,7 @@ the same way the deployed M15-EN build does.
 
 Usage:
   python3 scripts/build_alpha_mapping.py \
-    benchmarks/v7/data/pairs_v7_alpha_v15_0_1_0_0_0_0.json \
+    benchmark/data/v7/pairs_v7_alpha_v15_0_1_0_0_0_0.json \
     scripts/v18alpha_for_font.json
 """
 import json

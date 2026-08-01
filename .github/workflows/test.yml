@@ -68,11 +68,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install fontTools
-        run: pip install "fonttools[woff]" brotli
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
 
       - name: Check composite metrics on every shipped font
         run: |
           python3 scripts/fix_composite_lsb.py --check \
             packages/font/optik-*.woff2 \
             packages/react/fonts/optik-*.woff2
+
+      # Nothing in CI ever ran a script in scripts/, so reseed_mapping.py sat
+      # pointing at a folder that had been renamed out from under it until an
+      # outside contributor hit the traceback (#3). A hardcoded path is a
+      # string; no test we had could see inside one.
+      - name: Smoke-test the scripts
+        run: python3 scripts/smoke_test.py
