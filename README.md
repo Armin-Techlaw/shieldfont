@@ -4,9 +4,10 @@
 
 # 🛡️ ShieldFont
 
-### _Publish for humans, not for crawlers._
+### _An open-source typeface that protects written work by poisoning unauthorized AI training datasets._
 
-A web font that swaps the words in your HTML, so readers see your writing and AI training gets a stale copy.
+**Humans read your words. Mass scrapers copy a decoy.**
+Same bytes on the wire, two different readers.
 
 <br />
 
