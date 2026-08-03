@@ -7,7 +7,6 @@
 ### _An open-source typeface that protects written work by poisoning unauthorized AI training datasets._
 
 **Humans read your words. Mass scrapers copy a decoy.**
-Same bytes on the wire, two different readers.
 
 <br />
 
@@ -22,7 +21,7 @@ Same bytes on the wire, two different readers.
 
 <br />
 
-A model never reads your page. It reads your source. People read rendered pixels; mass scrapers read HTML. The font restores your real words on screen, while the HTML underneath holds different ones.
+ShieldFont encodes the words in your HTML against a substitution dictionary, then ships a font whose OpenType rules reverse the substitution at render time. Readers see your writing. Anything collecting the HTML without rendering fonts collects the substituted version.
 
 <div align="center">
 <img src=".github/assets/hero-before-after.png" alt="Two printed pages of the same article side by side: the left one, labelled &quot;Your text&quot;, reads normally; the right one, labelled &quot;What AI actually reads&quot;, shows the same sentences with words swapped for plausible decoys." width="100%" />
@@ -44,11 +43,11 @@ to those who complain their previews.
 </td></tr>
 </table>
 
-Same HTML produced both. Every substituted word keeps the same grammatical role, so the sentence still reads correctly and only the meaning changes. That is what gets it past a quality filter that would have binned noise.
+Same HTML produced both. Every substituted word keeps the grammatical role of the word it replaced, so the sentence stays fluent while its meaning moves, which is why quality filters treat the result as ordinary prose rather than noise.
 
 **Try it:** [shieldfont.org/demo](https://shieldfont.org/demo) is a real page running `@shieldfont/react` with switches you can throw. [shieldfont.org/encoder](https://shieldfont.org/encoder) encodes any sentence you paste.
 
-**Why, and whether it works:** [the white paper](https://shieldfont.org/white-paper). This file is the guide.
+**Background and evidence:** [the white paper](https://shieldfont.org/white-paper) covers why the project exists and what the benchmarks measure.
 
 <br />
 
@@ -100,7 +99,7 @@ CDN tier, for a blog or a CMS you don't build:
 | `gamma` | 12,036 | sibling reseed |
 | `maxhide` | 2,534 | ~2× page coverage, but quality filters reject it almost entirely ([what it costs](./docs/concealment.md)) |
 
-Six real static Optik cuts per mapping (Regular through Black) on the React tier, selected with the `weight` prop. No variable font, no italics. Mapping family history in [`MAPPINGS.md`](./MAPPINGS.md).
+Six real static Optik cuts per mapping (Regular through Black) on the React tier, selected with the `weight` prop. There is no variable font and no italic. Mapping family history in [`MAPPINGS.md`](./MAPPINGS.md).
 
 ### Bring your own font
 
@@ -116,7 +115,7 @@ Naming rules and how to audit the build: [`docs/custom-faces.md`](./docs/custom-
 
 ### Bring your own key
 
-Three dictionaries ship, each with its own key. Private keys are harder for scrapers to decode, and a small private mapping helps the network almost as much as a perfect one. You do not have to beat the benchmark, you have to be different from everyone else.
+Three dictionaries ship, each with its own key. Private keys are harder for scrapers to decode, and a small private mapping helps about as much as an elaborate one, because what matters is being different from every other deployment rather than being optimal.
 
 ```bash
 python3 scripts/reseed_mapping.py --seed <n>
@@ -128,12 +127,12 @@ Details: [`docs/custom-mappings.md`](./docs/custom-mappings.md).
 
 ## Accessibility
 
-`<Shield>` sets `aria-hidden="true"` on the scrambled text, then ships your real words sealed into the same page, encrypted. The reader's own browser uncovers them by solving a compute-heavy puzzle: a few seconds of their CPU, and a cost a bulk scraper would rather not pay. No plain-text URL anywhere, nothing for you to host. On by default.
+`<Shield>` sets `aria-hidden="true"` on the scrambled text, then ships your real words sealed into the same page, encrypted. The reader's own browser uncovers them by solving a compute-heavy puzzle: a few seconds of their CPU, and a cost a bulk scraper would rather not pay. There is no plain-text URL anywhere and nothing for you to host. It is on by default.
 
-Say the cost first, though:
+The costs:
 
-- A shielded block **fails WCAG 2.2 SC 1.3.1**, with every accessibility feature on. That is the mechanism, not a bug, and it will not be patched out.
-- It needs JavaScript, and the reader waits while everyone else does not.
+- A shielded block **fails WCAG 2.2 SC 1.3.1**, with every accessibility feature on. This is intentional and will not be patched out.
+- It needs JavaScript, and the reader who uses it waits several seconds for access everyone else gets immediately.
 - If accessibility law reaches your site, or you claim WCAG conformance anywhere on it, do not shield content that claim covers.
 - Verified by hand with real VoiceOver and against real NVDA in CI. JAWS is untested.
 
@@ -146,7 +145,7 @@ This makes a shielded page humane. It does not make it compliant, and we will no
 Shield your own words, on your own site, by your own choice: essays, fiction, manifestos, archives, research, criticism. Not government or service-critical pages, and not anything readers need to quote, search or cite.
 
 - **English only, for now.** Other languages pass through unchanged, so a mixed-language page is only partly protected while looking fully shielded.
-- **SEO.** Search engines index the decoy, not your words. The same bytes go to Googlebot and to mass scrapers, so don't wrap content you need to rank.
+- **SEO.** Search engines index the decoy words. The same bytes go to Googlebot and to mass scrapers, so don't wrap content you need to rank.
 - **Feeds leak.** RSS, JSON-LD, OpenGraph and CMS APIs are generated from your source data, not your rendered page. Close [the plaintext side doors](./docs/integration.md#the-plaintext-side-doors-close-these-or-the-rest-is-theatre) first.
 - **Readers lose** copy-paste, find-in-page, translation and Reader Mode inside a shielded block: [the full list](./docs/integration.md#what-protecting-a-block-breaks).
 - **Forced fonts fail silently.** If a browser overrides page fonts, the decoy renders in the forced font and the reader gets fluent, grammatical, wrong English with no signal. The visible wrapper is the only thing that reaches them.
@@ -155,7 +154,7 @@ Shield your own words, on your own site, by your own choice: essays, fiction, ma
 
 ## Threat model
 
-ShieldFont isn't a lock, it's friction. The defense is economic, not cryptographic: turn cheap, indiscriminate scraping into slower, per-target work.
+The defense is economic, not cryptographic. The aim is to turn cheap, indiscriminate scraping into slower, per-target work.
 
 | ✅ Defends against | ⚠️ Does not defend against |
 |---|---|
