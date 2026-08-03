@@ -91,6 +91,18 @@
  *   returning reader of an upgraded site hit exactly that on their first visit
  *   — a paragraph they could not read and nothing to press. A fast path must
  *   never be able to remove the slow one.
+ * - THE CACHE IS BOUNDED BY AGE. Every value carries the time it was last used,
+ *   base-36 after a dot, and `tidy()` drops anything under the store prefix
+ *   untouched for thirty days. Nothing used to remove these at all, and a fresh
+ *   `sealText` call per build re-mints every ciphertext, so every deploy orphaned
+ *   every key the previous one had produced. Do NOT replace this with "drop the
+ *   keys this page does not need": the prefix is per-site, so that would delete
+ *   the reader's cache for every OTHER page of the same site on every
+ *   navigation. The full argument, the two rejected bounds and what a reader can
+ *   still lose are in the header of notice.ts, which carries the identical three
+ *   helpers — a page mixing both tiers runs both scripts over one store, so the
+ *   value format has to be the same on both sides or each would read the other's
+ *   entries as unstamped and delete them.
  * - The page-wide broadcast SKIPS ANY BUTTON CARRYING the solve attribute, and
  *   sets its own aria-disabled BEFORE it fans out. The clipped button now
  *   renders through the same <ActionButton> as the drawn one, so it carries
@@ -228,6 +240,7 @@ var ATTR = ${js(attr)};
 var SOLVE = ATTR + '-solve';
 var PFX = ${js(logPrefix)};
 var STORE = ${js(storePrefix)};
+var LIFE = 2592000000;
 var BODY = ${js(WORKER_BODY)};
 var CAPABLE = typeof BigInt === 'function' && typeof window.crypto === 'object' &&
               window.crypto && typeof window.crypto.subtle === 'object';
@@ -235,6 +248,31 @@ function fromB64(s){
   var bin = atob(s), out = new Uint8Array(bin.length);
   for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
+}
+function keep(k, v){
+  try { window.localStorage.setItem(k, v + '.' + Date.now().toString(36)); } catch (e) {}
+}
+function held(k){
+  var v = null, i;
+  try { v = window.localStorage.getItem(k); } catch (e) {}
+  i = v ? v.indexOf('.') : -1;
+  if (i < 0) return null;
+  v = v.slice(0, i);
+  keep(k, v);
+  return v;
+}
+function tidy(){
+  try {
+    var s = window.localStorage, now = Date.now(), dead = [], i, k, v, j;
+    for (i = 0; i < s.length; i++){
+      k = s.key(i);
+      if (!k || k.slice(0, STORE.length) !== STORE) continue;
+      v = s.getItem(k);
+      j = v ? v.indexOf('.') : -1;
+      if (!(now - (j < 0 ? 0 : parseInt(v.slice(j + 1), 36)) < LIFE)) dead.push(k);
+    }
+    for (i = 0; i < dead.length; i++) s.removeItem(dead[i]);
+  } catch (e) {}
 }
 function show(el){ if (el) { el.hidden = false; el.style.removeProperty('display'); } }
 function hide(el){ if (el) { el.hidden = true; el.style.setProperty('display', 'none', 'important'); } }
@@ -305,7 +343,7 @@ function wire(btn){
   }
   show(btn);
   try {
-    var hit = window.localStorage.getItem(storeKey);
+    var hit = held(storeKey);
     if (hit !== null) {
       var hexLen0 = BigInt(data.n).toString(16).length;
       open(hit, data, hexLen0).then(function(plain){ reveal(plain, true); },
@@ -353,7 +391,7 @@ function wire(btn){
     }
     function finish(hex){
       open(hex, data, hexLen).then(function(plain){
-        try { window.localStorage.setItem(storeKey, hex); } catch (e) {}
+        keep(storeKey, hex);
         reveal(plain, false);
       }).catch(function(err){
         console.error(PFX + ' could not open the sealed text.', err);
@@ -417,6 +455,7 @@ function sweep(){
     catch (e) { console.error(PFX + ' one control could not be prepared.', e); }
   }
 }
+tidy();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sweep);
 else sweep();
 try {

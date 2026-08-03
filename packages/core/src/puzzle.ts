@@ -94,15 +94,25 @@ import {
  * and reports an estimate based on what it measured. See the solver script in
  * @shieldfont/react.
  *
- * IT WAS 250,000 AND THE COMMENT CALLED THAT "a deliberately slow reference
- * device". It was not. Measured 2026-08: V8 BigInt on an Apple M1 Max does
- * 259,500 squarings/s, so the old number was 96% of one of the fastest consumer
- * cores in existence, described as a slow one. Every author who reasoned from it
- * was told their readers would wait N seconds and their readers waited longer.
+ * IT WAS 250,000, AND THE ARGUMENT FOR MOVING IT WAS ITSELF WRONG.
  *
- * 120,000 is an honest median — a mid-range phone, or Safari, which trails V8.
- * The number moved DOWN, so the same `seconds` now buys fewer steps: that is the
- * correction, not a weakening.
+ * That argument said an M1 Max does 259,500 squarings/s, so 250,000 was 96% of
+ * one of the fastest consumer cores in existence while being described as a slow
+ * one. The 259,500 was a bad measurement — an unwarmed loop. Measured again in
+ * the shape the solver actually runs, a warmed Worker in Chrome on the same M1
+ * Max does about 667,000 squarings/s, median of eleven runs. So 250,000 was
+ * around 37% of a fast core, which is a defensible slow-device figure, and the
+ * stated reason for changing it does not hold.
+ *
+ * 120,000 STAYS ANYWAY, for a reason that survives the correction: it is about
+ * 5.5x slower than that fast core, which is the right order for a mid-range
+ * phone or for Safari, and it is the floor an author should reason from rather
+ * than the ceiling. Nothing about the step count depends on this number being
+ * exactly right — `t` is derived from the ATTACKER's rate (see DEFAULT_SECONDS),
+ * and this one only decides how many steps a given `seconds` buys.
+ *
+ * Recorded rather than quietly fixed, because a wrong measurement used to
+ * justify a change is worse than the change being wrong.
  */
 export const REFERENCE_SQUARINGS_PER_SECOND = 120_000;
 
@@ -140,7 +150,9 @@ const PRIME_BITS = MODULUS_BITS / 2;
  *   - Server cores are NOT faster than a laptop on bignum work; they are equal
  *     to slightly slower. The attacker's real advantage is software: OpenSSL's
  *     hand-written Montgomery assembly does 1,737,000 squarings/s where V8's
- *     BigInt does 259,500. That is a 6.7x gap, and it is not going away.
+ *     BigInt in a warmed worker does about 667,000. That is a 2.6x gap, and it
+ *     is not going away. It does not change `t`, which is derived from the
+ *     attacker's rate alone.
  *   - Five blocks on a page meant five puzzles, so the old default billed a
  *     crawler ~14 CPU-seconds against an OCR floor of 5. Ten times over.
  *

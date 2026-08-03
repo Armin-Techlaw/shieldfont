@@ -127,6 +127,65 @@
  * the second stands down. A single selection spanning both tiers gets whichever
  * ran first, which is imperfect and not worth machinery to merge.
  *
+ * ## The cache of solved blocks is bounded by AGE, and by nothing else
+ *
+ * A solved block's answer is kept in `localStorage` under the store prefix plus
+ * the first 40 characters of that payload's ciphertext, so a second visit is
+ * instant instead of another fourteen seconds of squaring. Nothing used to take
+ * one out again. `sealText` mints fresh primes and a fresh IV on every call, so
+ * every build re-mints every ciphertext, and every key written against the
+ * previous build is orphaned the moment the site deploys — roughly 550 bytes
+ * each, accumulating for as long as the reader keeps coming back. It is a drip
+ * rather than a failure, which is why it went unnoticed, and it never stops.
+ *
+ * THE OBVIOUS FIX IS A DATA-LOSS BUG, and it has to be named so nobody
+ * reinstates it. "On load, drop every key with our prefix that no block on this
+ * page needs" cannot tell an orphan from an entry belonging to another page of
+ * the same site: the prefix is per-SITE, and a reader's other pages are not
+ * stale, merely absent. That fix would make every navigation wipe the cache for
+ * everywhere else and turn "instant on return" into "never instant", which is
+ * the whole feature. Whatever bounds this has to be decidable from the entry
+ * ALONE, with no knowledge of which page is being looked at.
+ *
+ * So each value now carries the time it was last used: base-36 milliseconds
+ * after a dot, and the answer in front of it is hex, which can never contain
+ * one. `tidy()` walks the store once per page load, drops anything under our
+ * prefix untouched for thirty days, and swallows every failure the way the rest
+ * of this path does — storage can be disabled, full, or partitioned, and none of
+ * that is a reason to break a page.
+ *
+ * The two alternatives that were weighed, and why neither:
+ *
+ *   - A CAP with oldest-first eviction needs the same timestamp PLUS a sort on
+ *     every load, and bounds the wrong quantity. A reader working through a
+ *     large site legitimately holds one live entry per page they have opened, so
+ *     a cap begins evicting entries that are still valid and still wanted — and
+ *     it evicts fastest from the readers who read the most, which is exactly
+ *     backwards.
+ *   - A SCHEMA VERSION drops entries whose format no longer matches. That is a
+ *     real thing to want — 0.3.1 stored the PLAINTEXT under this same key — but
+ *     it is not this problem. The drip happens with the format unchanged, so a
+ *     version marker would fire on the rare release that changes the format and
+ *     leave the leak running every other day of the year.
+ *
+ * A value with no dot in it was written before this shipped, and is by
+ * construction unreachable: its ciphertext came from a `sealText` call that
+ * will never be made again. Those are dropped on sight rather than re-stamped,
+ * because re-stamping would keep provably dead entries for another thirty days.
+ *
+ * WHAT A READER CAN STILL LOSE, said plainly: an entry for a page they last
+ * opened more than thirty days ago, on a site that has not redeployed since. They
+ * pay the grind once more. The stamp is refreshed on every READ for exactly that
+ * reason — the bound is "not used in thirty days", not "written thirty days ago"
+ * — so a page anywhere in a reader's rotation stays cached indefinitely and only
+ * genuinely abandoned entries age out.
+ *
+ * `solverScript` in solver.ts reads and writes the same keys and carries the
+ * same three helpers, byte for byte. They must stay in step: a page mixing the
+ * two tiers runs both scripts over one store, so a script that did not
+ * understand the other's stamps would read live entries as unstamped and delete
+ * them.
+ *
  * ## What the emitted script does NOT carry
  *
  * Same rule as the font guard and the solver beside it: no comments, and no
@@ -1134,6 +1193,7 @@ window[${js(flag)}] = 1;
 var A = ${js(attr)};
 var PFX = ${js(logPrefix)};
 var STORE = ${js(storePrefix)};
+var LIFE = 2592000000;
 var FAMILY = ${js(family)};
 var BODY = ${js(WORKER_BODY)};
 var CAPABLE = typeof BigInt === 'function' && window.crypto && window.crypto.subtle;
@@ -1146,6 +1206,31 @@ function markWired(el){ if (wired) wired.add(el); else wiredList.push(el); }
 function q(el, n){ return el.querySelectorAll('[' + A + '-' + n + ']'); }
 function fromB64(s){ var b = atob(s), o = new Uint8Array(b.length);
   for (var i = 0; i < b.length; i++) o[i] = b.charCodeAt(i); return o; }
+function keep(k, v){
+  try { window.localStorage.setItem(k, v + '.' + Date.now().toString(36)); } catch (e) {}
+}
+function held(k){
+  var v = null, i;
+  try { v = window.localStorage.getItem(k); } catch (e) {}
+  i = v ? v.indexOf('.') : -1;
+  if (i < 0) return null;
+  v = v.slice(0, i);
+  keep(k, v);
+  return v;
+}
+function tidy(){
+  try {
+    var s = window.localStorage, now = Date.now(), dead = [], i, k, v, j;
+    for (i = 0; i < s.length; i++){
+      k = s.key(i);
+      if (!k || k.slice(0, STORE.length) !== STORE) continue;
+      v = s.getItem(k);
+      j = v ? v.indexOf('.') : -1;
+      if (!(now - (j < 0 ? 0 : parseInt(v.slice(j + 1), 36)) < LIFE)) dead.push(k);
+    }
+    for (i = 0; i < dead.length; i++) s.removeItem(dead[i]);
+  } catch (e) {}
+}
 function plural(n, a, b){ return n + ' ' + (n === 1 ? a : b); }
 function human(s){
   if (s < 45) return 'about ' + plural(Math.max(5, Math.round(s / 5) * 5), 'second', 'seconds');
@@ -1216,8 +1301,7 @@ function Frame(root){
   this.key = this.data ? STORE + this.data.ct.slice(0, 40) : null;
   try { this.says = JSON.parse(root.getAttribute(A + '-says') || '{}'); }
   catch (e) { this.says = {}; }
-  this.cached = null;
-  try { this.cached = this.key ? window.localStorage.getItem(this.key) : null; } catch (e) {}
+  this.cached = this.key ? held(this.key) : null;
   this.down = !CAPABLE && !this.cached ? 1 : 0;
   this.paint();
 }
@@ -1356,7 +1440,7 @@ Frame.prototype.run = function(intent, strip, own){
     }
   }
   task(this.data, est, prog).then(function(r){
-    try { if (self.key) window.localStorage.setItem(self.key, r.hex); } catch (e) {}
+    if (self.key) keep(self.key, r.hex);
     self.plain = r.text;
     self.state = 'open';
     self.paint();
@@ -1548,6 +1632,7 @@ try {
     attributes: true, attributeFilter: [A + '-simulate-fail'],
   });
 } catch (e) {}
+tidy();
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sweep);
 else sweep();
 try { new MutationObserver(function(){ if (document.readyState !== 'loading') sweep(); })

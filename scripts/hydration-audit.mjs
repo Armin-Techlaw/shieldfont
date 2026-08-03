@@ -128,7 +128,17 @@ const key = root.querySelector("[data-typeface-solve]").getAttribute("data-typef
 let hh = 5381;
 for (let i = 0; i < key.length; i++) hh = ((hh << 5) + hh + key.charCodeAt(i)) >>> 0;
 const data = Array.isArray(payloads) ? payloads[hh % payloads.length] : payloads;
-localStorage.setItem("data-typeface-" + data.ct.slice(0, 40), ${JSON.stringify("__ANSWER__")});
+// STAMPED, and it has to be. Every cached answer now carries the time it was
+// last used — base-36 milliseconds after a dot — because nothing used to remove
+// these and every build re-mints every ciphertext, so the store grew forever.
+// A value with no dot is one no current page can ever use again, and the
+// solver's sweep deletes it on load: seeding the bare hex here would have the
+// entry swept before the read, so the audit would find an empty block and
+// report the race as unexercised, two layers from the actual cause.
+localStorage.setItem(
+  "data-typeface-" + data.ct.slice(0, 40),
+  ${JSON.stringify("__ANSWER__")} + "." + Date.now().toString(36),
+);
 
 // The real emitted solver, run at the moment a parser would reach it.
 const solver = [...root.querySelectorAll("script:not([type])")]

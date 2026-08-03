@@ -193,6 +193,16 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   which after this release would send an author to configure a mode that does
   not type-check. The remaining two spellings of "off" are unchanged.
 
+- **`docs/plain-text-mode.md` states a measured `seconds: 10` figure again.**
+  The row had said 4.0 s, a number left over from the 5,000,000-step
+  calibration and impossible under the current one — the default `seconds: 14`
+  measures ~2.5 s, so a smaller budget cannot take longer — and it was deleted
+  rather than replaced, because a figure produced by arithmetic and printed as a
+  measurement is how it got wrong in the first place. It is now **~1.8 s**,
+  timed in the solver's own warmed Worker under real Chrome, median of eleven
+  runs, with the machine named beside it. The `seconds: 14` row was re-measured
+  at the same time and its ~2.5 s stands.
+
 ### Fixed
 
 - **The Uncover button was blank on a dark page.** Its fill is the host's text
@@ -239,6 +249,42 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   every host measured, with a mid-grey fallback.
 
   The emitted stylesheet grows by **1,715 bytes raw / 263 gzipped** per scope.
+
+- **The cache of solved blocks grew forever.** When a reader finishes a block's
+  puzzle, the answer is kept in `localStorage` under the store prefix plus the
+  first 40 characters of that payload's ciphertext, so a second visit is instant
+  instead of another fourteen seconds of squaring. **Nothing ever removed one.**
+  `sealText` mints fresh primes and a fresh IV per call, so every build re-mints
+  every ciphertext and every key written against the previous build is orphaned
+  the moment the site deploys — roughly **550 bytes each**, accumulating for as
+  long as the reader keeps coming back. It never errored and it had no ceiling,
+  which is why nobody saw it.
+
+  Each value now carries the time it was last used, and both emitted scripts
+  drop anything under their own prefix untouched for **thirty days**, once per
+  page load. The stamp is refreshed on every read, so the bound is "not used in
+  thirty days" rather than "written thirty days ago" and a page anywhere in a
+  reader's rotation stays cached indefinitely. Values written by 0.3.2 and
+  earlier carry no stamp and are dropped on sight — they are provably dead
+  rather than merely old, because the ciphertext each was keyed on came from a
+  `sealText` call that will never be made again.
+
+  **What this is not, and must not be turned into:** a sweep that drops the keys
+  the current page does not need. The prefix is per-*site*, so most of what such
+  a sweep cannot account for is the reader's **other pages**, and every
+  navigation would wipe the cache for all of them — turning "instant on return"
+  into "never instant", which is the entire feature. A bound here has to be
+  decidable from the entry alone, which is why it is age and not membership. The
+  two alternatives were weighed and rejected in the header of `notice.ts`: a cap
+  with oldest-first eviction bounds the wrong quantity and evicts hardest from
+  the readers who read the most, and a schema version fires only on the rare
+  release that changes the format while the drip runs the rest of the year.
+
+  A reader can still lose an entry they wanted: one for a page they last opened
+  more than thirty days ago, on a site that has not redeployed in between. They
+  pay the grind once more. Storage that is disabled, full or throwing is
+  swallowed exactly as before. The emitted scripts grow by **682 bytes raw /
+  245 gzipped** (the drawn wrapper) and **725 / 249** (the clipped control).
 
 ### Added
 

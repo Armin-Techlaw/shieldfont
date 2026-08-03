@@ -108,7 +108,7 @@ object — so the fix is the key and nothing else.
 |---|---|---|---|---|
 | **Screen readers** | Reads the sentence on its own focus stop, then two named buttons. Pressing Uncover grinds the puzzle and the real words are announced. | Identical. The control is real and focusable, clipped off-screen — a listener cannot tell it from the default. | Identical again. | **Nothing.** The block is `aria-hidden` with no alternative. A reader passes it in silence and is never told there was anything there. |
 | **Missing font** | The strip's sentence swaps to the font-missing wording, the paragraph becomes a skeleton, and the same Uncover button is right there. | The clipped control un-clips itself and draws the identical row — shield, sentence, Uncover — with no box around it. | Same. | **Decoy words, in a fallback face.** Fluent, grammatical, wrong English, with nothing on screen to say so. |
-| **localStorage** | One key per block once solved, holding the puzzle's **answer** — a number, not your text. Reopening is instant; the eraser in the demo bar clears them. | Same. | Same. | **Nothing stored.** There is no puzzle, so there is no answer to keep. |
+| **localStorage** | One key per block once solved, holding the puzzle's **answer** — a number, not your text — plus the time it was last used. Reopening is instant. Entries untouched for 30 days are swept on the next page load, so the store cannot grow forever; the eraser in the demo bar clears them all now. | Same. | Same. | **Nothing stored.** There is no puzzle, so there is no answer to keep. |
 | **What you pass** | Nothing; all three default on. | `wrapper={false}` and nothing else. `copyPaste` is independent of the wrapper, so it stays on. | Both, explicitly. | `screenReader={false}`; the other two throw if passed, because there is nothing for them to open. |
 
 ### What each configuration costs
@@ -236,8 +236,11 @@ To get the key you have to do all 1,680,000 squarings. Each one needs the
 answer to the one before it, so **the work cannot be split up**. A crawler with
 a thousand GPUs still pays 1,680,000 sequential steps per block. Their only
 advantage is a faster single core — and better software: OpenSSL's hand-written
-Montgomery assembly does about 1,737,000 squarings/second where V8's BigInt does
-259,500. That 6.7x gap is not going away, and the step count is set against it.
+Montgomery assembly does about 1,737,000 squarings/second where V8's BigInt in a
+warmed worker does about 667,000. That 2.6x gap is not going away, and the step
+count is set against it. It does not change the step count either way: `t` is
+derived from the ATTACKER's rate, and the reader's rate only decides how long
+they wait.
 
 **The build is cheap because it holds a trapdoor.** Knowing the two primes
 collapses the tower into two ordinary modular exponentiations. Measured, median
@@ -303,6 +306,13 @@ key is your camouflage attribute plus the first 40 characters of the block's
 ciphertext, in `localStorage`, and the solver checks it before it does anything
 else — so a returning reader gets their words instantly and never sees the
 button.
+
+The stored value is the answer followed by a dot and the time it was last used.
+Every read refreshes that stamp, and each page load sweeps anything under your
+prefix that has gone 30 days untouched. Without the sweep the store only grew:
+ciphertext is re-minted on every build, so each deploy orphaned every key from
+the one before it and nothing ever collected them. A page a reader actually
+returns to is never swept, because using it is what resets the clock.
 
 That is the right behaviour on a real site, and the wrong behaviour on any page
 whose job is to SHOW the protection: a demo, a preview, a screenshot for a
@@ -371,10 +381,20 @@ floor, and disabled readers paid for all of it.
 | Payloads per block | 4 — one real, three decoys |
 | Modulus | 2048-bit |
 | Default step count | 1,680,000 sequential squarings |
+| Warmed Chrome worker, Apple Silicon, `seconds: 10` | **~1.8 s** |
 | Warmed Chrome worker, Apple Silicon, `seconds: 14` (the default) | **~2.5 s** |
 | Reference rate used for labelling | 120,000 squarings/second |
-| V8 BigInt, measured | 259,500 squarings/second |
+| V8 BigInt, warmed worker, measured | ~667,000 squarings/second |
 | OpenSSL Montgomery assembly, measured | 1,737,000 squarings/second |
+
+**The two reader-side rows are one machine**, and are stated that way on
+purpose: Chrome 151 on an Apple M1 Max, macOS 15.7, timed inside the same blob
+Worker the solver builds, warmed the same way, medians of eleven runs (1.78–1.82 s
+and 2.49–2.54 s). A reader on a phone or in Safari may be several times slower,
+which is why the solver measures the device at run time rather than trusting any
+figure printed here. The `seconds: 10` row previously read 4.0 s; it dated from
+the 5,000,000-step calibration and was impossible under the current one, since a
+smaller budget cannot outlast a larger.
 
 The reference rate is an **honest median** — roughly a mid-range phone, or
 Safari, which trails V8 on BigInt — not a fast desktop. `seconds` is therefore a
@@ -385,7 +405,7 @@ within about 80 ms of a press the live status line replaces it with a real
 measurement taken on the actual device.
 
 The rate used to be 250,000 and this file called that "deliberately
-conservative". It was not: V8 BigInt on an Apple M1 Max does 259,500
+conservative". It was not: V8 BigInt on an Apple M1 Max does about 667,000
 squarings/second, so the old figure was 96% of one of the fastest consumer cores
 in existence, described as a slow one. Every author who reasoned from it was
 told their readers would wait N seconds and their readers waited longer. The
