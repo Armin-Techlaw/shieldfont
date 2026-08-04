@@ -1,10 +1,10 @@
-/* ShieldFont v0.3.0 — paste-in CSS for the no-build / CDN install.
+/* ShieldFont v0.3.3 — paste-in CSS for the no-build / CDN install.
  *
  * 1) Add this stylesheet (pick one):
- *      @import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css");
+ *      @import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.3/shieldfont.css");
  *    or
- *      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.0/shieldfont.css">
- *    Always pin the version (@0.3.0), never @latest.
+ *      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.3/shieldfont.css">
+ *    Always pin the version (@0.3.3), never @latest.
  *
  * 2) Encode your text FIRST. This CSS only renders decoy words back to the
  *    originals for humans — the HTML source must already contain the encoded
@@ -40,6 +40,28 @@
   font-weight: normal; font-style: normal; font-display: block;
 }
 
+/* The NEUTRAL cut: the same Optik outlines with NO substitutions built in.
+ * This is what you set on ordinary, unencoded text — headings, captions, nav —
+ * so the page has one typeface instead of two.
+ *
+ * You cannot use "Optik" for that. The faces above are shielded builds, and
+ * their dictionary is an involution, so they swap a word whether it is the
+ * original or the decoy: plain text set in "Optik" renders the DECOY, with no
+ * error and nothing in the console. Turning the feature off in CSS does not
+ * work either — Safari applies `ccmp` unconditionally and ignores every
+ * spelling of `font-feature-settings: "ccmp" 0`. A different file is the only
+ * thing that works in every browser, and it is 35 KB. */
+@font-face {
+  font-family: "Optik Text";
+  src: url("optik-n.woff2") format("woff2");
+  font-weight: normal; font-style: normal; font-display: block;
+}
+@font-face {
+  font-family: "Optik Text";
+  src: url("optik-n-italic.woff2") format("woff2");
+  font-weight: normal; font-style: italic; font-display: block;
+}
+
 /* Authoring classes. The token below (.tk9) is deliberately generic — it does
  * not name the tool, so the class attribute in your HTML source reveals nothing.
  * You may rename .tk9 / .tk9-b / .tk9-c / .tk9-m to ANY string of your own
@@ -52,3 +74,6 @@
 .tk9-b  { font-family: "Optik Beta"; }
 .tk9-c  { font-family: "Optik Gamma"; }
 .tk9-m  { font-family: "Optik Max"; }
+/* Ordinary, UNENCODED text in the same typeface — headings, captions, nav.
+ * Note the different family: see the note above the "Optik Text" @font-face. */
+.tk9-t  { font-family: "Optik Text"; }

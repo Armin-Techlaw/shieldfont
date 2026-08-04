@@ -73,6 +73,42 @@ nothing to memorise.
 | `wrapper` | `boolean \| ShieldNotice` | **on wherever `screenReader` is on** | Draws the outline and the strip on screen. Never on an inline tag. |
 | `copyPaste` | `boolean \| { notice? }` | **on wherever `screenReader` is on** | Puts a short sentence on the clipboard instead of silent decoy words. |
 
+### The wrapper is a default, not a requirement
+
+**It ships on because clarity is worth more than concealment.** A reader who
+meets a protected block should be able to tell what it is and get the real
+words, and the drawn wrapper is the only mitigation that reaches the reader
+whose browser forced its own font — where the decoy renders fluently and
+nothing in the page can detect it. That is a deliberate trade, and it is
+described in full in [concealment](./concealment.md): the wrapper's own prose
+is a string a crawler can match on, and camouflage cannot reach it.
+
+**You can switch it off and signal accessibility your own way.** Nothing about
+the protection depends on our furniture:
+
+```tsx
+// nothing drawn; the sealed alternative and its control stay, clipped off-screen
+<Shield wrapper={false}>{body}</Shield>
+
+// nothing of ours at all — you own the accessible path
+<Shield wrapper={false} screenReader={false}>{body}</Shield>
+```
+
+With the second, `<Shield as="p">` renders **as close to a plain `<p>` as this
+package gets**: your tag, your className, your text, no outline, no strip, no
+buttons, no sealed payload, no script. Measured over 25 renders that is a
+median **247 bytes** of markup against about **11 kB** for a drawn block. Put
+your own summary, disclosure, link or note wherever your design wants it.
+
+Two honest caveats before you take that route. `screenReader={false}` means the
+block is `aria-hidden` with **no alternative behind it** — the accessible path
+becomes entirely yours to build, and "I'll add it later" is a page that is
+inaccessible now. And `wrapper={false}` on its own leaves our control real and
+focusable but clipped off-screen, so a sighted keyboard user Tabs into
+something they cannot see: a WCAG 2.2 SC 2.4.7 failure. Pass
+`visualHidden: false` to put a control back on screen, or turn `screenReader`
+off too and provide your own.
+
 Two things in that Default column are worth reading twice.
 
 **`wrapper` and `copyPaste` follow whatever `screenReader` resolved to, not the

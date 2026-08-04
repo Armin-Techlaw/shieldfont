@@ -6,6 +6,82 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.3] — 2026-08-04
+
+### Fixed
+
+- **`<NonShield>` rendered decoy words in Safari.** It switched the
+  substitutions off with `font-feature-settings: "ccmp" 0`, which is exact in
+  HarfBuzz, Blink and Gecko — and which **WebKit ignores outright**, because
+  Safari applies `ccmp` unconditionally. Every spelling was tested against a
+  shipped cut and all of them still painted the decoy: `"ccmp" 0`, `"ccmp"
+  off`, `-webkit-font-feature-settings`, `font-variant-ligatures: none`,
+  `font-variant: none`, and `"ccmp" 0,"calt" 0,"liga" 0,"clig" 0` together. So
+  every heading, deck and caption in a `<NonShield>` read as scrambled words to
+  every Safari reader while looking perfect to the author on Chrome — the exact
+  silent-wrong-text failure the component exists to prevent.
+
+  The fix is a different file rather than a different rule: **`optik-n`, the
+  neutral cut** — same Optik outlines, same metrics, same sanitised name table,
+  built from the same statics, and no injected lookups at all. Nothing to
+  switch off means nothing an engine can decline to switch off. It is ~35 KB a
+  cut against a shielded face's ~840 KB, because it carries the 526 real glyphs
+  and none of the ~35,900 word composites. It is declared under its own family,
+  **`"Optik Text"`** (`.tk9-t` in the paste-in CSS), and ships in both
+  `@shieldfont/react` and `@shieldfont/font`.
+
+  Every document that told you to write `font-feature-settings: "ccmp" 0` by
+  hand outside React was wrong for the same reason and has been corrected.
+
+- **`font-style: italic` silently rendered upright.** The family was upright
+  only, and every element the package renders sets `font-synthesis: none` — a
+  faux oblique smears Playtype's outlines and distorts the word composites
+  enough to expose that decoys are in play — so an italic had no face to
+  resolve to and simply did not happen. No error, no 404, no warning.
+
+- **The font-load guard could not see a missing italic.** Its probe key was the
+  weight alone, so an upright 700 marked italic 700 as covered. It now keys on
+  `style:weight` and reads `font-style` in its DOM sweep, and the SSR seed
+  carries the style with it.
+
+### Added
+
+- **Real italics for every weight, in every variant.** Six drawn cuts per
+  dictionary, declared under the **same family name** as the uprights — which
+  is what makes them reachable by ordinary CSS rather than only by a prop.
+  Verified against every variant: the italic composites draw the same originals
+  as their upright siblings, so a word encodes to one decoy whether or not it
+  was italicised.
+
+- **`italic` prop on `<Shield>` and `<NonShield>`.** Unset inherits, so a block
+  inside an italic region follows it; `italic={false}` pins upright against
+  one. Inside a `<Shield>` a whole block is the only italic available, because
+  `children` must be a plain string — `<NonShield>` takes arbitrary JSX, so a
+  nested `<em>` resolves on its own.
+
+- **`setCamouflage({ neutralFamilyName, neutralFilePrefix })`**, and a
+  hash-derived default (`Optik <hash> Text` / `font-<hash>-n`). A global
+  `familyName` string deliberately does NOT sweep the neutral cut along with
+  the shielded four: it is a different file and must keep a different family
+  name, or CSS font matching would hand unshielded headings back to the
+  shielded face.
+
+### Changed
+
+- **`<NonShield>`'s `variant` prop is deprecated and ignored.** It used to pick
+  which shielded file to fetch, which was only ever a bandwidth choice. There
+  is one neutral cut now. An unbundled value still throws.
+
+- **Both packages roughly double in size.** `@shieldfont/react` goes from 24
+  font files to 54, and that is what a complete italic family costs: each
+  shielded cut carries ~35,900 composite word-glyphs. The neutral twelve add
+  ~430 KB in total.
+
+- The paste-in CSS and its documented `@import` pin now say `0.3.3`. They had
+  been left at `0.3.0` through two releases.
+
+---
+
 ## [0.3.2] — 2026-08-03
 
 ### Removed

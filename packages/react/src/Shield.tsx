@@ -248,6 +248,26 @@ export interface ShieldProps {
    */
   weight?: ShieldWeight;
 
+  /**
+   * Render the block in the italic cut. Default: unset (the element inherits
+   * its `font-style`, so a shielded block inside an italic region follows it).
+   *
+   * A whole block at a time is the ONLY italic a `<Shield>` can have, and that
+   * is a consequence of the `children` restriction rather than of this prop:
+   * `<Shield>` accepts a plain string and throws on markup, so there is no way
+   * to put an `<em>` inside one. Emphasise a phrase by closing the shield and
+   * opening another, or use `<NonShield>`, which takes arbitrary JSX.
+   *
+   * Until the italic cuts existed this silently did nothing useful. Every
+   * shielded element sets `font-synthesis: none` — a browser's faux oblique
+   * both smears Playtype's outlines and distorts the word composites enough to
+   * give away that decoys are in play — so `font-style: italic` had no face to
+   * resolve to and rendered UPRIGHT, with nothing logged. Now every weight
+   * ships as a real drawn italic under the same family name, so an italic you
+   * ask for is an italic you get.
+   */
+  italic?: boolean;
+
   /** Line-height passthrough. */
   lineHeight?: number | string;
 
@@ -512,7 +532,7 @@ export interface ShieldProps {
  * silently discarded — see the check at the top of the component.
  */
 const SHIELD_PROPS = new Set([
-  "as", "variant", "weight", "lineHeight", "size",
+  "as", "variant", "weight", "italic", "lineHeight", "size",
   "className", "style", "rotate", "a11y",
   "screenReader", "wrapper", "copyPaste", "children",
 ]);
@@ -582,6 +602,34 @@ const FONT_FILE: Record<ShieldVariant, string> = {
 };
 
 /**
+ * The NEUTRAL cut — Optik with no dictionary injected at all, and the face
+ * <NonShield> renders in. It is a separate FILE, not a feature setting on the
+ * shielded one, and that is not a stylistic preference.
+ *
+ * <NonShield> used to render through the shielded face and switch the
+ * substitutions off with `font-feature-settings: "ccmp" 0`. Blink honours
+ * that. Gecko honours it. WEBKIT DOES NOT: Safari applies `ccmp`
+ * unconditionally and no CSS reaches it. Every spelling was tested against a
+ * shipped cut — `"ccmp" 0`, `"ccmp" off`, `-webkit-font-feature-settings`,
+ * `font-variant-ligatures: none`, `font-variant: none`, and
+ * ccmp+calt+liga+clig together. All six painted the DECOY. So every heading,
+ * deck and caption a site put in <NonShield> read as scrambled words to every
+ * Safari reader, while looking perfect to the author on Chrome.
+ *
+ * A file with no lookups in it is the only thing that turns them off in every
+ * engine. It costs ~35 KB a cut against the shielded face's ~840 KB, because
+ * it carries the 526 real glyphs and none of the ~35,900 word composites — so
+ * a page that mixes shielded prose with unshielded headings pays almost
+ * nothing for the second face.
+ *
+ * "Text" reads as an ordinary optical-size sibling to a display face, which is
+ * the point: nothing in the served HTML should hint that one family on the
+ * page is the unprotected one.
+ */
+const NEUTRAL_FAMILY = "Optik Text";
+const NEUTRAL_FILE = "optik-n";
+
+/**
  * Camouflage state — every SSR-visible fingerprint can be overridden by
  * the host project via setCamouflage(). The defaults below are the
  * branded values and remain unchanged for projects that don't call
@@ -605,6 +653,10 @@ interface CamouflageState {
   family: Record<ShieldVariant, string>;
   /** Font filename prefix per variant (no extension). */
   file: Record<ShieldVariant, string>;
+  /** Font-family of the neutral cut — see {@link NEUTRAL_FAMILY}. */
+  neutralFamily: string;
+  /** Font filename prefix of the neutral cut (no extension). */
+  neutralFile: string;
   /** Data attribute name on the rendered <Tag>. */
   attrName: string;
   /** Window-level idempotency flag name for the guard script. */
@@ -616,6 +668,8 @@ interface CamouflageState {
 const camo: CamouflageState = {
   family: { ...FONT_FAMILY },
   file: { ...FONT_FILE },
+  neutralFamily: NEUTRAL_FAMILY,
+  neutralFile: NEUTRAL_FILE,
   // NEUTRAL default: nothing in the SSR-visible DOM says "shield". The data
   // attribute stamped on every rendered element is a generic-looking
   // "data-typeface"; setCamouflage({ hash }) further randomises it per project
@@ -649,6 +703,20 @@ export interface CamouflageOptions {
   familyName?: string | Partial<Record<ShieldVariant, string>>;
   /** Override the font filename prefix. Per variant or global. */
   filePrefix?: string | Partial<Record<ShieldVariant, string>>;
+  /**
+   * Override the family/filename of the NEUTRAL cut — the face <NonShield>
+   * renders in. Separate keys rather than a fifth entry in `familyName`,
+   * because the neutral cut is not a variant: it has no dictionary, so it can
+   * never be a value of `variant` and must never be auto-rotated into.
+   *
+   * A global `familyName` string does NOT sweep this along with the shielded
+   * four. That is deliberate — the neutral face is a DIFFERENT FILE and must
+   * keep a different family name, or CSS font matching would collapse the two
+   * and hand unshielded headings back to the shielded face.
+   */
+  neutralFamilyName?: string;
+  /** @see neutralFamilyName */
+  neutralFilePrefix?: string;
   /** Override the data attribute name placed on every Shield-rendered element. */
   attrName?: string;
   /** Override the window-level idempotency flag for the guard script. */
@@ -683,6 +751,11 @@ export function setCamouflage(opts: CamouflageOptions): void {
       camo.family[v] = `Optik ${hash}${v === "alpha" ? "" : " " + v[0].toUpperCase() + v.slice(1)}`;
       camo.file[v] = `font-${hash}${v === "alpha" ? "" : "-" + v}`;
     }
+    // The neutral cut follows the same hash so a project's shielded and
+    // unshielded faces read as two optical sizes of one commissioned family
+    // rather than as a library's defaults sitting next to a project's.
+    camo.neutralFamily = `Optik ${hash} Text`;
+    camo.neutralFile = `font-${hash}-n`;
     camo.attrName = `data-typeface-${hash}`;
     camo.guardFlag = `__fg_${hash}__`;
     camo.logPrefix = `[typeface ${hash}]`;
@@ -704,6 +777,8 @@ export function setCamouflage(opts: CamouflageOptions): void {
       Object.assign(camo.file, opts.filePrefix);
     }
   }
+  if (opts.neutralFamilyName !== undefined) camo.neutralFamily = opts.neutralFamilyName;
+  if (opts.neutralFilePrefix !== undefined) camo.neutralFile = opts.neutralFilePrefix;
   // `attrName` IS SPLICED RAW INTO CSS SELECTORS and into `querySelectorAll`
   // strings in every emitted script — `'[' + ATTR + '-frame]'`. A value with a
   // bracket, a quote or a space does not throw: it produces a selector that
@@ -1064,18 +1139,25 @@ function nearestCut(value: number): number {
 }
 
 /**
- * The bundled filename for one variant at one weight. The Regular (400) file
- * keeps the historical bare name (`optik-a.woff2`); every other cut carries a
- * numeric suffix (`optik-a-700.woff2`). Same rule for camouflaged prefixes.
+ * The bundled filename for one variant at one weight and style. The upright
+ * Regular (400) file keeps the historical bare name (`optik-a.woff2`); every
+ * other cut carries a numeric suffix (`optik-a-700.woff2`). Italics take an
+ * `-italic` infix BEFORE the weight, so one style's six faces sort together:
+ * `optik-a-italic.woff2`, `optik-a-italic-700.woff2`. Same rule for
+ * camouflaged prefixes, and `scripts/build_italic_cuts.py:out_name()` is the
+ * build side of the same contract — change one and you must change the other.
  */
-function weightFile(prefix: string, numeric: number): string {
-  return numeric === 400 ? `${prefix}.woff2` : `${prefix}-${numeric}.woff2`;
+function faceFile(prefix: string, numeric: number, italic: boolean): string {
+  const style = italic ? "-italic" : "";
+  return numeric === 400 ? `${prefix}${style}.woff2` : `${prefix}${style}-${numeric}.woff2`;
 }
 
 /**
- * Build the @font-face CSS for a given variant: one face per bundled weight,
- * all under the variant's single family name. Lives in a <style> tag inserted
- * into the JSX.
+ * Build the @font-face CSS for one family: a face per bundled weight in BOTH
+ * styles, all under a single family name. Lives in a <style> tag inserted into
+ * the JSX. Shared by <Shield> (a shielded variant) and <NonShield> (the
+ * neutral cut), which is why it takes a file prefix and a family rather than a
+ * ShieldVariant.
  *
  * React does NOT de-dupe identical <style> tags in SSR output — not under
  * React 18, and not under React 19 without the `precedence` prop that hoists
@@ -1083,15 +1165,25 @@ function weightFile(prefix: string, numeric: number): string {
  * best-effort by design: see the PassRegistry note above.
  *
  * Browsers only download a face when text actually resolves to its band, so
- * declaring six faces costs no extra bytes on a single-weight page. That holds
- * only as long as nothing else asks for a band nobody uses, which is exactly
- * the mistake the font-load guard used to make (it probed a bare `1em` font
- * shorthand, i.e. weight 400, and pulled Regular onto every page).
+ * declaring twelve faces costs no extra bytes on a single-weight upright page.
+ * That holds only as long as nothing else asks for a band nobody uses, which is
+ * exactly the mistake the font-load guard used to make (it probed a bare `1em`
+ * font shorthand, i.e. upright weight 400, and pulled Regular onto every page).
+ *
+ * ITALICS ARE DECLARED UNDER THE SAME FAMILY, not as a family of their own, and
+ * that is what makes them reachable by ordinary CSS. Nothing has to opt in: the
+ * `italic` prop, an author stylesheet, an italic ancestor, or — inside a
+ * `<NonShield>`, which takes arbitrary JSX — a plain `<em>`, `<i>` or `<cite>`.
+ * A family of their own would have left every one of those with nothing to
+ * resolve to.
+ *
+ * Until these existed the failure was silent and quite bad: every element this
+ * package renders sets `font-synthesis: none` (a faux oblique smears the
+ * licensed outlines and distorts the word composites enough to give the decoys
+ * away), so `font-style: italic` had no face to land on and simply rendered
+ * UPRIGHT. No error, no 404, no warning — the emphasis just disappeared.
  */
-/** @internal Exported for `./NonShield.tsx` only — see {@link claim}. */
-export function fontFaceCss(variant: ShieldVariant): string {
-  const file = camo.file[variant];
-  const family = camo.family[variant];
+function faceCss(file: string, family: string): string {
   // woff2 only — universally supported and keeps the bundled package small
   // (~1 MB/cut vs ~5 MB for the TTF).
   //
@@ -1103,14 +1195,32 @@ export function fontFaceCss(variant: ShieldVariant): string {
   //
   // Each face claims its WEIGHT_BANDS range so arbitrary numeric weights snap
   // to the nearest real cut; nothing is ever synthesised (see WEIGHT_BANDS).
-  return Object.values(OPTIK_WEIGHTS)
+  const weights = Object.values(OPTIK_WEIGHTS)
     .slice()
-    .sort((a, b) => a - b)
-    .map(
-      (numeric) =>
-        `@font-face{font-family:'${family}';src:url('${fontHost}/${weightFile(file, numeric)}') format('woff2');font-weight:${WEIGHT_BANDS[numeric]};font-style:normal;font-display:block;}`,
-    )
-    .join("");
+    .sort((a, b) => a - b);
+  const faces: string[] = [];
+  for (const italic of [false, true]) {
+    for (const numeric of weights) {
+      faces.push(
+        `@font-face{font-family:'${family}';src:url('${fontHost}/${faceFile(file, numeric, italic)}') format('woff2');font-weight:${WEIGHT_BANDS[numeric]};font-style:${italic ? "italic" : "normal"};font-display:block;}`,
+      );
+    }
+  }
+  return faces.join("");
+}
+
+/** The @font-face block for one shielded variant. */
+export function fontFaceCss(variant: ShieldVariant): string {
+  return faceCss(camo.file[variant], camo.family[variant]);
+}
+
+/**
+ * The @font-face block for the NEUTRAL cut — the face <NonShield> renders in.
+ *
+ * @internal Exported for `./NonShield.tsx` only — see {@link claim}.
+ */
+export function neutralFontFaceCss(): string {
+  return faceCss(camo.neutralFile, camo.neutralFamily);
 }
 
 /**
@@ -1244,7 +1354,18 @@ export function currentCamo(): { camo: CamouflageState; fontHost: string } {
  * - `sweepDom()` matches the FIRST family in each element's computed
  *   font-family exactly rather than by substring, so the "Optik" watcher does
  *   not adopt weights belonging to "Optik Beta" and pull down cuts of its own
- *   that nobody asked for.
+ *   that nobody asked for. It reads each matched element's own computed style
+ *   and does NOT walk descendants: `<Shield>` throws on anything but a plain
+ *   string child, so a shielded block has no author markup inside it for a
+ *   style to change on. Everything that can make a block italic — the `italic`
+ *   prop, an author stylesheet, an italic ancestor — lands on the element the
+ *   sweep already reads.
+ * - It reads `font-style` as well as `font-weight`, and the probe key is
+ *   `style:weight` rather than weight alone. Sharing one key across both
+ *   styles would let a probed upright 700 mark italic 700 as covered, and a
+ *   deploy that copied the upright cuts and forgot the italics would pass the
+ *   guard while every italic block fell back to upright — the same shape of
+ *   blind spot the weightless `1em` shorthand used to be.
  * - `settle()` starts the 4s clock, NOT the parse. The sweep waits for the
  *   DOM, and a page slow to reach DOMContentLoaded with a perfectly good font
  *   must not be declared broken. If it finds no shielded element and had no
@@ -1312,6 +1433,7 @@ function fontGuardScript(
   family: string,
   host: string,
   seedWeight: number | null,
+  seedItalic: boolean,
   variant: ShieldVariant,
 ): string {
   const flag = camo.guardFlag;
@@ -1329,11 +1451,12 @@ var FAILED = ${js(failedAttr)};
 var ALT    = '[' + ATTR + '-group]';
 var PFX    = ${js(prefix)};
 var SEED   = ${seedWeight === null ? "null" : String(seedWeight)};
+var SEEDIT = ${seedItalic ? "1" : "0"};
 var TIMEOUT_MS = 4000;
 var BROKEN = 'This text isn\\'t showing correctly.';
 var reg = window[FLAG] || (window[FLAG] = {});
 var prev = reg[FAMILY];
-if (prev && prev.seed) { if (SEED !== null) prev.seed(SEED); return; }
+if (prev && prev.seed) { if (SEED !== null) prev.seed(SEED, SEEDIT); return; }
 reg[FAMILY] = { seed: seed, queued: null };
 var done = false;
 var probes = [];
@@ -1407,19 +1530,23 @@ function pass(){
   if (done) return; done = true;
   setTimeout(checkDescendants, 50);
 }
-function probe(w){
-  probes.push(document.fonts.load(w + ' 1em "' + FAMILY + '"').then(function(faces){
-    if (!faces || faces.length === 0) throw new Error('no @font-face declared for weight ' + w);
+function probe(w, it){
+  var desc = (it ? 'italic ' : '') + w;
+  probes.push(document.fonts.load(desc + ' 1em "' + FAMILY + '"').then(function(faces){
+    if (!faces || faces.length === 0) throw new Error('no @font-face declared for ' + desc);
     for (var i = 0; i < faces.length; i++) {
-      if (faces[i].status === 'error') throw new Error('the weight-' + w + ' face failed to load');
+      if (faces[i].status === 'error') throw new Error('the ' + desc + ' face failed to load');
     }
   }));
 }
-function seed(w){
+function seed(w, it){
   w = Math.round(Number(w));
-  if (!isFinite(w) || w < 1 || w > 1000 || seen[w]) return;
-  seen[w] = true;
-  probe(w);
+  it = it ? 1 : 0;
+  if (!isFinite(w) || w < 1 || w > 1000) return;
+  var k = it + ':' + w;
+  if (seen[k]) return;
+  seen[k] = true;
+  probe(w, it);
 }
 function firstFamily(value){
   return String(value || '').split(',')[0].trim().replace(/^["']|["']$/g, '');
@@ -1429,7 +1556,7 @@ function sweepDom(){
   for (var i = 0; i < els.length; i++) {
     var cs = window.getComputedStyle(els[i]);
     if (firstFamily(cs.fontFamily) !== FAMILY) continue;
-    seed(cs.fontWeight);
+    seed(cs.fontWeight, String(cs.fontStyle || '').indexOf('italic') === 0);
   }
 }
 function anyErrored(){
@@ -1459,8 +1586,8 @@ if (!document.fonts || !document.fonts.load) {
   fail('document.fonts API not supported');
   return;
 }
-if (prev && prev.queued) { for (var q = 0; q < prev.queued.length; q++) seed(prev.queued[q]); }
-if (SEED !== null) seed(SEED);
+if (prev && prev.queued) { for (var q = 0; q < prev.queued.length; q++) { var pq = prev.queued[q]; seed(pq[0], pq[1]); } }
+if (SEED !== null) seed(SEED, SEEDIT);
 function unfail(){
   done = false;
   var sheets = document.querySelectorAll('style[' + FAILED + ']');
@@ -1485,22 +1612,30 @@ else settle();
 }
 
 /**
- * The companion to the guard bootstrap: registers ONE more weight with a
- * watcher that some earlier <Shield> already started for this family.
+ * The companion to the guard bootstrap: registers ONE more FACE (weight +
+ * style) with a watcher that some earlier <Shield> already started for this
+ * family.
  *
  * Only reachable when a render pass scope is active (RSC, or
  * {@link withShieldRenderPass}), because that is the only time a second
  * <Shield> skips emitting a bootstrap of its own. Kept deliberately tiny —
  * a few hundred bytes against the bootstrap's few kilobytes — and it parks the
- * weight in a queue if it somehow runs first, which streamed-out-of-order
+ * face in a queue if it somehow runs first, which streamed-out-of-order
  * Suspense boundaries make possible.
+ *
+ * The queue holds `[weight, italic]` PAIRS rather than bare numbers. Every
+ * script on a page comes from one build, so there is no mixed-version case to
+ * be compatible with, and a bare number would silently re-register an italic
+ * block as upright — the queue is drained precisely when the bootstrap has not
+ * run yet, so nothing else would notice the style had been dropped.
  */
-function fontWeightSeedScript(family: string, weight: number): string {
+function fontFaceSeedScript(family: string, weight: number, italic: boolean): string {
   const flag = JSON.stringify(camo.guardFlag);
   const fam = JSON.stringify(family);
+  const it = italic ? 1 : 0;
   return (
     `(function(){var r=window[${flag}]||(window[${flag}]={});var s=r[${fam}]||(r[${fam}]={});` +
-    `if(s.seed)s.seed(${weight});else (s.queued||(s.queued=[])).push(${weight});})();`
+    `if(s.seed)s.seed(${weight},${it});else (s.queued||(s.queued=[])).push([${weight},${it}]);})();`
   );
 }
 
@@ -2872,6 +3007,7 @@ export function Shield(props: ShieldProps) {
     as,
     variant,
     weight,
+    italic,
     lineHeight,
     size,
     className,
@@ -2988,10 +3124,10 @@ export function Shield(props: ShieldProps) {
     // while serving every reader the wrong words. Nothing throws, nothing
     // 404s, and the font-load guard is silent because the font loaded fine.
     //
-    // <NonShield> sets exactly that rule (`"ccmp" 0` is how it renders real
-    // words through a shielded face at all), so a <Shield> nested inside a
-    // <NonShield> would inherit it. That is the concrete case; an author
-    // stylesheet doing the same thing is the general one. Declaring `normal`
+    // <NonShield> no longer sets that rule — it renders a face with no lookups
+    // in it instead, because WebKit ignores `"ccmp" 0` outright (see
+    // NEUTRAL_FAMILY). An author stylesheet turning ccmp off is still the
+    // general case, and it is reason enough on its own. Declaring `normal`
     // here re-enables the feature at the shielded element itself, where the
     // inline style beats anything inherited.
     //
@@ -3001,6 +3137,11 @@ export function Shield(props: ShieldProps) {
     // letters. 11,962 of the 11,970 dictionary words behave that way.
     fontFeatureSettings: "normal",
     ...(fontWeight !== undefined && { fontWeight }),
+    // Unset leaves `font-style` inherited, which is what lets a shielded block
+    // sit inside an italic region and follow it. `italic={false}` is a real
+    // instruction, not a default — it pins the block upright against an italic
+    // ancestor — so it must emit `normal` rather than nothing.
+    ...(italic !== undefined && { fontStyle: italic ? "italic" : "normal" }),
     ...(lineHeight !== undefined && { lineHeight }),
     ...(size !== undefined && { fontSize: size }),
     ...style,
@@ -3272,16 +3413,22 @@ export function Shield(props: ShieldProps) {
   const family = camo.family[v];
   const emitStyle = claim("styles", family);
   const emitGuard = claim("guards", family);
-  const weightKey = fontWeight === undefined ? null : `${family}|${fontWeight}`;
+  // The face this instance pins, if any. Keyed on style AS WELL AS weight:
+  // two blocks at weight 700, one italic, are two different files, and sharing
+  // a key would let the upright one convince the registry that the italic cut
+  // was already covered.
+  const faceItalic = italic === true;
+  const faceKey =
+    fontWeight === undefined ? null : `${family}|${faceItalic ? "i" : "n"}|${fontWeight}`;
 
-  // The guard's weight coverage. The bootstrap carries this instance's weight
-  // as its seed; a later instance at a DIFFERENT weight hands its own to the
+  // The guard's face coverage. The bootstrap carries this instance's face as
+  // its seed; a later instance at a DIFFERENT face hands its own to the
   // already-running watcher instead of starting a second one.
   let seedScript: string | null = null;
   if (emitGuard) {
-    if (weightKey) claim("weights", weightKey);
-  } else if (weightKey && claim("weights", weightKey)) {
-    seedScript = fontWeightSeedScript(family, fontWeight as number);
+    if (faceKey) claim("weights", faceKey);
+  } else if (faceKey && claim("weights", faceKey)) {
+    seedScript = fontFaceSeedScript(family, fontWeight as number, faceItalic);
   }
 
   // The puzzle solver is page-level, not per-block: it sweeps for every solve
@@ -3464,7 +3611,7 @@ export function Shield(props: ShieldProps) {
         {emitGuard ? (
           <script
             dangerouslySetInnerHTML={{
-              __html: fontGuardScript(family, fontHost, fontWeight ?? null, v),
+              __html: fontGuardScript(family, fontHost, fontWeight ?? null, faceItalic, v),
             }}
           />
         ) : null}
@@ -3592,7 +3739,7 @@ export function Shield(props: ShieldProps) {
       {emitGuard ? (
         <script
           dangerouslySetInnerHTML={{
-            __html: fontGuardScript(family, fontHost, fontWeight ?? null, v),
+            __html: fontGuardScript(family, fontHost, fontWeight ?? null, faceItalic, v),
           }}
         />
       ) : null}

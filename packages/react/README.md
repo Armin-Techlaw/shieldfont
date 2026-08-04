@@ -94,6 +94,7 @@ Note: α/β/γ have slightly different pair counts (11,970 / 12,034 / 12,036), s
 > props, so wrap rather than substitute.
 | `variant` | `"alpha" \| "beta" \| "gamma" \| "maxhide"` | *auto-rotate* | Pin a mapping, or leave unset to auto-rotate α/β/γ. |
 | `weight` | `"regular"` \| `"medium"` \| `"demibold"` \| `"bold"` \| `"extrabold"` \| `"black"` \| `number` (1..1000) | inherit | Font weight. Six real cuts of Optik ship per variant; a number snaps to the nearest one and that resolved value is what gets emitted. See [Weights](#weights-what-actually-ships). |
+| `italic` | `boolean` | inherit | Renders the italic cut. Every weight ships as a real drawn italic; nothing is synthesised. A whole block at a time is the only italic a `<Shield>` can have, because `children` must be a plain string — see [Italics](#italics). |
 | `lineHeight` | `number \| string` | inherit | Line-height passthrough. |
 | `size` | `string` | inherit | font-size passthrough. |
 | `className` | `string` | n/a | Merges with the internal scope. |
@@ -112,7 +113,7 @@ Precedence when several of these could pick the variant, highest first: an expli
 > [!IMPORTANT]
 > **Weights are a React-tier feature.** The static [`@shieldfont/font`](https://www.npmjs.com/package/@shieldfont/font) package (the CDN paste-in tier) ships **Regular only**: one file per mapping variant, each declared `font-weight: normal`. If you need Bold, or any cut other than Regular, you need this package. Everything in this section applies to `<Shield>` and to nothing else.
 
-The mapping variants and the weights are two orthogonal axes. `optik-a/b/c/m` correspond to the `alpha`/`beta`/`gamma`/`maxhide` dictionaries; each of the four ships six real static cuts of Optik, licensed from Playtype. Every file is built from one of Playtype's own upright masters, run through the same encoding pipeline. There is no variable font and nothing is interpolated or synthesised.
+The mapping variants and the weights are two orthogonal axes. `optik-a/b/c/m` correspond to the `alpha`/`beta`/`gamma`/`maxhide` dictionaries; each of the four ships six real static cuts of Optik in each of two styles, licensed from Playtype. Every file is built from one of Playtype's own masters, run through the same encoding pipeline. There is no variable font and nothing is interpolated or synthesised.
 
 The named weights are Playtype's own cut names, lowercased:
 
@@ -125,7 +126,21 @@ The named weights are Playtype's own cut names, lowercased:
 | `"extrabold"` | `800` | Optik ExtraBold | `optik-a-800.woff2` |
 | `"black"` | `900` | Optik Black | `optik-a-900.woff2` |
 
-Filenames follow one rule: the Regular cut keeps the bare variant name, every other cut carries a numeric suffix. Twenty-four files ship in total (6 weights x 4 variants). The exported `OPTIK_WEIGHTS` object maps each name to its numeric weight, so code can check at runtime what exists.
+Filenames follow one rule: the Regular cut keeps the bare variant name, every other cut carries a numeric suffix, and italics take an `-italic` infix before the weight (`optik-a-italic.woff2`, `optik-a-italic-700.woff2`). Forty-eight files ship in total (6 weights x 2 styles x 4 variants). The exported `OPTIK_WEIGHTS` object maps each name to its numeric weight, so code can check at runtime what exists.
+
+#### Italics
+
+Every weight ships as a real drawn italic, and both styles are declared **under the same family name** — which is what makes them reachable by ordinary CSS rather than only by a prop:
+
+```tsx
+<Shield italic>An epigraph, set entirely in the italic cut.</Shield>
+<Shield style={{ fontStyle: "italic" }}>The same thing.</Shield>
+<NonShield as="h2">A heading with <em>one emphasised word</em>.</NonShield>
+```
+
+`italic` sets a whole block. Inside a `<Shield>` that is the only italic available, because `children` must be a plain string — there is nowhere to put an `<em>`. To emphasise a phrase, close the shield and open another, or use `<NonShield>`, which takes arbitrary JSX. Leaving the prop unset inherits, so a shielded block inside an italic region follows it; `italic={false}` pins it upright against one.
+
+Before these cuts existed this failed silently rather than loudly. Every element the package renders sets `font-synthesis: none` — a browser's faux oblique smears Playtype's outlines and distorts the word composites enough to expose that decoys are in play — so `font-style: italic` had no face to resolve to and rendered upright, with nothing logged and nothing 404ing. If you serve the fonts yourself, **copy the italic cuts too**: the package declares all twelve faces per family whether or not you host them.
 
 #### Numbers snap to the nearest real cut
 
@@ -237,15 +252,24 @@ the shipped `optik-a.woff2` with HarfBuzz: `"Read the docs"` draws as composites
 built from the letters `"Reset"` and `"sellers"`; `"2026 report"` draws as
 `"2527 report"`. 11,962 of the 11,970 `alpha` words behave that way.
 
-`<NonShield>` sets **`font-feature-settings: "ccmp" 0`** on the element it
-renders. With the feature off, all 11,970 dictionary words shape to their own
-letters, the base font's real `fi`/`fl` ligatures survive, and accented text is
-untouched in NFC and NFD alike.
+`<NonShield>` renders a **different file**: `optik-n.woff2`, the *neutral cut*,
+under the family `"Optik Text"`. Same Optik outlines, same metrics, all six
+weights in both styles, and no substitution lookups at all. At ~35 KB a cut it
+adds almost nothing to a page that already loads a shielded face.
 
-Because `font-feature-settings` **inherits**, `<Shield>` declares
-`font-feature-settings: normal` on its own element, so a `<Shield>` nested
-inside a `<NonShield>` cannot inherit `"ccmp" 0`, silently stop substituting,
-and publish its decoy text at full readability.
+> [!CAUTION]
+> **`font-feature-settings: "ccmp" 0` does not do this**, though it used to.
+> Disabling the feature is exact in HarfBuzz, Blink and Gecko, and **WebKit
+> ignores it outright** — Safari applies `ccmp` unconditionally. `"ccmp" off`,
+> `-webkit-font-feature-settings`, `font-variant-ligatures: none`,
+> `font-variant: none` and `"ccmp" 0,"calt" 0,"liga" 0,"clig" 0` were all
+> tested against a shipped cut and all still painted the decoy. There is no CSS
+> alternative to the neutral file.
+
+`<Shield>` still declares `font-feature-settings: normal` on its own element,
+because that property **inherits**: a stylesheet of your own that disables
+`ccmp` page-wide would otherwise stop the substitutions and publish your decoy
+text at full readability.
 
 ### Props
 

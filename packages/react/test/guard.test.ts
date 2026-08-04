@@ -125,7 +125,9 @@ describe("the guard probes the weights the page uses, not weight 400", () => {
       const src = guardOf(Shield({ children: BODY, variant: "alpha", weight, a11y: OFF }));
       // A shorthand whose size is not preceded by a weight resolves to 400.
       expect(src).not.toMatch(/load\(\s*'1em/);
-      expect(src).toContain("w + ' 1em \"' + FAMILY + '\"'");
+      // `desc` is the style-and-weight prefix — "700" or "italic 700".
+      expect(src).toContain("desc + ' 1em \"' + FAMILY + '\"'");
+      expect(src).toContain("var desc = (it ? 'italic ' : '') + w;");
     }
   });
 
@@ -241,7 +243,7 @@ describe("a failed non-400 face fails as loudly as a failed 400 face", () => {
       elements: [fakeEl("Optik, system-ui, sans-serif", "700")],
       load: async () => [{ family: "Optik", status: "error" }],
     });
-    expect(errors[0]).toContain("the weight-700 face failed to load");
+    expect(errors[0]).toContain("the 700 face failed to load");
     expect(els[0]!.attrs["data-typeface-failed"]).toBe("1");
   });
 
@@ -251,7 +253,7 @@ describe("a failed non-400 face fails as loudly as a failed 400 face", () => {
       elements: [fakeEl("Optik, system-ui, sans-serif", "700")],
       load: async () => [],
     });
-    expect(errors[0]).toContain("no @font-face declared for weight 700");
+    expect(errors[0]).toContain("no @font-face declared for 700");
   });
 
   it("fails when a face errored outside every weight it probed", async () => {

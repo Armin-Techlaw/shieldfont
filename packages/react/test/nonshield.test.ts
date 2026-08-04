@@ -10,9 +10,17 @@
  * wrong thing.
  *
  * So the single most important assertion in this file is the dull-looking one
- * about `font-feature-settings`. If somebody "tidies" that line away, or swaps
- * it for `font-variant-ligatures: none` (which does not reach ccmp), every test
- * about DOM text still passes and every reader sees the wrong words.
+ * about the FAMILY NAME. `<NonShield>` renders `optik-n` — the one shipped cut
+ * with no lookups injected into it — and if somebody "tidies" that back to a
+ * shielded family, every test about DOM text still passes and every reader
+ * sees the wrong words.
+ *
+ * It used to switch the substitutions off with `font-feature-settings:
+ * "ccmp" 0` instead, which is exact in HarfBuzz, Blink and Gecko, and which
+ * WEBKIT IGNORES ENTIRELY — so headings read as decoys in Safari and nowhere
+ * else. Do not reintroduce it as a "belt and braces" line either: it would
+ * suggest the family name is optional, which is the mistake this file exists
+ * to catch.
  *
  * Same technique as the rest of the suite: these are plain function components
  * with no hooks, so the tests call them and inspect the returned element tree.
@@ -84,21 +92,29 @@ describe("the words in the DOM are the words the author wrote", () => {
   });
 });
 
-describe("the substitutions are switched off at the element", () => {
-  it('sets font-feature-settings: "ccmp" 0', () => {
-    // THE LOAD-BEARING ASSERTION. Verified against the shipped optik-a.woff2
-    // with HarfBuzz: with ccmp on, all but 8 of the 11,970 dictionary words
-    // shape to a substituted composite; with ccmp off, every one of them
-    // shapes to its own letters.
-    expect(styleOf(NonShield({ children: BODY })).fontFeatureSettings).toBe('"ccmp" 0');
+describe("the substitutions are absent from the FILE, not switched off in CSS", () => {
+  it("renders the neutral family, never a shielded one", () => {
+    // THE LOAD-BEARING ASSERTION. `optik-n` is the only shipped cut with no
+    // injected lookups; every other family substitutes words no matter what
+    // CSS says, because WebKit applies ccmp unconditionally.
+    const family = String(styleOf(NonShield({ children: BODY })).fontFamily);
+    expect(family).toContain("Optik Text");
+    // A shielded family would also "contain Optik", so assert the file the
+    // stylesheet actually points at.
+    const css = html(findAllTags(NonShield({ children: BODY }) as never, "style")[0]!);
+    expect(css).toContain("optik-n.woff2");
+    expect(css).not.toContain("optik-a");
   });
 
-  it("does not rely on font-variant-ligatures, which cannot reach ccmp", () => {
+  it("does not try to disable the feature in CSS any more", () => {
+    // Neither of these reaches ccmp in WebKit. Shipping one would imply the
+    // family name above is a belt-and-braces measure rather than the mechanism.
     const style = styleOf(NonShield({ children: BODY }));
+    expect(style.fontFeatureSettings).toBeUndefined();
     expect(style.fontVariantLigatures).toBeUndefined();
   });
 
-  it("<Shield> re-asserts ccmp so a nested shield still substitutes", () => {
+  it("<Shield> re-asserts ccmp so an author stylesheet cannot switch it off", () => {
     // font-feature-settings inherits, so a <Shield> inside a <NonShield> would
     // otherwise inherit "ccmp" 0 and publish its decoy text at full
     // readability — protection silently off, nothing logged.
@@ -180,16 +196,23 @@ describe("children: arbitrary JSX is accepted, unlike <Shield>", () => {
   });
 });
 
-describe("font assets are shared with <Shield>, not duplicated", () => {
-  it("emits ONE stylesheet when both components render on one page", () => {
+describe("font assets share <Shield>'s registry, and are not duplicated", () => {
+  it("emits ONE stylesheet per family, not one per element", () => {
     const trees = withShieldRenderPass(() => [
-      NonShield({ as: "h2", variant: "alpha", children: HEADING }),
+      NonShield({ as: "h2", children: HEADING }),
       Shield({ children: BODY, variant: "alpha", a11y: OFF }),
-      NonShield({ as: "p", variant: "alpha", children: HEADING }),
+      NonShield({ as: "p", children: HEADING }),
     ]);
-    const styles = trees.flatMap((t) => findAllTags(t as never, "style"));
-    expect(styles).toHaveLength(1);
-    expect(html(styles[0]!)).toContain("optik-a");
+    const styles = trees.flatMap((t) => findAllTags(t as never, "style")).map(html);
+    // TWO families now, so two stylesheets: the shielded cut and the neutral
+    // one are different files and must not answer to the same family name, or
+    // CSS font matching would hand unshielded headings to the shielded face.
+    // The three ELEMENTS still produce two sheets, which is the de-duplication
+    // this describe block is about — the second <NonShield> emits nothing.
+    expect(styles).toHaveLength(2);
+    expect(styles.filter((s) => s.includes("optik-n.woff2"))).toHaveLength(1);
+    expect(styles.filter((s) => s.includes("optik-a.woff2"))).toHaveLength(1);
+    expect(findAllTags(trees[2] as never, "style")).toHaveLength(0);
   });
 
   it("emits ONE guard, and <NonShield> is not what emits it", () => {
@@ -216,16 +239,21 @@ describe("font assets are shared with <Shield>, not duplicated", () => {
     expect(guard[0]).toContain("document.fonts");
   });
 
-  it("pins the face rather than auto-rotating, so one page means one font", () => {
-    // <Shield> hashes its content across alpha/beta/gamma. <NonShield> must
-    // not, or a page of headings would pull down three ~840 kB files to render
-    // identical outlines.
+  it("never auto-rotates, so a page of headings means ONE font", () => {
+    // <Shield> hashes its content across alpha/beta/gamma. <NonShield> has one
+    // face and no dictionary to spread, so four headings are one stylesheet
+    // and one file — and `variant` cannot change that even when passed.
     const trees = withShieldRenderPass(() =>
       ["one", "two", "three", "four"].map((t) => NonShield({ children: t })),
     );
     const styles = trees.flatMap((t) => findAllTags(t as never, "style"));
     expect(styles).toHaveLength(1);
-    expect(html(styles[0]!)).toContain("optik-a");
+    expect(html(styles[0]!)).toContain("optik-n");
+
+    const pinned = withShieldRenderPass(() => [
+      NonShield({ children: HEADING, variant: "gamma" }),
+    ]);
+    expect(html(findAllTags(pinned[0] as never, "style")[0]!)).toContain("optik-n");
   });
 });
 
@@ -233,6 +261,25 @@ describe("styling props behave as they do on <Shield>", () => {
   it("snaps a numeric weight to a real bundled cut", () => {
     expect(styleOf(NonShield({ children: HEADING, weight: 470 })).fontWeight).toBe(500);
     expect(styleOf(NonShield({ children: HEADING, weight: "demibold" })).fontWeight).toBe(600);
+  });
+
+  it("sets font-style only when `italic` is given, in both directions", () => {
+    // Unset must emit NOTHING, so a caption inside an italic aside follows it.
+    // `italic={false}` is a real instruction — pin upright against an italic
+    // ancestor — so it has to emit `normal` rather than nothing.
+    expect(styleOf(NonShield({ children: HEADING })).fontStyle).toBeUndefined();
+    expect(styleOf(NonShield({ children: HEADING, italic: true })).fontStyle).toBe("italic");
+    expect(styleOf(NonShield({ children: HEADING, italic: false })).fontStyle).toBe("normal");
+  });
+
+  it("declares the italic cuts, so a nested <em> has a face to resolve to", () => {
+    // <NonShield> takes arbitrary JSX, so `<em>` inside a heading is the
+    // ordinary case rather than an edge one. font-synthesis is off, so a
+    // missing italic declaration would render it upright and log nothing.
+    const css = html(findAllTags(NonShield({ children: HEADING }) as never, "style")[0]!);
+    expect(css).toContain("optik-n-italic.woff2");
+    expect(css).toContain("optik-n-italic-700.woff2");
+    expect(css).toContain("font-style:italic");
   });
 
   it("throws on a weight that is not a real cut or a valid number", () => {

@@ -86,7 +86,7 @@ CDN tier, for a blog or a CMS you don't build:
 > **The one rule: your original text must never reach the browser in readable form.** Encoding runs in Node, never in a client component. Get it wrong and the page looks protected while your plaintext sits in the JS bundle. This is also why `<Shield>` cannot protect a client-only SPA (Vite, Create React App): encode ahead of time with `@shieldfont/core` and import the encoded string. See [where the encoding happens](./docs/where-encoding-happens.md).
 
 > [!WARNING]
-> **Never write `font-family: Optik` yourself.** It renders the decoy. The shipped `optik-*.woff2` are shielded builds with the substitutions in the OpenType `ccmp` feature, and the dictionary is an involution, so the font swaps a word whether it is the original or the decoy. Nothing errors; the heading just says the wrong thing. Use `<NonShield>`, which switches the feature off.
+> **Never write `font-family: Optik` yourself.** It renders the decoy. The shipped `optik-*.woff2` are shielded builds with the substitutions in the OpenType `ccmp` feature, and the dictionary is an involution, so the font swaps a word whether it is the original or the decoy. Nothing errors; the heading just says the wrong thing. Use `<NonShield>` in React, or the family `"Optik Text"` (the neutral cut, `optik-n.woff2`) anywhere else. Turning `ccmp` off in CSS is **not** an option — Safari ignores it.
 
 <br />
 

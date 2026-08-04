@@ -58,6 +58,8 @@ The reader who hits it is, disproportionately, a reader who forced fonts for a r
 
 The only mitigation that reaches that reader today is the **visible wrapper** — the outline, the strip of explanation and the on-screen controls that `@shieldfont/react` draws around a protected block, which is what a bare `<Shield>` renders by default. It is ordinary DOM in whatever font the reader forced, so it says what the block is and offers the real words in a form they can actually read. It costs the concealment the rest of the package works for: measured over 25 renders, a drawn block's markup runs to a median of about **11 kB**, against **247 bytes** for a block with the accessible path switched off entirely. That is exactly the trade — you have decided to announce yourself — and it is the right default for content readers with visual impairments are likely to read.
 
+It is a **default**, not a requirement. `wrapper={false}` takes the box off and leaves the sealed alternative in place; `wrapper={false} screenReader={false}` takes everything of ours off, and `<Shield as="p">` then renders about as close to a plain `<p>` as this package gets — your tag, your text, no strip, no buttons, no script — so you can signal what the block is in whatever way your design already does it. What you cannot do is take the furniture off and provide nothing: the block is still `aria-hidden`, so the accessible path becomes yours to build. [The three switches, in full](./plain-text-mode.md#the-wrapper-is-a-default-not-a-requirement).
+
 ### The plaintext side doors (close these, or the rest is theatre)
 
 ShieldFont only protects text that goes through it. Every one of these is generated from your CMS or your source data rather than from your rendered page, so it ships in **plain English** no matter how carefully the page itself is shielded — and a mass crawler fetches them by default, without ever knowing your site uses ShieldFont.
@@ -312,32 +314,49 @@ the other direction — and a component that quietly did it would be far worse
 than either warning, because nothing errors. The page renders, the bytes are
 correct, and a heading just says the wrong thing.
 
-`<NonShield>` sets **`font-feature-settings: "ccmp" 0`** on the element it
-renders, which switches the substitutions off. With `ccmp` disabled all 11,970
-dictionary words shape to their own letters; the only differences left are the
-base font's legitimate `fi`/`fl` ligatures, and accented text is untouched in
-both NFC and NFD.
+`<NonShield>` renders a **different file**: `optik-n.woff2`, the *neutral cut*.
+Same Optik outlines, same metrics, same weights, both styles — and no
+substitution lookups in it at all. It is ~35 KB against a shielded cut's
+~840 KB, because it carries the 526 real glyphs and none of the ~35,900 word
+composites, so a page with shielded prose and unshielded headings pays almost
+nothing for the second family.
 
-Because `font-feature-settings` **inherits**, `<Shield>` now declares
-`font-feature-settings: normal` on its own element. A `<Shield>` nested inside a
-`<NonShield>` would otherwise inherit `"ccmp" 0`, stop substituting, and publish
-its decoy text at full readability with nothing logged and nothing on screen to
-show it. The same applies to any stylesheet of your own that turns `ccmp` off
-across a page.
+> [!CAUTION]
+> **`font-feature-settings: "ccmp" 0` is NOT a way to do this, and used to be.**
+> Disabling the feature is exact in HarfBuzz, Blink and Gecko — and **WebKit
+> ignores it entirely**, because Safari applies `ccmp` unconditionally. Every
+> spelling was tested against a shipped cut and all of them still painted the
+> decoy: `"ccmp" 0`, `"ccmp" off`, `-webkit-font-feature-settings`,
+> `font-variant-ligatures: none`, `font-variant: none`, and
+> `"ccmp" 0,"calt" 0,"liga" 0,"clig" 0` together. Text set that way reads
+> correctly to an author on Chrome and as scrambled words to every Safari
+> reader. **Use the neutral cut. There is no CSS alternative.**
 
-**Outside React there is no `<NonShield>`.** On Tiers B, C and D the shipped CSS
-sets only `font-family`, so if you want unprotected text in the same face you
-add `font-feature-settings: "ccmp" 0` to that rule yourself — and if you forget,
-the page renders decoys.
+`<Shield>` still declares `font-feature-settings: normal` on its own element,
+because that property **inherits** and a stylesheet of your own that turns
+`ccmp` off across a page would otherwise stop the substitutions and publish
+your decoy text at full readability, with nothing logged and nothing on screen
+to show it.
+
+**Outside React there is no `<NonShield>`, but there is the same file.** Tiers B
+and C ship it as `optik-n.woff2` under the family **`"Optik Text"`**, with a
+ready `.tk9-t` class in `shieldfont.css`. Put unencoded text in that class, not
+in `.tk9`:
+
+```html
+<h2 class="tk9-t">A heading, in the same typeface, saying what it says</h2>
+<p class="tk9">…encoded text…</p>
+```
 
 #### Props
 
 | Prop | Type | Default | Purpose |
 |---|---|---|---|
 | `as` | `ElementType` | `"div"` | Which element to render. No table-tag restriction: `<NonShield>` renders one element and no wrapper, so `as="td"` is a `<td>`. |
-| `variant` | `"alpha" \| "beta" \| "gamma" \| "maxhide"` | `"alpha"` | **Which file the browser fetches, and nothing else.** With substitutions off, all four faces draw identical outlines. |
+| `variant` | `"alpha" \| "beta" \| "gamma" \| "maxhide"` | n/a | **Deprecated and ignored.** It used to pick which shielded file to fetch. There is one neutral cut now, so whatever you pass you get `optik-n`. An unbundled value still throws. |
 | `weight` | one of the six cut names, or `1..1000` | inherit | Same six real cuts and the same nearest-cut snapping as `<Shield>`; `font-synthesis: none` for the same reason. |
-| `lineHeight` / `size` / `className` / `style` | | inherit / n/a | Passthroughs. `style` merges **over** the internal scope, so it can override `fontFeatureSettings` — which re-enables the substitutions on text that is not encoded. |
+| `italic` | `boolean` | inherit | Renders the italic cut. Often unnecessary here: this component takes arbitrary JSX, so a nested `<em>` resolves on its own. |
+| `lineHeight` / `size` / `className` / `style` | | inherit / n/a | Passthroughs. `style` merges **over** the internal scope, so it can override `fontFamily` — and pointing this component at a *shielded* family is the one override that silently renders decoys. |
 | `children` | `ReactNode` | | Rendered verbatim. Arbitrary JSX allowed. |
 
 Any other prop **throws**, the same fail-loud treatment `<Shield>` gives an

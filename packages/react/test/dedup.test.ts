@@ -85,7 +85,7 @@ describe("de-duplication never loses a weight", () => {
     expect(scripts[0]).toContain("var SEED   = 400;");
     expect(scripts[0]!.length).toBeGreaterThan(1000);
     // ... and one tiny hand-off carrying 900.
-    expect(scripts[1]).toContain("s.seed(900)");
+    expect(scripts[1]).toContain("s.seed(900,0)");
     expect(scripts[1]!.length).toBeLessThan(400);
   });
 
@@ -98,7 +98,7 @@ describe("de-duplication never loses a weight", () => {
     ]);
     const scripts = trees.flatMap((t) => findAllTags(t, "script")).map(html);
     expect(scripts).toHaveLength(2);
-    expect(scripts[1]).toContain("s.seed(700)");
+    expect(scripts[1]).toContain("s.seed(700,0)");
   });
 
   it("treats numbers that snap to the same cut as one weight", () => {
@@ -114,7 +114,24 @@ describe("de-duplication never loses a weight", () => {
     const scripts = trees.flatMap((t) => findAllTags(t, "script")).map(html);
     expect(scripts).toHaveLength(2);
     expect(scripts[0]).toContain("var SEED   = 700;");
-    expect(scripts[1]).toContain("s.seed(500)");
+    expect(scripts[1]).toContain("s.seed(500,0)");
+  });
+
+  it("treats the same weight in two styles as two faces", () => {
+    // optik-a-700.woff2 and optik-a-italic-700.woff2 are different files. If
+    // the bookkeeping keyed on weight alone, the upright block would claim 700
+    // and the italic one would emit no hand-off at all — so the guard would
+    // never probe the italic cut, and a deploy that copied only the uprights
+    // would pass while every emphasis on the page fell back to upright.
+    const trees = withShieldRenderPass(() => [
+      Shield({ children: BODY, variant: "alpha", weight: "bold", a11y: OFF }),
+      Shield({ children: `${BODY} a`, variant: "alpha", weight: "bold", italic: true, a11y: OFF }),
+    ]);
+    const scripts = trees.flatMap((t) => findAllTags(t, "script")).map(html);
+    expect(scripts).toHaveLength(2);
+    expect(scripts[0]).toContain("var SEED   = 700;");
+    expect(scripts[0]).toContain("var SEEDIT = 0;");
+    expect(scripts[1]).toContain("s.seed(700,1)");
   });
 
   it("adds no hand-off for a shield that never set a weight", () => {

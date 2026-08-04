@@ -95,17 +95,23 @@ to follow the "don't shield any heading" rule below. Arbitrary JSX is allowed
 > `font-variant-ligatures: none`), and the dictionary is an involution, so a
 > shielded face renders plain English as the DECOY. Measured with HarfBuzz on the
 > shipped `optik-a.woff2`: "Read the docs" draws as composites built from the
-> letters "Reset" and "sellers". Nothing errors. `<NonShield>` sets
-> `font-feature-settings: "ccmp" 0` to switch that off, and `<Shield>` re-asserts
-> `font-feature-settings: normal` on its own element so a shield nested inside a
-> `<NonShield>` cannot inherit the disabling and quietly publish readable decoys.
+> letters "Reset" and "sellers". Nothing errors. `<NonShield>` renders a
+> DIFFERENT FILE — `optik-n.woff2`, the neutral cut: same outlines, same
+> metrics, both styles, no lookups. Do NOT "simplify" that to
+> `font-feature-settings: "ccmp" 0`; that is what it used to do, and **WebKit
+> ignores it**, so headings read as decoys in Safari and nowhere else.
+> `<Shield>` still declares `font-feature-settings: normal` on its own element,
+> so an author stylesheet that disables `ccmp` page-wide cannot quietly turn the
+> protection off.
 
 Its limits, which you must state rather than imply away: `variant` selects only
-which font file is fetched (with substitutions off, all four faces draw the same
-outlines) and does **not** auto-rotate; and it emits no font-load guard, so a
+which font file is fetched — is now DEPRECATED AND IGNORED, since there is one
+neutral cut and it never auto-rotated anyway; and it emits no font-load guard, so a
 missing font leaves the text in a fallback face rather than skeletonising it.
-Outside React there is no `<NonShield>`: write `font-feature-settings: "ccmp" 0`
-next to your own `font-family` rule, or plain text renders as decoys.
+Outside React there is no `<NonShield>`, but the same file ships: set
+`font-family: "Optik Text"` (the `.tk9-t` class in `shieldfont.css`) on
+unencoded text. Never `font-family: Optik` with a feature setting — no CSS
+disables `ccmp` in Safari.
 
 ## A bare `<Shield>` draws furniture on screen. Do not "clean it up."
 

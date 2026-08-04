@@ -3,7 +3,7 @@ import type { CSSProperties, ElementType, ReactNode } from "react";
 import {
   claim,
   currentCamo,
-  fontFaceCss,
+  neutralFontFaceCss,
   resolveOptikWeight,
   type ShieldVariant,
   type ShieldWeight,
@@ -66,19 +66,42 @@ import {
  * A heading just says the wrong thing, forever, and the author's own eyes are
  * the only test that could ever catch it.
  *
- * `font-feature-settings: "ccmp" 0` is the fix, and it is exact rather than
- * approximate: with ccmp disabled, all 11,970 dictionary words shape to their
- * own letters. The only differences left are the base font's legitimate
- * typography — the real `fi`/`fl` ligatures — which is precisely what should
- * survive. Accented text is untouched in both NFC and NFD (Optik composes its
- * accents through precomposed glyphs and GPOS mark positioning, not ccmp), so
- * disabling the feature costs nothing a reader would notice.
+ * ### The fix that was wrong for a year: `font-feature-settings: "ccmp" 0`
  *
- * The corollary, and the reason `<Shield>` was edited when this file was
- * added: `font-feature-settings` INHERITS. A `<Shield>` nested inside a
- * `<NonShield>` would inherit `"ccmp" 0` and quietly stop substituting,
- * publishing its decoy text at full readability. `<Shield>` now declares
- * `font-feature-settings: normal` on its own element to re-assert the feature.
+ * That WAS this component's whole mechanism, and by shaping it looked exact:
+ * with ccmp disabled all 11,970 dictionary words shape to their own letters,
+ * and the only survivors are the base font's legitimate `fi`/`fl` ligatures.
+ *
+ * It is exact in HarfBuzz. It is exact in Blink and in Gecko. **WebKit ignores
+ * it entirely.** Safari applies `ccmp` unconditionally, and there is no CSS
+ * that reaches it. Tested against a shipped cut, all of these still painted
+ * the decoy:
+ *
+ *   font-feature-settings: "ccmp" 0        font-variant-ligatures: none
+ *   font-feature-settings: "ccmp" off      font-variant: none
+ *   -webkit-font-feature-settings: "ccmp" 0
+ *   font-feature-settings: "ccmp" 0,"calt" 0,"liga" 0,"clig" 0
+ *
+ * So every heading, deck and caption a site put in `<NonShield>` read as
+ * scrambled words to every Safari reader, while looking perfect to the author
+ * on Chrome — the exact silent-wrong-text failure the paragraphs above were
+ * written to prevent, reintroduced by the fix for it.
+ *
+ * ### What it does now: a different FILE
+ *
+ * `optik-n*.woff2` — the NEUTRAL cut. Same Optik outlines, same metrics, same
+ * sanitised name table, built from the same statics (the build script asserts
+ * outline and advance identity against `optik-a`, so the two can never drift),
+ * and **no injected lookups at all**. Nothing to switch off means nothing an
+ * engine can decline to switch off.
+ *
+ * It is also small: ~35 KB a cut against the shielded face's ~840 KB, because
+ * it carries the 526 real glyphs and none of the ~35,900 word composites. A
+ * page with shielded prose and unshielded headings pays almost nothing for the
+ * second family.
+ *
+ * Accented text is untouched either way — Optik composes its accents through
+ * precomposed glyphs and GPOS mark positioning, not ccmp.
  *
  * ## What it deliberately does NOT do
  *
@@ -100,23 +123,35 @@ export interface NonShieldProps {
   as?: ElementType;
 
   /**
-   * Which bundled face to draw the outlines from. Default `"alpha"`.
+   * @deprecated Accepted so existing call sites keep compiling, and IGNORED.
    *
-   * THIS IS NOT THE CHOICE IT IS ON `<Shield>`, and the difference is worth
-   * being clear about. There, `variant` picks a substitution dictionary and
-   * changes what a scraper reads. Here nothing is encoded and the
-   * substitutions are switched off, so all four faces draw the same Optik
-   * outlines and the prop selects only WHICH FILE the browser fetches.
+   * It used to select which SHIELDED file to draw the outlines from, back when
+   * this component rendered through a shielded face with the substitutions
+   * switched off. It was purely a bandwidth choice even then — all four faces
+   * draw the same Optik outlines — and the advice was to pin it to whatever
+   * the page's shielded blocks used so the browser could reuse a download.
    *
-   * Which makes it purely a bandwidth question, and the reason it is not
-   * auto-rotated the way `<Shield>`'s is: rotation would pull a second ~840 kB
-   * file onto a page that already had one, to render text identically. Pin it
-   * to whichever variant the page's shielded blocks use and the browser reuses
-   * a font it has already downloaded. Pinning `variant` on `<Shield>` — rather
-   * than letting it auto-rotate across alpha/beta/gamma — is what makes that
-   * possible at all.
+   * There is now one neutral cut and it is 35 KB, so there is nothing left to
+   * economise: whatever you pass, you get `optik-n`. An unbundled value still
+   * throws rather than being quietly accepted, because a typo'd variant name
+   * is a mistake worth hearing about even when the value goes unused.
    */
   variant?: ShieldVariant;
+
+  /**
+   * Render in the italic cut. Default: unset (the element inherits its
+   * `font-style`).
+   *
+   * You often do not need it. All six weights ship as real italics under the
+   * same family name, and this component takes arbitrary JSX, so a nested
+   * `<em>`, `<i>` or `<cite>` — exactly the markup a heading or a caption
+   * carries — resolves on its own. That is the difference from `<Shield>`,
+   * which accepts a plain string and therefore has no way to italicise a
+   * phrase at all. Use this prop for a whole block; use `<em>` for a word.
+   *
+   * Nothing is ever synthesised, so an italic here is a real drawn italic.
+   */
+  italic?: boolean;
 
   /**
    * Font weight: a bundled cut name (`"regular"` | `"medium"` | `"demibold"` |
@@ -143,11 +178,11 @@ export interface NonShieldProps {
   /**
    * style escape hatch — merges over the internal font scope.
    *
-   * It can therefore override `fontFeatureSettings`, and doing so re-enables
-   * the word substitutions on text that is not encoded, which renders decoys.
-   * There is no guard against it: this is the documented escape hatch, and a
-   * component that refused to be overridden here would also refuse every
-   * legitimate `font-feature-settings` an author might want.
+   * It can therefore override `fontFamily`, and pointing this component at a
+   * SHIELDED family is the one override that silently renders decoys: the
+   * neutral cut is the whole mechanism now, so replacing it removes it. There
+   * is no guard against that, for the usual reason — a component that refused
+   * to be overridden here would also refuse every legitimate override.
    */
   style?: CSSProperties;
 
@@ -201,7 +236,7 @@ export interface NonShieldProps {
  * element, and `<NonShield as={Link} href="/x">` is the mistake people make.
  */
 const NONSHIELD_PROPS = new Set([
-  "as", "variant", "weight", "lineHeight", "size", "className", "style", "children",
+  "as", "variant", "weight", "italic", "lineHeight", "size", "className", "style", "children",
 ]);
 
 /**
@@ -212,20 +247,17 @@ const NONSHIELD_PROPS = new Set([
  * page that should stay real — headings above all, which
  * `docs/integration.md` says must never be shielded.
  *
- * Read the note on this file's `NonShieldProps` before changing what it emits:
- * the shipped faces substitute words unless `ccmp` is explicitly disabled, so
- * the `font-feature-settings` below is load-bearing, not housekeeping.
+ * Read the header of this file before changing what it emits. The family name
+ * below is load-bearing, not housekeeping: it names the one shipped cut with
+ * no substitution lookups in it, and pointing this component at any other
+ * family renders decoys with nothing anywhere reporting a problem.
  *
  * @example
  *   <NonShield as="h2">Read the docs</NonShield>
  *   <NonShield as="p" weight="medium">Photograph by <em>Jane Roe</em></NonShield>
- *
- *   // Pinning both to one variant means one font file for the whole page.
- *   <NonShield as="h2" variant="alpha">The future of writing</NonShield>
- *   <Shield as="p" variant="alpha">{body}</Shield>
  */
 export function NonShield(props: NonShieldProps) {
-  const { as, variant, weight, lineHeight, size, className, style, children } = props;
+  const { as, variant, weight, italic, lineHeight, size, className, style, children } = props;
 
   const unknown = Object.keys(props).filter((k) => !NONSHIELD_PROPS.has(k));
   if (unknown.length > 0) {
@@ -248,38 +280,40 @@ export function NonShield(props: NonShieldProps) {
   // island.
   const Tag = (as ?? "div") as ElementType;
 
-  // Default to alpha rather than hashing the content the way <Shield> does.
-  // There is nothing to spread across mappings here — see the `variant` prop.
-  const v: ShieldVariant = variant ?? "alpha";
   const { camo, fontHost } = currentCamo();
-  if (!Object.prototype.hasOwnProperty.call(camo.family, v)) {
+  // `variant` no longer selects anything — see the prop's note. It is still
+  // VALIDATED, because a typo'd variant name means the author believed they
+  // were choosing something, and hearing "not a bundled face" is better than
+  // having the value ignored twice over.
+  if (variant !== undefined && !Object.prototype.hasOwnProperty.call(camo.family, variant)) {
     throw new Error(
-      `<NonShield variant="${String(v)}"> is not a bundled face. ` +
-        `Valid values: ${Object.keys(camo.family).map((k) => `"${k}"`).join(", ")}.`,
+      `<NonShield variant="${String(variant)}"> is not a bundled face. ` +
+        `Valid values: ${Object.keys(camo.family).map((k) => `"${k}"`).join(", ")}. ` +
+        `(The prop no longer selects a file: <NonShield> always renders the ` +
+        `neutral cut.)`,
     );
   }
 
   const fontWeight = weight === undefined ? undefined : resolveOptikWeight(weight);
-  const family = camo.family[v];
+  // THE LOAD-BEARING LINE. This is the one shipped family with no substitution
+  // lookups in it. Point this component at a shielded family instead and it
+  // renders "Read the docs" as "Reset the sellers", in every browser, with
+  // nothing anywhere reporting a problem. The long version — including why the
+  // `font-feature-settings: "ccmp" 0` that used to live here was not good
+  // enough — is in the header of this file.
+  const family = camo.neutralFamily;
 
   const finalStyle: CSSProperties = {
     fontFamily: `'${family}', system-ui, sans-serif`,
-    // THE LOAD-BEARING LINE. Turns off the word and digit substitutions that
-    // the shipped faces carry in the `ccmp` feature, so the reader sees the
-    // words that are actually in the DOM. Without it this component renders
-    // "Read the docs" as "Reset the sellers" and nothing anywhere reports a
-    // problem. The long version is in the header of this file.
-    //
-    // `font-variant-ligatures: none` is NOT a substitute and must not be
-    // swapped in for it: that property governs liga/clig/dlig/hlig, and the
-    // substitutions are wired into ccmp precisely because ccmp is not
-    // reachable that way (it is what makes the Word/Pages tier work at all,
-    // where an app's ligature setting is the user's to change).
-    fontFeatureSettings: '"ccmp" 0',
     // Same reason as <Shield>: never let a browser fake a cut of a licensed
-    // typeface. Every numeric weight already lands on a real bundled file.
+    // typeface. Every numeric weight already lands on a real bundled file, and
+    // every italic on a real drawn one.
     fontSynthesis: "none",
     ...(fontWeight !== undefined && { fontWeight }),
+    // Unset inherits, so a caption inside an italic aside stays italic.
+    // `italic={false}` pins upright against such an ancestor, so it has to
+    // emit `normal` rather than nothing.
+    ...(italic !== undefined && { fontStyle: italic ? "italic" : "normal" }),
     ...(lineHeight !== undefined && { lineHeight }),
     ...(size !== undefined && { fontSize: size }),
     ...style,
@@ -310,11 +344,13 @@ export function NonShield(props: NonShieldProps) {
   //      and would do it to headings, which are usually the last accurate text
   //      on a shielded page.
   //
-  //   2. ITS WEIGHTS MUST NOT BE SEEDED into a running guard. The guard fails
-  //      the whole family if any probed weight is missing. Seed a weight that
+  //   2. ITS FACES MUST NOT BE SEEDED into a running guard. The guard fails
+  //      the whole family if any probed face is missing. Seed a weight that
   //      only an unshielded heading uses and a missing `optik-a-800.woff2`
   //      would skeletonise every genuinely shielded block on the page — real
-  //      protected text blanked because a heading's cut was absent.
+  //      protected text blanked because a heading's cut was absent. Separate
+  //      families make this structural rather than a rule to remember: the
+  //      guard watches one family name, and the neutral cut is not it.
   //
   //   3. IT MUST NOT PROVOKE `checkDescendants()`, which warns whenever a
   //      matched element computes to a font-family that is not ours. Perfectly
@@ -330,7 +366,7 @@ export function NonShield(props: NonShieldProps) {
 
   return (
     <>
-      {emitStyle ? <style dangerouslySetInnerHTML={{ __html: fontFaceCss(v) }} /> : null}
+      {emitStyle ? <style dangerouslySetInnerHTML={{ __html: neutralFontFaceCss() }} /> : null}
       {/*
         One element, the children verbatim. No `aria-hidden`, no id, no data
         attribute, no sibling control, no sealed payload and no script: there is

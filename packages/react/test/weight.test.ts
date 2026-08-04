@@ -131,13 +131,19 @@ describe("numeric weights snap to the nearest real cut", () => {
     // The invariant that makes this refactor a no-op on screen: whatever the
     // browser would have picked from the bands is what the component now emits
     // outright. Parse the bands out of the real CSS rather than restating them.
+    // Upright faces only: both styles declare the same bands, and pairing
+    // every band with every filename across the whole sheet would line the
+    // upright bands up against the italic files.
     const css = faceFor(undefined);
-    const bands = [...css.matchAll(/font-weight:(\d+) (\d+)/g)].map(
-      (m) => [Number(m[1]), Number(m[2])] as const,
+    const upright = (css.match(/@font-face\{[^}]*\}/g) ?? []).filter((f) =>
+      f.includes("font-style:normal"),
     );
-    const files = [...css.matchAll(/optik-a(?:-(\d+))?\.woff2/g)].map((m) =>
-      m[1] ? Number(m[1]) : 400,
-    );
+    const bands = upright
+      .map((face) => /font-weight:(\d+) (\d+)/.exec(face) as RegExpExecArray)
+      .map((m) => [Number(m[1]), Number(m[2])] as const);
+    const files = upright
+      .map((face) => /optik-a(?:-(\d+))?\.woff2/.exec(face) as RegExpExecArray)
+      .map((m) => (m[1] ? Number(m[1]) : 400));
     expect(bands).toHaveLength(files.length);
 
     for (let w = 1; w <= 1000; w++) {
@@ -219,12 +225,55 @@ describe("weight never changes what ships", () => {
   });
 });
 
+describe("the italic prop", () => {
+  it("sets font-style only when given, in both directions", () => {
+    // Unset emits nothing, so a shielded block inside an italic pull quote
+    // follows it. `italic={false}` pins upright against such an ancestor and
+    // therefore has to emit `normal`.
+    expect(styleOf(Shield({ children: BODY })).fontStyle).toBeUndefined();
+    expect(styleOf(Shield({ children: BODY, italic: true })).fontStyle).toBe("italic");
+    expect(styleOf(Shield({ children: BODY, italic: false })).fontStyle).toBe("normal");
+  });
+
+  it("changes nothing about the encoding or the variant", () => {
+    // The cut is a rendering choice. Two blocks that differ only in style must
+    // ship the same ciphertext through the same dictionary.
+    const upright = Shield({ children: BODY, variant: "alpha" });
+    const slanted = Shield({ children: BODY, variant: "alpha", italic: true });
+    expect(props(shieldedBlock(slanted)).children).toBe(props(shieldedBlock(upright)).children);
+    expect(props(shieldedBlock(slanted))["data-typeface"]).toBe(
+      props(shieldedBlock(upright))["data-typeface"],
+    );
+  });
+
+  it("never lets the browser fake the oblique", () => {
+    // A synthesised italic distorts the word composites enough to expose that
+    // decoys are in play, which is why a real cut had to be drawn for each.
+    expect(styleOf(Shield({ children: BODY, italic: true })).fontSynthesis).toBe("none");
+  });
+});
+
 describe("@font-face weight bands", () => {
-  it("declares one face per registry weight, under one family", () => {
+  /** The declared faces of one style, in declaration order. */
+  const facesOfStyle = (css: string, style: "normal" | "italic") =>
+    (css.match(/@font-face\{[^}]*\}/g) ?? []).filter((f) =>
+      f.includes(`font-style:${style}`),
+    );
+
+  it("declares one face per registry weight IN BOTH STYLES, under one family", () => {
     const css = faceFor(undefined);
     const faces = css.match(/@font-face\{[^}]*\}/g) ?? [];
-    expect(faces).toHaveLength(Object.keys(OPTIK_WEIGHTS).length);
+    // Six cuts x two styles. Without the italic half, `italic` and any author
+    // rule saying `font-style: italic` render UPRIGHT and log nothing:
+    // font-synthesis is off, so with no declared italic face there is nothing
+    // for the browser to resolve to and nothing it is allowed to fake.
+    expect(faces).toHaveLength(Object.keys(OPTIK_WEIGHTS).length * 2);
+    expect(facesOfStyle(css, "normal")).toHaveLength(Object.keys(OPTIK_WEIGHTS).length);
+    expect(facesOfStyle(css, "italic")).toHaveLength(Object.keys(OPTIK_WEIGHTS).length);
     for (const face of faces) {
+      // ONE family for both styles. Declaring the italics under a family of
+      // their own would leave ordinary `font-style: italic` unable to reach
+      // them, which is the entire point of shipping them.
       expect(face).toContain("font-family:'Optik'");
       expect(face).toContain("font-display:block");
     }
@@ -233,46 +282,83 @@ describe("@font-face weight bands", () => {
   it("gives each cut its band and its file, under the naming rule", () => {
     const css = faceFor(undefined);
     // Regular keeps the historical bare filename; every other cut carries a
-    // numeric suffix.
+    // numeric suffix. Italics take an `-italic` infix BEFORE the weight.
     expect(css).toContain("optik-a.woff2') format('woff2');font-weight:1 449");
     expect(css).toContain("optik-a-500.woff2') format('woff2');font-weight:450 549");
     expect(css).toContain("optik-a-600.woff2') format('woff2');font-weight:550 649");
     expect(css).toContain("optik-a-700.woff2') format('woff2');font-weight:650 749");
     expect(css).toContain("optik-a-800.woff2') format('woff2');font-weight:750 849");
     expect(css).toContain("optik-a-900.woff2') format('woff2');font-weight:850 1000");
+    expect(css).toContain("optik-a-italic.woff2') format('woff2');font-weight:1 449");
+    expect(css).toContain("optik-a-italic-700.woff2') format('woff2');font-weight:650 749");
+    expect(css).toContain("optik-a-italic-900.woff2') format('woff2');font-weight:850 1000");
   });
 
-  it("bands tile 1..1000 with no gaps and no overlaps", () => {
+  it("bands tile 1..1000 with no gaps and no overlaps, per style", () => {
     // The property that makes weight synthesis impossible: EVERY numeric CSS
-    // weight matches exactly one declared face.
+    // weight matches exactly one declared face IN EACH STYLE. Checked per
+    // style rather than over the whole sheet, because the two styles overlap
+    // each other's bands by design — that is what makes them alternatives.
     const css = faceFor(undefined);
-    const bands = [...css.matchAll(/font-weight:(\d+) (\d+)/g)]
-      .map((m) => [Number(m[1]), Number(m[2])] as const)
-      .sort((a, b) => a[0] - b[0]);
-    expect(bands).toHaveLength(Object.keys(OPTIK_WEIGHTS).length);
-    expect(bands[0][0]).toBe(1);
-    expect(bands[bands.length - 1][1]).toBe(1000);
-    for (let i = 1; i < bands.length; i++) {
-      expect(bands[i][0]).toBe(bands[i - 1][1] + 1);
+    for (const style of ["normal", "italic"] as const) {
+      const bands = facesOfStyle(css, style)
+        .map((face) => /font-weight:(\d+) (\d+)/.exec(face) as RegExpExecArray)
+        .map((m) => [Number(m[1]), Number(m[2])] as const)
+        .sort((a, b) => a[0] - b[0]);
+      expect(bands).toHaveLength(Object.keys(OPTIK_WEIGHTS).length);
+      expect(bands[0][0]).toBe(1);
+      expect(bands[bands.length - 1][1]).toBe(1000);
+      for (let i = 1; i < bands.length; i++) {
+        expect(bands[i][0]).toBe(bands[i - 1][1] + 1);
+      }
     }
   });
 });
 
 describe("the package bundles a font file for every registered weight", () => {
-  // The neutral react-tier filenames, one per mapping variant (see README).
+  // The neutral react-tier filenames, one per mapping variant (see README),
+  // plus `optik-n` — the unshielded cut <NonShield> renders in.
   const VARIANT_PREFIXES = ["optik-a", "optik-b", "optik-c", "optik-m"];
   const fontsDir = resolve(dirname(fileURLToPath(import.meta.url)), "../fonts");
 
-  it("has every variant's file for every weight in OPTIK_WEIGHTS", () => {
+  it("has every variant's file for every weight in OPTIK_WEIGHTS, in both styles", () => {
     for (const [name, numeric] of Object.entries(OPTIK_WEIGHTS)) {
       for (const prefix of VARIANT_PREFIXES) {
-        // Regular keeps the bare filename; every other cut gets a -<weight>
-        // suffix (e.g. optik-a-700.woff2).
+        for (const style of ["", "-italic"]) {
+          // Regular keeps the bare filename; every other cut gets a -<weight>
+          // suffix (e.g. optik-a-700.woff2, optik-a-italic-700.woff2).
+          const file =
+            numeric === 400
+              ? `${prefix}${style}.woff2`
+              : `${prefix}${style}-${numeric}.woff2`;
+          const path = resolve(fontsDir, file);
+          expect(existsSync(path), `missing ${file} for weight "${name}"`).toBe(true);
+          expect(statSync(path).size).toBeGreaterThan(10_000);
+        }
+      }
+    }
+  });
+
+  it("has the neutral cut for every weight and style", () => {
+    // A missing neutral cut is the failure <NonShield> exists to prevent: the
+    // browser falls back, and on WebKit the fallback within the family is a
+    // SHIELDED face, which paints decoys on text that was never encoded.
+    //
+    // The size floor is much lower than the shielded one on purpose. These
+    // carry 526 real glyphs and none of the ~35,900 word composites, so ~35 kB
+    // is correct and a file the size of a shielded cut would mean the wrong
+    // font was copied into place.
+    for (const [name, numeric] of Object.entries(OPTIK_WEIGHTS)) {
+      for (const style of ["", "-italic"]) {
         const file =
-          numeric === 400 ? `${prefix}.woff2` : `${prefix}-${numeric}.woff2`;
+          numeric === 400 ? `optik-n${style}.woff2` : `optik-n${style}-${numeric}.woff2`;
         const path = resolve(fontsDir, file);
         expect(existsSync(path), `missing ${file} for weight "${name}"`).toBe(true);
-        expect(statSync(path).size).toBeGreaterThan(10_000);
+        const { size } = statSync(path);
+        expect(size, `${file} is suspiciously small`).toBeGreaterThan(10_000);
+        expect(size, `${file} looks like a shielded cut, not a neutral one`).toBeLessThan(
+          200_000,
+        );
       }
     }
   });

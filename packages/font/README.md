@@ -31,13 +31,13 @@ The **no-build / CDN** distribution of ShieldFont: the web fonts, a paste-in
 
 ```html
 <link rel="stylesheet"
-      href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.2/shieldfont.css">
+      href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.3/shieldfont.css">
 ```
 or in your CSS:
 ```css
-@import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.2/shieldfont.css");
+@import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.3/shieldfont.css");
 ```
-Always pin the version (`@0.3.2`), never `@latest`: a site that paste-installs a
+Always pin the version (`@0.3.3`), never `@latest`: a site that paste-installs a
 URL is pinned to whatever it pasted.
 
 ## Three steps
@@ -110,7 +110,7 @@ visitor.
 <!-- An authoring tool: paste text, copy the encoded result into your CMS. -->
 <script type="module">
   import { encode, alpha } from
-    "https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.2/shieldfont-encoder.js";
+    "https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.3/shieldfont-encoder.js";
   document.querySelector("#out").textContent = encode("Your text here", alpha);
 </script>
 ```
@@ -137,7 +137,7 @@ visitor.
 
 Every font file self-reports its generation in the name table
 (nameID 5 reads `Version 18.0`, the mapping generation the font was built
-against). This npm package is versioned separately: currently `0.3.2`.
+against). This npm package is versioned separately: currently `0.3.3`.
 
 ## License
 
