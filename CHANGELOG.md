@@ -8,7 +8,9 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.3.4] — 2026-08-04
 
-`@shieldfont/font` only. `core` and `react` are unchanged at `0.3.3`.
+The fix is in `@shieldfont/font`. `core` and `react` are byte-identical to
+`0.3.3` and are versioned along with it: the release workflow requires all
+three package versions to equal the tag, so the three move in lockstep.
 
 ### Fixed
 
