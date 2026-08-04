@@ -6,6 +6,23 @@ follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.4] — 2026-08-04
+
+`@shieldfont/font` only. `core` and `react` are unchanged at `0.3.3`.
+
+### Fixed
+
+- **The CDN tier's shielded italics were built but never shipped.** 0.3.3 added
+  `optik-{a,b,c,m}-italic.woff2` to the package directory and forgot to list
+  them in `files` or declare them in `shieldfont.css`, so they were absent from
+  the tarball. The neutral italic shipped, the shielded ones did not — which
+  meant an `<em>` inside a `.tk9` block still rendered upright on a paste-in
+  install, the exact failure 0.3.3 set out to fix, surviving in the one tier
+  nobody re-tested. Both are now declared, under the same family name as their
+  uprights.
+
+---
+
 ## [0.3.3] — 2026-08-04
 
 ### Fixed

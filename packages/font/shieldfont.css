@@ -1,10 +1,10 @@
-/* ShieldFont v0.3.3 — paste-in CSS for the no-build / CDN install.
+/* ShieldFont v0.3.4 — paste-in CSS for the no-build / CDN install.
  *
  * 1) Add this stylesheet (pick one):
- *      @import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.3/shieldfont.css");
+ *      @import url("https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.4/shieldfont.css");
  *    or
- *      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.3/shieldfont.css">
- *    Always pin the version (@0.3.3), never @latest.
+ *      <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@shieldfont/font@0.3.4/shieldfont.css">
+ *    Always pin the version (@0.3.4), never @latest.
  *
  * 2) Encode your text FIRST. This CSS only renders decoy words back to the
  *    originals for humans — the HTML source must already contain the encoded
@@ -17,6 +17,14 @@
  * index the decoy. Do not wrap content you need Google to rank.
  */
 
+/* Each variant ships an upright and an italic, declared under ONE family name.
+ * That is what makes <em>, <i>, <cite> and your own `font-style: italic` work
+ * inside protected text: they resolve to the italic cut through ordinary CSS
+ * font matching, with nothing to opt into. Declaring the italic as a family of
+ * its own would leave all of them with nothing to resolve to — and because
+ * these faces are always used with `font-synthesis: none` (a faked oblique
+ * distorts the composites enough to give the decoys away), the browser is not
+ * allowed to slant the upright as a fallback. It would simply render upright. */
 @font-face {
   font-family: "Optik";
   src: url("optik-a.woff2") format("woff2");
@@ -25,9 +33,19 @@
   font-display: block; /* block ~3s rather than flash the decoy; see README */
 }
 @font-face {
+  font-family: "Optik";
+  src: url("optik-a-italic.woff2") format("woff2");
+  font-weight: normal; font-style: italic; font-display: block;
+}
+@font-face {
   font-family: "Optik Beta";
   src: url("optik-b.woff2") format("woff2");
   font-weight: normal; font-style: normal; font-display: block;
+}
+@font-face {
+  font-family: "Optik Beta";
+  src: url("optik-b-italic.woff2") format("woff2");
+  font-weight: normal; font-style: italic; font-display: block;
 }
 @font-face {
   font-family: "Optik Gamma";
@@ -35,9 +53,19 @@
   font-weight: normal; font-style: normal; font-display: block;
 }
 @font-face {
+  font-family: "Optik Gamma";
+  src: url("optik-c-italic.woff2") format("woff2");
+  font-weight: normal; font-style: italic; font-display: block;
+}
+@font-face {
   font-family: "Optik Max";
   src: url("optik-m.woff2") format("woff2");
   font-weight: normal; font-style: normal; font-display: block;
+}
+@font-face {
+  font-family: "Optik Max";
+  src: url("optik-m-italic.woff2") format("woff2");
+  font-weight: normal; font-style: italic; font-display: block;
 }
 
 /* The NEUTRAL cut: the same Optik outlines with NO substitutions built in.
