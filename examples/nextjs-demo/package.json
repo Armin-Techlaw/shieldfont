@@ -2,19 +2,21 @@
   "name": "shieldfont-nextjs-demo",
   "version": "0.0.1",
   "private": true,
-  "description": "Minimal Next.js App Router example using @shieldfont/react",
+  "description": "ShieldFont Studio: custom word mappings, live previews, and publishing exports",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "verify": "next build",
     "copy-fonts": "mkdir -p public/fonts && cp ../../packages/react/fonts/*.woff2 public/fonts/",
-    "predev": "npm run build-packages && npm run copy-fonts",
-    "prebuild": "npm run build-packages && npm run copy-fonts",
-    "build-packages": "npm --prefix ../.. run build"
+    "predev": "pnpm run build-packages && pnpm run copy-fonts",
+    "prebuild": "pnpm run build-packages && pnpm run copy-fonts",
+    "build-packages": "tsc -p ../../packages/core/tsconfig.json --typeRoots ./node_modules/@types && cd ../../packages/core && node ../../scripts/copy-mappings.mjs"
   },
   "dependencies": {
-    "@shieldfont/react": "file:../../packages/react",
+    "@shieldfont/core": "link:../../packages/core",
+    "jspdf": "^4.2.1",
+    "jszip": "^3.10.1",
     "next": "^15.0.0",
     "react": "^18.3.0",
     "react-dom": "^18.3.0"

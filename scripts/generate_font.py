@@ -43,7 +43,6 @@ import argparse
 import zipfile
 import io
 import hashlib
-import requests
 from pathlib import Path
 
 from fontTools.ttLib import TTFont
@@ -60,6 +59,11 @@ OUTPUT_DIR = PROJECT_DIR / "public" / "fonts"
 
 def download_font(url, cache_name):
     """Download a font from Google Fonts zip or direct URL."""
+    # Keep local/BYOF builds independent of the HTTP client. The Studio font
+    # workshop always supplies a local TTF, so requiring requests at import time
+    # made an otherwise-offline build fail before it even inspected the file.
+    import requests
+
     cache_path = FONT_CACHE_DIR / cache_name
     if cache_path.exists():
         print(f"[OK] Font already cached at {cache_path}")
@@ -1049,6 +1053,9 @@ def main():
                         "(nameID 16, then 1), so the input font's name carries through.")
     parser.add_argument("--prefix", help="Output file prefix → public/fonts/<prefix>.{ttf,woff2,css}. "
                         "OPTIONAL — when omitted, it is a slug of the (derived or given) family name.")
+    parser.add_argument("--output-dir", help="Directory for generated .ttf/.woff2/.css files. "
+                        "Defaults to public/fonts/. Intended for isolated authoring tools and CI; "
+                        "it does not change which mapping is embedded in the font.")
     parser.add_argument("--copyright", default="Modified as ShieldFont.", help="Copyright notice")
     parser.add_argument("--weight", type=int, choices=sorted(WEIGHT_SUBFAMILY),
                         help="Numeric weight of the SOURCE cut (400..900). VERIFIED against the "
@@ -1095,6 +1102,9 @@ def main():
     if args.mapping_path:
         global MAPPING_PATH
         MAPPING_PATH = Path(args.mapping_path)
+    if args.output_dir:
+        global OUTPUT_DIR
+        OUTPUT_DIR = Path(args.output_dir).resolve()
 
     print("=" * 60)
     print(f"ShieldFont Variant Generator: {args.name or '(name auto-derived from base font)'}")

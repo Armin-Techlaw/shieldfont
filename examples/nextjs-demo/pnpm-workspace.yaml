@@ -1,0 +1,9 @@
+onlyBuiltDependencies:
+  - core-js
+  - sharp
+
+confirmModulesPurge: false
+
+allowBuilds:
+  core-js: true
+  sharp: true

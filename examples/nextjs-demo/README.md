@@ -1,95 +1,77 @@
-# ShieldFont Next.js demo
+# ShieldFont Studio
 
-The smallest possible Next.js App Router page using `@shieldfont/react`.
+A local-first custom-mapping authoring workspace built on `@shieldfont/core`.
+
+## What it does
+
+- Create and keep multiple human-word ↔ system-word mapping sets.
+- Restore the workspace from browser storage on the next visit.
+- Preview the original and encoded views side by side.
+- Highlight every substitution and report mapping coverage.
+- Import/export mapping JSON and private project backups.
+- Attach a matching custom WOFF2 or TTF for a real font-rendered preview.
+- Build and download a matching installable desktop TTF from a licensed base
+  font without leaving the studio.
+- Export encoded TXT, Markdown, RTF, HTML snippets, CSS, mapping JSON, CSV,
+  standalone HTML, Word-ready DOCX, SVG, EPUB, a font-build ZIP, and a
+  shielded PDF.
+
+The PDF draws the human-readable page as an image and adds the encoded text as
+an invisible text layer. Text extraction therefore gets the decoy, while a
+reader sees the original. OCR and vision models can still read the visible
+page; this is friction, not a lock.
 
 ## Run it
 
 ```bash
 cd examples/nextjs-demo
-npm install
-npm run dev
-# Open http://localhost:3000
+pnpm install
+python3 -m venv .venv-font-builder
+.venv-font-builder/bin/pip install -r ../../requirements.txt
+pnpm dev
 ```
 
-`npm run dev` first builds the workspace packages (this demo depends on
-`packages/react` via `file:`, which npm symlinks, so its `dist/` has to exist)
-and then copies the `.woff2` files into `public/fonts/` — the location
-`<Shield>` requests by default. Both steps are wired to `predev`/`prebuild`, so
-there is nothing to remember. If the fonts were missing the page would not fail
-quietly: ShieldFont's own guard replaces every protected block with "Content
-unavailable", which is the failure working as designed.
+On Windows, activate or install into `.venv-font-builder` with its
+`Scripts\\python.exe` and `Scripts\\pip.exe` executables. You can instead point
+the app at another prepared Python interpreter with `SHIELDFONT_PYTHON`.
 
-To verify the encoded text actually reaches the browser, scrape the page:
+The predev/prebuild step compiles `@shieldfont/core` and copies the existing
+neutral Optik web font into `public/fonts/`.
 
-```bash
-curl -s http://localhost:3000 | grep -o 'data-typeface="[a-z]*"'
-```
+## Custom-font workflow
 
-The attribute is called `data-typeface`, not `data-shieldfont`: nothing in the
-served markup names the tool. To see the substitution itself, search the HTML
-for a phrase you know is on the page:
+1. Enter bidirectional pairs and some source text in the studio.
+2. Click **Build + download desktop TTF** and choose a licensed Regular `.ttf`
+   base font. The app runs `scripts/generate_font.py` locally and downloads the
+   matching ShieldFont TTF.
+3. The generated TTF is attached to the preview automatically.
+4. Confirm the rendered preview matches the human preview.
+5. Export HTML, Word-ready DOCX/RTF, SVG, EPUB, PDF, or the complete bundle.
 
-```bash
-curl -s http://localhost:3000 | grep -c "belongs to those who protect"   # → 0
-```
+## Microsoft Word
 
-Zero hits: the original sentence is not in the response. Open the same page in a
-browser and you read it normally, because the font draws the decoy words with
-the shapes of the originals.
+Word uses fonts installed in the operating system; there is no separate
+Word-only font installation step.
 
-## How it works
+1. On macOS, open the downloaded `.ttf` in Font Book and click **Install**. On
+   Windows, right-click the `.ttf` and choose **Install**, or add it through the
+   Windows Fonts settings/folder.
+2. Quit and reopen Word so it refreshes its font menu.
+3. Install the TTF before opening the studio's **Word-ready DOCX**. The DOCX
+   already contains the encoded text and selects the generated family by name.
 
-`app/page.tsx` imports `<Shield>` from `@shieldfont/react`. Each `<Shield>` is a
-React Server Component:
+Do not type plain English directly while the shielded family is selected. A
+ShieldFont font is paired with encoded text: compose in the studio, then export
+the DOCX or paste the encoded text into Word and choose the generated family.
 
-1. **In Node, during the server render** (or at build time for a static export),
-   `<Shield>` encodes its children — a plain string — with one of the bundled
-   dictionaries. Your original text never reaches the browser in readable form.
-   (It does reach it **encrypted**: `screenReader` is on by default, so each
-   block also ships its real words sealed behind a time-lock puzzle. That is
-   ciphertext, which is why the `grep` above still returns zero.)
-2. The encoded text is what gets serialized into the HTML response.
-3. The component injects an `@font-face` `<style>` block plus a small font-load
-   guard script.
-4. The rendered element gets `data-typeface` and a `font-family` style scoped to
-   the variant.
+The mapping and font must always be built and deployed as a pair. The studio is
+an authoring tool: it is acceptable for the encoder to run in this private UI,
+but a production page must store and serve the already-encoded text. Never ship
+a browser-runtime encoder as the protection mechanism.
 
-Which dictionary? By default `<Shield>` **rotates** across `alpha`, `beta` and
-`gamma` by content hash, so no single mapping covers the whole page. Pass
-`variant="alpha"` to pin one. (`maxhide` is opt-in only and never auto-selected.)
+## Limits
 
-The browser fetches the font from `public/fonts/`, applies the GSUB ligatures,
-and the visible text becomes the original meaning. A scraper reading the HTML
-gets the decoy — and, beside it, a sealed payload it would have to grind
-sequentially, per block, to recover anything.
-
-You will also see a box drawn around the protected paragraph, with a sentence
-and a Copy and an Uncover button. That is the `wrapper`, on by default since
-0.3.2 and part of what a bare `<Shield>` renders; `wrapper={false}` removes it
-and keeps the same control clipped off-screen.
-
-## Accessibility
-
-Every `<Shield>` here is bare — no `a11y` prop at all — because the accessible
-path is on by default and the demo should show what the docs describe. (It used
-to pass `a11y={{ mode: "text", seconds: 5 }}`, left over from when the path was
-opt-in, which quietly demonstrated a 5-second puzzle against a real default of
-14.) The encoded block is `aria-hidden`, so without an alternative a
-screen-reader user gets nothing at all — a WCAG 2.2 SC 1.3.1 failure. The
-default mode seals the real words into the page and lets the reader's own
-browser grind out the key; there is no URL for a scraper to follow. Read
-[`docs/plain-text-mode.md`](../../docs/plain-text-mode.md) for the real limits,
-including which screen readers are actually verified.
-
-## What stays plain
-
-Only elements wrapped in `<Shield>` are protected. The `<h1>` heading and the
-meta `<p>` underneath stay in your normal page font.
-
-The `<h2>` uses **`<NonShield>`**: real, indexable, readable words rendered in
-the same Optik face as the shielded paragraph. Do not reach for
-`font-family: Optik` to get that effect — the shipped `optik-*.woff2` are
-*shielded* builds whose substitutions ride the `ccmp` feature, and the
-dictionary is an involution, so plain English through one renders the **decoy**
-with nothing anywhere reporting a problem. `<NonShield>` sets
-`font-feature-settings: "ccmp" 0` to switch that off.
+ShieldFont raises the cost of casual scraping and makes a consent/provenance
+statement. It is not un-scrapeable. Protected content also breaks normal SEO,
+copy/paste, find-in-page, translation, Reader Mode, and WCAG 2.2 SC 1.3.1. Do
+not use it on content covered by an accessibility conformance claim or law.
