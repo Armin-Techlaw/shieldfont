@@ -11,6 +11,9 @@ importers:
       '@shieldfont/core':
         specifier: link:../../packages/core
         version: link:../../packages/core
+      html2canvas:
+        specifier: ^1.4.1
+        version: 1.4.1
       jspdf:
         specifier: ^4.2.1
         version: 4.2.1
@@ -634,8 +637,7 @@ snapshots:
   '@types/trusted-types@2.0.7':
     optional: true
 
-  base64-arraybuffer@1.0.2:
-    optional: true
+  base64-arraybuffer@1.0.2: {}
 
   caniuse-lite@1.0.30001809: {}
 
@@ -661,7 +663,6 @@ snapshots:
   css-line-break@2.1.0:
     dependencies:
       utrie: 1.0.2
-    optional: true
 
   csstype@3.2.3: {}
 
@@ -685,7 +686,6 @@ snapshots:
     dependencies:
       css-line-break: 2.1.0
       text-segmentation: 1.0.3
-    optional: true
 
   immediate@3.0.6: {}
 
@@ -859,7 +859,6 @@ snapshots:
   text-segmentation@1.0.3:
     dependencies:
       utrie: 1.0.2
-    optional: true
 
   tslib@2.8.1: {}
 
@@ -872,4 +871,3 @@ snapshots:
   utrie@1.0.2:
     dependencies:
       base64-arraybuffer: 1.0.2
-    optional: true

@@ -49,6 +49,7 @@ function validateMapping(raw: string): Record<string, string> {
   if (entries.length > MAX_MAPPING_ENTRIES) throw new Error("This mapping is too large for the desktop builder.");
 
   const mapping: Record<string, string> = {};
+  const targets = new Set<string>();
   for (const [sourceRaw, targetRaw] of entries) {
     if (typeof targetRaw !== "string") throw new Error("Every mapping value must be a word.");
     const source = sourceRaw.trim().toLocaleLowerCase("en");
@@ -56,9 +57,8 @@ function validateMapping(raw: string): Record<string, string> {
     if (!SAFE_WORD.test(source) || !SAFE_WORD.test(target) || source === target) {
       throw new Error("Every mapping entry must pair two different letter-only words.");
     }
-    if ((parsed as Record<string, unknown>)[target] !== source) {
-      throw new Error(`The pair ${source} ↔ ${target} is not bidirectional.`);
-    }
+    if (targets.has(target)) throw new Error(`The hidden word ${target} is used by more than one source word.`);
+    targets.add(target);
     mapping[source] = target;
   }
   return mapping;

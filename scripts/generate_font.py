@@ -1300,7 +1300,11 @@ def main():
             src_g = get_glyph_name_for_char(font, original_word)
             tgt_g = get_glyph_name_for_char(font, encoded_word)
             if src_g and tgt_g:
-                single_subst_map[src_g] = tgt_g
+                # The browser receives the encoded target and must draw the
+                # original source. Bidirectional dictionaries hid this direction
+                # for years because they contain both assignments; one-way Studio
+                # pairs make it load-bearing.
+                single_subst_map[tgt_g] = src_g
                 success_count += 1
             else:
                 skip_count += 1

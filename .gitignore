@@ -11,11 +11,13 @@ env/
 
 # Node (only here for the npm scripts convenience)
 node_modules/
+.pnpm-store/
 package-lock.json
 packages/*/dist/
 packages/*/node_modules/
 examples/*/node_modules/
 examples/*/.next/
+examples/*/.next-dev/
 examples/*/dist/
 site/.next/
 site/node_modules/

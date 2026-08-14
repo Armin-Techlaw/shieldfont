@@ -1,7 +1,7 @@
 "use client";
 
-import { encodeSegments, type Segment } from "@shieldfont/core";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { RichComposer } from "./RichComposer";
 import {
   type AttachedFont,
   type ExportContext,
@@ -24,19 +24,39 @@ import {
   mappingJson,
   slugify,
 } from "./exporters";
+import {
+  DEFAULT_DOCUMENT_SETTINGS,
+  type DocumentSettings,
+  legacyDocumentSnapshot,
+  normalizeDocumentSettings,
+  plainTextFromRichHtml,
+  protectMappedWords,
+  richDocumentSnapshot,
+  sanitizeRichHtml,
+  sourceToRichHtml,
+} from "./richText";
 
 type StudioProject = {
   id: string;
   name: string;
   source: string;
+  richHtml?: string;
+  documentSettings?: DocumentSettings;
   pairs: MappingPair[];
   updatedAt: string;
 };
 
 type StoredWorkspace = {
-  version: 1;
+  version: 1 | 2 | 3;
   currentId: string;
   projects: StudioProject[];
+};
+
+type PairDraft = Pick<MappingPair, "human" | "system" | "twoWay">;
+
+type AddPairsResult = {
+  ok: boolean;
+  message: string;
 };
 
 const STORAGE_KEY = "shieldfont-studio-workspace-v1";
@@ -46,6 +66,8 @@ const STARTER_PROJECT: StudioProject = {
   id: "starter-mapping",
   name: "Editorial garden",
   source: "The author will protect every piece of writing. The future belongs to readers.",
+  richHtml: '<h1>A document you can shape</h1><p>The <span data-shield="true">author</span> will <span data-shield="true">protect</span> every piece of <span data-shield="true">writing</span>. The <span data-shield="true">future</span> belongs to readers.</p><p><strong>Format normally.</strong> Select only the words you want to mask, then export to Word or PDF.</p>',
+  documentSettings: DEFAULT_DOCUMENT_SETTINGS,
   pairs: [
     { id: "pair-author", human: "author", system: "gardener" },
     { id: "pair-protect", human: "protect", system: "disturb" },
@@ -89,13 +111,13 @@ function validatePairs(pairs: MappingPair[]) {
     }
     claimed.set(human, pair.id);
     claimed.set(system, pair.id);
-    validPairs.push({ ...pair, human, system });
+    validPairs.push({ ...pair, human, system, twoWay: Boolean(pair.twoWay) });
   }
 
   const mapping: Record<string, string> = {};
   for (const pair of validPairs) {
     mapping[pair.human] = pair.system;
-    mapping[pair.system] = pair.human;
+    if (pair.twoWay) mapping[pair.system] = pair.human;
   }
   return { issues, validPairs, mapping };
 }
@@ -108,15 +130,13 @@ function pairsFromFlatMapping(value: Record<string, unknown>): MappingPair[] {
     const left = leftRaw.trim().toLocaleLowerCase("en");
     const right = rightRaw.trim().toLocaleLowerCase("en");
     if (!left || !right || left === right || seen.has(left) || seen.has(right)) continue;
-    pairs.push({ id: makeId("pair"), human: left, system: right });
+    const twoWay = typeof value[right] === "string"
+      && String(value[right]).trim().toLocaleLowerCase("en") === left;
+    pairs.push({ id: makeId("pair"), human: left, system: right, twoWay });
     seen.add(left);
     seen.add(right);
   }
   return pairs;
-}
-
-function countWords(segments: Segment[]): number {
-  return segments.filter((segment) => segment.kind === "word" || segment.kind === "digit").length;
 }
 
 function ExportTile({
@@ -160,18 +180,29 @@ export function MappingStudio() {
 
   const project = projects.find((candidate) => candidate.id === currentId) ?? projects[0] ?? STARTER_PROJECT;
   const { issues, validPairs, mapping } = useMemo(() => validatePairs(project.pairs), [project.pairs]);
-  const segments = useMemo(() => encodeSegments(project.source, mapping), [project.source, mapping]);
-  const encoded = useMemo(() => segments.map((segment) => segment.encoded).join(""), [segments]);
-  const swapped = segments.filter((segment) => segment.swapped).length;
-  const tokenCount = countWords(segments);
+  const documentSettings = normalizeDocumentSettings(project.documentSettings);
+  const richHtml = useMemo(() => {
+    if (project.richHtml) return sanitizeRichHtml(project.richHtml);
+    const legacyHtml = sourceToRichHtml(project.source);
+    return workspaceReady ? protectMappedWords(legacyHtml, mapping) : legacyHtml;
+  }, [mapping, project.richHtml, project.source, workspaceReady]);
+  const snapshot = useMemo(
+    () => workspaceReady
+      ? richDocumentSnapshot(richHtml, mapping)
+      : legacyDocumentSnapshot(plainTextFromRichHtml(richHtml), mapping),
+    [mapping, richHtml, workspaceReady],
+  );
+  const { source, encoded, encodedHtml, swapped, protectedTokenCount } = snapshot;
   const issueCount = Object.keys(issues).length;
-  const canExport = Boolean(project.source.trim()) && issueCount === 0 && validPairs.length > 0;
+  const canExport = Boolean(source.trim()) && issueCount === 0 && validPairs.length > 0;
 
   const exportContext: ExportContext = {
     projectId: project.id,
     name: project.name.trim() || "Untitled mapping",
-    source: project.source,
+    source,
     encoded,
+    richHtml,
+    documentSettings,
     pairs: validPairs,
     mapping,
     font,
@@ -182,9 +213,21 @@ export function MappingStudio() {
       const saved = window.localStorage.getItem(STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved) as StoredWorkspace;
-        if (parsed.version === 1 && Array.isArray(parsed.projects) && parsed.projects.length) {
-          setProjects(parsed.projects);
-          setCurrentId(parsed.projects.some((item) => item.id === parsed.currentId) ? parsed.currentId : parsed.projects[0]!.id);
+        if ((parsed.version === 1 || parsed.version === 2 || parsed.version === 3) && Array.isArray(parsed.projects) && parsed.projects.length) {
+          const migrated = parsed.projects.map((savedProject) => {
+            const pairs = savedProject.pairs.map((pair) => ({
+              ...pair,
+              twoWay: parsed.version < 3 ? true : Boolean(pair.twoWay),
+            }));
+            return {
+              ...savedProject,
+              pairs,
+              richHtml: savedProject.richHtml ?? protectMappedWords(sourceToRichHtml(savedProject.source), validatePairs(pairs).mapping),
+              documentSettings: normalizeDocumentSettings(savedProject.documentSettings),
+            };
+          });
+          setProjects(migrated);
+          setCurrentId(migrated.some((item) => item.id === parsed.currentId) ? parsed.currentId : migrated[0]!.id);
         }
       }
     } catch {
@@ -196,8 +239,15 @@ export function MappingStudio() {
 
   useEffect(() => {
     if (!workspaceReady) return;
-    const workspace: StoredWorkspace = { version: 1, currentId, projects };
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
+    const timer = window.setTimeout(() => {
+      try {
+        const workspace: StoredWorkspace = { version: 3, currentId, projects };
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(workspace));
+      } catch {
+        setNotice("This document is too large for browser storage. Export a private project backup before leaving.");
+      }
+    }, 250);
+    return () => window.clearTimeout(timer);
   }, [currentId, projects, workspaceReady]);
 
   useEffect(() => {
@@ -225,14 +275,78 @@ export function MappingStudio() {
     );
   }
 
-  function updatePair(id: string, field: "human" | "system", value: string) {
+  function updatePair(id: string, field: "human" | "system" | "twoWay", value: string | boolean) {
     updateProject({
       pairs: project.pairs.map((pair) => (pair.id === id ? { ...pair, [field]: value } : pair)),
     });
   }
 
   function addPair() {
-    updateProject({ pairs: [...project.pairs, { id: makeId("pair"), human: "", system: "" }] });
+    updateProject({ pairs: [...project.pairs, { id: makeId("pair"), human: "", system: "", twoWay: false }] });
+  }
+
+  function addPairsFromSelection(drafts: PairDraft[]): AddPairsResult {
+    const nextPairs = project.pairs.map((pair) => ({ ...pair }));
+    let added = 0;
+    let upgraded = 0;
+
+    for (const draft of drafts) {
+      const human = draft.human.trim().toLocaleLowerCase("en");
+      const system = draft.system.trim().toLocaleLowerCase("en");
+      if (!WORD_PATTERN.test(human) || !WORD_PATTERN.test(system) || human === system) {
+        return { ok: false, message: "Each changed selection word needs one different letter-only hidden word." };
+      }
+
+      const same = nextPairs.find((pair) =>
+        pair.human.trim().toLocaleLowerCase("en") === human
+        && pair.system.trim().toLocaleLowerCase("en") === system,
+      );
+      if (same) {
+        if (draft.twoWay && !same.twoWay) {
+          same.twoWay = true;
+          upgraded += 1;
+        }
+        continue;
+      }
+
+      const reverse = nextPairs.find((pair) =>
+        pair.human.trim().toLocaleLowerCase("en") === system
+        && pair.system.trim().toLocaleLowerCase("en") === human,
+      );
+      if (reverse && draft.twoWay) {
+        if (!reverse.twoWay) {
+          reverse.twoWay = true;
+          upgraded += 1;
+        }
+        continue;
+      }
+      if (reverse) {
+        return { ok: false, message: `“${system}” → “${human}” already exists. Make that pair two-way to use it in reverse.` };
+      }
+
+      const owner = nextPairs.find((pair) => {
+        const left = pair.human.trim().toLocaleLowerCase("en");
+        const right = pair.system.trim().toLocaleLowerCase("en");
+        return left === human || right === human || left === system || right === system;
+      });
+      if (owner) {
+        return { ok: false, message: `“${human}” or “${system}” already belongs to another pair.` };
+      }
+
+      nextPairs.push({ id: makeId("pair"), human, system, twoWay: Boolean(draft.twoWay) });
+      added += 1;
+    }
+
+    const result = validatePairs(nextPairs);
+    if (Object.keys(result.issues).length) {
+      return { ok: false, message: "Those hidden words conflict with an existing pair." };
+    }
+    updateProject({ pairs: nextPairs });
+    const changes = [
+      added ? `${added} pair${added === 1 ? "" : "s"} added` : "",
+      upgraded ? `${upgraded} made two-way` : "",
+    ].filter(Boolean).join("; ");
+    return { ok: true, message: changes || "Existing word pairs reused" };
   }
 
   function removePair(id: string) {
@@ -244,7 +358,9 @@ export function MappingStudio() {
       id: makeId("mapping"),
       name: `Custom mapping ${projects.length + 1}`,
       source: "",
-      pairs: [{ id: makeId("pair"), human: "", system: "" }],
+      richHtml: "<p><br></p>",
+      documentSettings: DEFAULT_DOCUMENT_SETTINGS,
+      pairs: [{ id: makeId("pair"), human: "", system: "", twoWay: false }],
       updatedAt: new Date().toISOString(),
     };
     setProjects((existing) => [...existing, next]);
@@ -285,14 +401,24 @@ export function MappingStudio() {
       const parsed = JSON.parse(await file.text()) as Record<string, unknown>;
       let next: StudioProject;
       if (parsed.kind === "shieldfont-studio-project" && Array.isArray(parsed.pairs)) {
+        const projectVersion = typeof parsed.version === "number" ? parsed.version : 2;
         next = {
           id: makeId("mapping"),
           name: typeof parsed.name === "string" ? `${parsed.name} imported` : "Imported mapping",
           source: typeof parsed.source === "string" ? parsed.source : "",
+          richHtml: typeof parsed.richHtml === "string"
+            ? sanitizeRichHtml(parsed.richHtml)
+            : sourceToRichHtml(typeof parsed.source === "string" ? parsed.source : ""),
+          documentSettings: normalizeDocumentSettings(
+            parsed.documentSettings && typeof parsed.documentSettings === "object"
+              ? parsed.documentSettings as Partial<DocumentSettings>
+              : undefined,
+          ),
           pairs: (parsed.pairs as Array<Partial<MappingPair>>).map((pair) => ({
             id: makeId("pair"),
             human: typeof pair.human === "string" ? pair.human : "",
             system: typeof pair.system === "string" ? pair.system : "",
+            twoWay: projectVersion < 3 ? true : Boolean(pair.twoWay),
           })),
           updatedAt: new Date().toISOString(),
         };
@@ -304,6 +430,8 @@ export function MappingStudio() {
           id: makeId("mapping"),
           name: typeof meta?.variant === "string" ? `${meta.variant} imported` : "Imported mapping",
           source: "",
+          richHtml: "<p><br></p>",
+          documentSettings: DEFAULT_DOCUMENT_SETTINGS,
           pairs,
           updatedAt: new Date().toISOString(),
         };
@@ -473,8 +601,8 @@ export function MappingStudio() {
           <h1>Decide exactly what<br />the system reads.</h1>
         </div>
         <div className="intro__copy">
-          <p>Pair each human word with a system word. The mapping works in both directions and updates every preview instantly.</p>
-          <p className="intro__note"><strong>Authoring tool only.</strong> Publish the encoded output, never a browser-runtime encoder.</p>
+          <p>Write and format a complete document, then mark only the words that should be masked. Word and PDF exports preserve the human-facing layout.</p>
+          <p className="intro__note"><strong>Private authoring tool.</strong> The Studio keeps the editable original on this device; exported masked spans carry the encoded text.</p>
         </div>
       </section>
 
@@ -513,7 +641,7 @@ export function MappingStudio() {
             </div>
             <span className="count-pill">{validPairs.length}</span>
           </div>
-          <p className="panel__help">One word per side. Each pair is automatically reversible so the encoder and font can use the same dictionary.</p>
+          <p className="panel__help">Pairs run from human text to hidden text by default. Use the arrow on a row when that pair should also work in reverse.</p>
 
           <div className="pair-labels" aria-hidden="true">
             <span>Human sees</span><span>System sees</span><span />
@@ -531,7 +659,16 @@ export function MappingStudio() {
                     onChange={(event) => updatePair(pair.id, "human", event.target.value)}
                   />
                 </label>
-                <span className="pair-arrow" aria-hidden="true">↔</span>
+                <button
+                  className="pair-direction"
+                  type="button"
+                  aria-label={`${pair.twoWay ? "Two-way" : "One-way"} word pair ${index + 1}. Click to make it ${pair.twoWay ? "one-way" : "two-way"}.`}
+                  aria-pressed={Boolean(pair.twoWay)}
+                  title={pair.twoWay ? "Two-way: click to make one-way" : "One-way: click to make two-way"}
+                  onClick={() => updatePair(pair.id, "twoWay", !pair.twoWay)}
+                >
+                  {pair.twoWay ? "↔" : "→"}
+                </button>
                 <label>
                   <span className="visually-hidden">System word {index + 1}</span>
                   <input
@@ -542,7 +679,7 @@ export function MappingStudio() {
                     onChange={(event) => updatePair(pair.id, "system", event.target.value)}
                   />
                 </label>
-                <button type="button" aria-label={`Remove word pair ${index + 1}`} onClick={() => removePair(pair.id)}>×</button>
+                <button className="pair-remove" type="button" aria-label={`Remove word pair ${index + 1}`} onClick={() => removePair(pair.id)}>×</button>
                 {issues[pair.id] ? <small>{issues[pair.id]}</small> : null}
               </div>
             ))}
@@ -615,11 +752,11 @@ export function MappingStudio() {
           <div className="word-guide">
             <p className="step">Microsoft Word</p>
             <ol>
-              <li>Build and download the desktop <strong>.ttf</strong>.</li>
-              <li>Install it with Font Book on Mac or Install/Windows Fonts on Windows.</li>
-              <li>Export the Word-ready DOCX, then reopen Word.</li>
+              <li>Finish formatting and masking in the Studio.</li>
+              <li>Build the desktop <strong>.ttf</strong> and install it with Font Book or Windows Fonts.</li>
+              <li>Export the DOCX and open it in Word; masked runs already use the installed face.</li>
             </ol>
-            <p>Do not type plain English directly in the shielded face. Paste or export the encoded text; the font makes that encoded layer look original.</p>
+            <p>Edit the human document here—not in the shielded face inside Word. Unmasked text stays ordinary; masked runs contain the encoded text and render through the custom font.</p>
           </div>
         </aside>
 
@@ -627,22 +764,24 @@ export function MappingStudio() {
           <div className="panel__heading">
             <div>
               <p className="step">02 / Compose</p>
-              <h2>Original text</h2>
+              <h2>Document editor</h2>
             </div>
-            <span className="character-count">{project.source.length.toLocaleString()} chars</span>
+            <span className="character-count">{source.length.toLocaleString()} chars</span>
           </div>
-          <label className="composer-label">
-            <span className="visually-hidden">Original text</span>
-            <textarea
-              value={project.source}
-              spellCheck="true"
-              placeholder="Write or paste the original text here…"
-              onChange={(event) => updateProject({ source: event.target.value })}
-            />
-          </label>
+          <p className="panel__help composer-help">Select one or more words, right-click, and enter what the hidden layer should read. The Studio adds the changed pairs and masks only that selection.</p>
+          <RichComposer
+            documentId={project.id}
+            html={richHtml}
+            settings={documentSettings}
+            mapping={mapping}
+            onAddPairs={addPairsFromSelection}
+            onChange={(nextHtml, nextSource) => updateProject({ richHtml: nextHtml, source: nextSource })}
+            onSettingsChange={(nextSettings) => updateProject({ documentSettings: nextSettings })}
+            onNotice={setNotice}
+          />
           <div className="composer-footer">
-            <p>The original stays in this local workspace. Production exports use the encoded version.</p>
-            <button type="button" onClick={() => copyValue(project.source, "Original copied.")}>Copy original</button>
+            <p>The editor shows the human document. A pale green underline marks content that will be encoded in export files.</p>
+            <button type="button" onClick={() => copyValue(source, "Original copied.")}>Copy original</button>
           </div>
         </section>
 
@@ -652,34 +791,30 @@ export function MappingStudio() {
               <p className="step">03 / Compare</p>
               <h2>Live result</h2>
             </div>
-            <span className={`preview-status ${font ? "preview-status--live" : ""}`}>{font ? "Font rendering" : "Source preview"}</span>
+            <span className={`preview-status ${font ? "preview-status--live" : ""}`}>{font ? "Font rendering" : "Layout preview"}</span>
           </div>
 
           <article className="view-card view-card--human">
-            <header><span>Human sees</span><small>{font ? "Encoded text through attached font" : "Original text preview"}</small></header>
+            <header><span>Human sees</span><small>{font ? "Masked spans through attached font" : "Original formatted document"}</small></header>
             <div
               className="preview-copy preview-copy--human"
-              style={font ? { fontFamily: `"${font.familyName}"` } : undefined}
-            >
-              {font ? encoded : project.source || "Your human-readable result appears here."}
-            </div>
+              style={font ? ({ "--shield-family": `"${font.familyName}"` } as CSSProperties) : undefined}
+              dangerouslySetInnerHTML={{ __html: source ? (font ? encodedHtml : richHtml) : "<p>Your human-readable result appears here.</p>" }}
+            />
           </article>
 
           <article className="view-card view-card--system">
             <header><span>System sees</span><small>Raw encoded text</small></header>
-            <div className="preview-copy preview-copy--system">
-              {project.source ? segments.map((segment, index) => (
-                segment.swapped
-                  ? <mark key={`${index}-${segment.original}`} title={`From: ${segment.original}`}>{segment.encoded}</mark>
-                  : <span key={`${index}-${segment.original}`}>{segment.encoded}</span>
-              )) : "The encoded result appears here."}
-            </div>
+            <div
+              className="preview-copy preview-copy--system"
+              dangerouslySetInnerHTML={{ __html: source ? encodedHtml : "<p>The encoded result appears here.</p>" }}
+            />
             <button className="copy-system" type="button" onClick={() => copyValue(encoded, "Encoded text copied.")}>Copy encoded text</button>
           </article>
 
           <div className="stats-row">
             <div><strong>{swapped}</strong><span>tokens changed</span></div>
-            <div><strong>{tokenCount ? Math.round((swapped / tokenCount) * 100) : 0}%</strong><span>coverage</span></div>
+            <div><strong>{protectedTokenCount ? Math.round((swapped / protectedTokenCount) * 100) : 0}%</strong><span>masked coverage</span></div>
             <div><strong>{issueCount}</strong><span>pair issues</span></div>
           </div>
         </section>
@@ -687,8 +822,8 @@ export function MappingStudio() {
 
       <section className="workflow-note">
         <div className="workflow-note__number">04</div>
-        <div><p className="eyebrow">Publish safely</p><h2>Export the encoded layer, then pair it with the exact font.</h2></div>
-        <p>The mapping and original are private working files. The font and encoded content are the publishable pair. A downloadable font can still be inverted, so this raises scraping cost rather than making content un-scrapeable.</p>
+        <div><p className="eyebrow">Export the document</p><h2>Keep the formatting, encode only the marked words.</h2></div>
+        <p>DOCX preserves editable text and formatting; its masked runs need the installed font. PDF preserves the human view as a raster layer with encoded selectable text beneath it. OCR or font inspection can still recover meaning, so this raises scraping cost rather than making content un-scrapeable.</p>
         <button className="button button--lime" type="button" onClick={() => setExportOpen(true)}>Open export centre</button>
       </section>
 
@@ -715,8 +850,8 @@ export function MappingStudio() {
               <h3>Desktop and Microsoft Word</h3>
               <div className="export-grid">
                 <ExportTile title="Installable desktop TTF" badge="Font Book" detail="Download the matching font for macOS Font Book or Windows Fonts." disabled={!canExport || font?.extension !== "ttf" || Boolean(busyExport)} onClick={() => void runExport("Desktop font", () => exportDesktopFont(exportContext))} />
-                <ExportTile title="Word-ready DOCX" badge="Recommended" detail="Encoded text with the installed ShieldFont already selected by name." disabled={!canExport || font?.extension !== "ttf" || !font.desktopFamilyName || Boolean(busyExport)} onClick={() => void runExport("Word document", () => exportWordDocx(exportContext))} />
-                <ExportTile title="Word-ready RTF" detail="Lighter encoded document for Word and other desktop editors." disabled={!canExport || font?.extension !== "ttf" || !font.desktopFamilyName} onClick={() => void runExport("RTF", () => exportRtf(exportContext))} />
+                <ExportTile title="Formatted Word DOCX" badge="Recommended" detail="Editable headings, styles, lists, tables, images, page setup, and masked runs." disabled={!canExport || font?.extension !== "ttf" || !font.desktopFamilyName || Boolean(busyExport)} onClick={() => void runExport("Word document", () => exportWordDocx(exportContext))} />
+                <ExportTile title="Plain Word RTF" detail="Compatibility fallback with encoded plain text; use DOCX to preserve formatting." disabled={!canExport || font?.extension !== "ttf" || !font.desktopFamilyName} onClick={() => void runExport("RTF", () => exportRtf(exportContext))} />
                 <ExportTile title="Font build kit" badge="ZIP" detail="Mapping, offline build recipe, backup, font, and publish files." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Font kit", () => exportFontKit(exportContext))} />
               </div>
             </div>
@@ -724,7 +859,7 @@ export function MappingStudio() {
             <div className="export-group">
               <h3>Publish</h3>
               <div className="export-grid">
-                <ExportTile title="Shielded PDF" badge="Direct" detail="Human-visible image layer with encoded machine-readable text." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("PDF", () => exportProtectedPdf(exportContext))} />
+                <ExportTile title="Formatted PDF" badge="Direct" detail="Human-visible formatted pages with encoded selectable text beneath them." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("PDF", () => exportProtectedPdf(exportContext))} />
                 <ExportTile title="Standalone HTML" badge="Font inside" detail="One portable file containing encoded text and the matching font." disabled={!canExport || !font || Boolean(busyExport)} onClick={() => void runExport("HTML", () => exportHtml(exportContext))} />
                 <ExportTile title="EPUB" detail="Encoded ebook with the matching font embedded." disabled={!canExport || !font || Boolean(busyExport)} onClick={() => void runExport("EPUB", () => exportEpub(exportContext))} />
                 <ExportTile title="SVG" detail="Scalable encoded artwork rendered through the matching font." disabled={!canExport || !font || Boolean(busyExport)} onClick={() => void runExport("SVG", () => exportSvg(exportContext))} />
@@ -744,7 +879,7 @@ export function MappingStudio() {
             <div className="export-group">
               <h3>Mapping and backup</h3>
               <div className="export-grid export-grid--compact">
-                <ExportTile title="Mapping JSON" detail="Bidirectional builder input" disabled={!canExport} onClick={() => void runExport("Mapping", () => exportMapping(exportContext))} />
+                <ExportTile title="Mapping JSON" detail="Directional builder input" disabled={!canExport} onClick={() => void runExport("Mapping", () => exportMapping(exportContext))} />
                 <ExportTile title="Pairs CSV" detail="Human and system columns" disabled={!canExport} onClick={() => void runExport("CSV", () => exportCsv(exportContext))} />
                 <ExportTile title="Private project" detail="Original, pairs, and settings" disabled={!canExport} onClick={() => void runExport("Project backup", () => exportProject(exportContext))} />
               </div>
