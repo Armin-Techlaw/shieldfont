@@ -15,6 +15,8 @@ export type MappingPair = {
 export type AttachedFont = {
   familyName: string;
   desktopFamilyName?: string;
+  buildKey?: string;
+  baseLabel?: string;
   fileName: string;
   extension: string;
   mimeType: string;
@@ -36,6 +38,8 @@ export type ExportContext = {
 
 type DocxRelationship = { id: string; type: string; target: string; mode?: "External" };
 type DocxMedia = { path: string; bytes: Uint8Array; extension: string; mime: string };
+export type WordDocxMode = "portable" | "upload-decoy";
+type HtmlFontMode = "embedded" | "external" | "local-only" | "none";
 type InlineStyle = {
   bold?: boolean;
   italic?: boolean;
@@ -121,20 +125,24 @@ function mappingCsv(context: ExportContext): string {
   ].join("\n");
 }
 
-function documentCss(context: ExportContext, embedded: boolean): string {
-  const shieldFamily = `ShieldFont ${context.name.trim() || "Custom"}`;
-  const source = context.font
-    ? embedded ? context.font.dataUrl : `./${context.font.fileName}`
-    : "./your-matching-font.woff2";
+function documentCss(context: ExportContext, fontMode: HtmlFontMode): string {
+  const shieldFamily = context.font?.desktopFamilyName ?? `ShieldFont ${context.name.trim() || "Custom"}`;
   const format = context.font?.extension === "ttf" ? "truetype" : "woff2";
+  const source = fontMode === "local-only"
+    ? `local(${JSON.stringify(shieldFamily)})`
+    : `url(${JSON.stringify(context.font
+      ? fontMode === "embedded" ? context.font.dataUrl : `./${context.font.fileName}`
+      : "./your-matching-font.woff2")}) format(${JSON.stringify(format)})`;
   const settings = context.documentSettings;
-  return `@font-face {
+  const fontFace = fontMode === "none" ? "" : `@font-face {
   font-family: ${JSON.stringify(shieldFamily)};
-  src: url(${JSON.stringify(source)}) format(${JSON.stringify(format)});
+  src: ${source};
   font-weight: 400;
   font-style: normal;
   font-display: block;
-}
+}\n`;
+  const renderedFamily = fontMode === "none" ? settings.bodyFont : shieldFamily;
+  return `${fontFace}
 
 .shield-document {
   font-family: ${JSON.stringify(settings.bodyFont)}, Arial, sans-serif;
@@ -143,7 +151,7 @@ function documentCss(context: ExportContext, embedded: boolean): string {
   overflow-wrap: anywhere;
 }
 .shield-document [data-shield-rendered="true"] {
-  font-family: ${JSON.stringify(shieldFamily)}, sans-serif;
+  font-family: ${JSON.stringify(renderedFamily)}, sans-serif;
   font-feature-settings: normal;
   font-synthesis: none;
 }
@@ -154,11 +162,17 @@ function documentCss(context: ExportContext, embedded: boolean): string {
 .shield-document [data-page-break="true"] { break-after: page; height: 0; overflow: hidden; }`;
 }
 
-function standaloneHtml(context: ExportContext, embeddedFont = true): string {
+function standaloneHtml(context: ExportContext, fontMode: HtmlFontMode = "embedded"): string {
   const title = escapeHtml(context.name || "ShieldFont export");
   const snapshot = richDocumentSnapshot(context.richHtml, context.mapping);
   const metrics = pageMetrics(context.documentSettings);
-  const fontNote = context.font ? "" : "\n    <!-- Add the exact matching font before publishing. -->";
+  const pageSize = context.documentSettings.pageSize === "a4" ? "A4" : "Letter";
+  const orientation = context.documentSettings.orientation === "portrait" ? "portrait" : "landscape";
+  const fontNote = fontMode === "local-only"
+    ? "\n    <!-- No font bytes are inside this upload copy. Install the matching TTF locally; never upload that TTF. -->"
+    : fontMode === "none"
+      ? "\n    <!-- Encoded-only copy: the marked words intentionally render as decoys. -->"
+      : context.font ? "" : "\n    <!-- Add the exact matching font before publishing. -->";
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -166,9 +180,15 @@ function standaloneHtml(context: ExportContext, embeddedFont = true): string {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${title}</title>
     <style>
-${documentCss(context, embeddedFont).split("\n").map((line) => `      ${line}`).join("\n")}
+${documentCss(context, fontMode).split("\n").map((line) => `      ${line}`).join("\n")}
       body { margin: 0; padding: 48px 20px; background: #e4e2dc; color: #151713; }
       main { box-sizing: border-box; width: min(100%, ${metrics.widthPx}px); min-height: ${metrics.heightPx}px; margin: 0 auto; padding: ${metrics.marginPx}px; background: white; }
+      @page { size: ${pageSize} ${orientation}; margin: 0; }
+      @media print {
+        html, body { background: white; }
+        body { padding: 0; }
+        main { width: 100%; min-height: 100vh; margin: 0; }
+      }
     </style>${fontNote}
   </head>
   <body>
@@ -201,11 +221,11 @@ export function exportMarkdown(context: ExportContext): void {
 }
 
 export function exportHtml(context: ExportContext): void {
-  downloadText(`${slugify(context.name)}.html`, standaloneHtml(context), "text/html;charset=utf-8");
+  downloadText(`${slugify(context.name)}-portable.html`, standaloneHtml(context), "text/html;charset=utf-8");
 }
 
 export function exportCss(context: ExportContext): void {
-  downloadText(`${slugify(context.name)}.css`, documentCss(context, false), "text/css;charset=utf-8");
+  downloadText(`${slugify(context.name)}.css`, documentCss(context, "external"), "text/css;charset=utf-8");
 }
 
 export function exportMapping(context: ExportContext): void {
@@ -305,8 +325,8 @@ function runProperties(style: InlineStyle, bodyFamily: string, shieldFamily: str
     `<w:rFonts w:ascii="${escapeXml(family)}" w:hAnsi="${escapeXml(family)}" w:eastAsia="${escapeXml(family)}"/>`,
     `<w:sz w:val="${size}"/><w:szCs w:val="${size}"/>`,
   ];
-  if (style.bold) parts.push("<w:b/><w:bCs/>");
-  if (style.italic) parts.push("<w:i/><w:iCs/>");
+  if (style.bold && !style.shielded) parts.push("<w:b/><w:bCs/>");
+  if (style.italic && !style.shielded) parts.push("<w:i/><w:iCs/>");
   if (style.underline) parts.push('<w:u w:val="single"/>');
   if (style.strike) parts.push("<w:strike/>");
   if (style.subscript) parts.push('<w:vertAlign w:val="subscript"/>');
@@ -451,108 +471,207 @@ function docxStylesXml(context: ExportContext): string {
 
 const NUMBERING_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0">${Array.from({ length: 9 }, (_, level) => `<w:lvl w:ilvl="${level}"><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/><w:lvlJc w:val="left"/><w:pPr><w:tabs><w:tab w:val="num" w:pos="${720 + level * 360}"/></w:tabs><w:ind w:left="${720 + level * 360}" w:hanging="360"/></w:pPr></w:lvl>`).join("")}</w:abstractNum><w:abstractNum w:abstractNumId="1">${Array.from({ length: 9 }, (_, level) => `<w:lvl w:ilvl="${level}"><w:start w:val="1"/><w:numFmt w:val="decimal"/><w:lvlText w:val="%${level + 1}."/><w:lvlJc w:val="left"/><w:pPr><w:tabs><w:tab w:val="num" w:pos="${720 + level * 360}"/></w:tabs><w:ind w:left="${720 + level * 360}" w:hanging="360"/></w:pPr></w:lvl>`).join("")}</w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num><w:num w:numId="2"><w:abstractNumId w:val="1"/></w:num></w:numbering>`;
 
-export async function buildWordDocxBlob(context: ExportContext): Promise<Blob> {
+const OFFICE_DOCUMENT_RELATIONSHIP = "http://schemas.openxmlformats.org/officeDocument/2006/relationships";
+
+function fontEmbeddingFlags(bytes: Uint8Array): number {
+  if (bytes.byteLength < 12) throw new Error("The attached TTF is too short to embed in Word.");
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const tableCount = view.getUint16(4);
+  for (let index = 0; index < tableCount; index += 1) {
+    const record = 12 + index * 16;
+    if (record + 16 > bytes.byteLength) break;
+    const tag = String.fromCharCode(bytes[record]!, bytes[record + 1]!, bytes[record + 2]!, bytes[record + 3]!);
+    if (tag !== "OS/2") continue;
+    const offset = view.getUint32(record + 8);
+    if (offset + 10 > bytes.byteLength) throw new Error("The attached TTF has an invalid OS/2 table.");
+    return view.getUint16(offset + 8);
+  }
+  return 0;
+}
+
+function randomGuid(): string {
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  bytes[6] = (bytes[6]! & 0x0f) | 0x40;
+  bytes[8] = (bytes[8]! & 0x3f) | 0x80;
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function embeddedWordFont(font: AttachedFont, familyName: string) {
+  const flags = fontEmbeddingFlags(font.bytes);
+  if (flags & 0x0002) {
+    throw new Error("This TTF's license metadata forbids document embedding. Use a licensed font that permits Word embedding.");
+  }
+  if (flags & 0x0200) {
+    throw new Error("This TTF permits bitmap-only embedding, which cannot carry ShieldFont's outline glyphs into Word.");
+  }
+  if (font.bytes.byteLength < 32) throw new Error("The attached TTF is too short to embed in Word.");
+
+  const guid = randomGuid();
+  const key = Uint8Array.from(guid.replace(/-/g, "").match(/.{2}/g)!, (byte) => Number.parseInt(byte, 16)).reverse();
+  const bytes = font.bytes.slice();
+  for (let index = 0; index < 32; index += 1) bytes[index] ^= key[index % key.length]!;
+  const fileName = `${guid}.odttf`;
+  const fontKey = `{${guid}}`;
+  return {
+    bytes,
+    fileName,
+    fontTableXml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="${OFFICE_DOCUMENT_RELATIONSHIP}"><w:font w:name="${escapeXml(familyName)}"><w:family w:val="auto"/><w:pitch w:val="variable"/><w:embedRegular r:id="rIdShieldRegular" w:fontKey="${fontKey}"/></w:font></w:fonts>`,
+    relationshipsXml: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdShieldRegular" Type="${OFFICE_DOCUMENT_RELATIONSHIP}/font" Target="fonts/${fileName}"/></Relationships>`,
+  };
+}
+
+export async function buildWordDocxBlob(
+  context: ExportContext,
+  mode: WordDocxMode = "portable",
+): Promise<Blob> {
   if (!context.font?.desktopFamilyName || context.font.extension !== "ttf") {
-    throw new Error("Build the installable desktop TTF before exporting a Word-ready document.");
+    throw new Error("Build or attach the matching desktop TTF before exporting a Word-ready document.");
   }
   const { default: JSZip } = await import("jszip");
   const { documentXml, relationships, media } = docxFromRichHtml(context);
+  const shouldEmbedFont = mode === "portable";
+  const embeddedFont = shouldEmbedFont
+    ? embeddedWordFont(context.font, context.font.desktopFamilyName)
+    : null;
   const zip = new JSZip();
   const imageDefaults = Array.from(new Map(media.map((item) => [item.extension, item.mime]))).map(([extension, mime]) => `<Default Extension="${extension}" ContentType="${mime}"/>`).join("");
-  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${imageDefaults}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`);
+  const fontContentType = shouldEmbedFont
+    ? '<Default Extension="odttf" ContentType="application/vnd.openxmlformats-officedocument.obfuscatedFont"/>'
+    : "";
+  const settingsContentType = shouldEmbedFont
+    ? '<Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>'
+    : "";
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/>${fontContentType}${imageDefaults}<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/><Override PartName="/word/fontTable.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml"/>${settingsContentType}<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/></Types>`);
   zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/></Relationships>`);
   zip.file("word/document.xml", documentXml);
   zip.file("word/styles.xml", docxStylesXml(context));
   zip.file("word/numbering.xml", NUMBERING_XML);
-  zip.file("word/_rels/document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rIdNumbering" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/>${relationships.map((relationship) => `<Relationship Id="${relationship.id}" Type="${relationship.type}" Target="${escapeXml(relationship.target)}"${relationship.mode ? ` TargetMode="${relationship.mode}"` : ""}/>`).join("")}</Relationships>`);
+  zip.file("word/fontTable.xml", shouldEmbedFont
+    ? embeddedFont!.fontTableXml
+    : `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:fonts xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:font w:name="${escapeXml(context.font.desktopFamilyName)}"><w:family w:val="auto"/><w:pitch w:val="variable"/></w:font></w:fonts>`);
+  if (embeddedFont) {
+    zip.file("word/settings.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:embedTrueTypeFonts/></w:settings>`);
+    zip.file("word/_rels/fontTable.xml.rels", embeddedFont.relationshipsXml);
+    zip.file(`word/fonts/${embeddedFont.fileName}`, embeddedFont.bytes);
+  }
+  const settingsRelationship = shouldEmbedFont
+    ? `<Relationship Id="rIdSettings" Type="${OFFICE_DOCUMENT_RELATIONSHIP}/settings" Target="settings.xml"/>`
+    : "";
+  zip.file("word/_rels/document.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rIdStyles" Type="${OFFICE_DOCUMENT_RELATIONSHIP}/styles" Target="styles.xml"/><Relationship Id="rIdNumbering" Type="${OFFICE_DOCUMENT_RELATIONSHIP}/numbering" Target="numbering.xml"/><Relationship Id="rIdFontTable" Type="${OFFICE_DOCUMENT_RELATIONSHIP}/fontTable" Target="fontTable.xml"/>${settingsRelationship}${relationships.map((relationship) => `<Relationship Id="${relationship.id}" Type="${relationship.type}" Target="${escapeXml(relationship.target)}"${relationship.mode ? ` TargetMode="${relationship.mode}"` : ""}/>`).join("")}</Relationships>`);
   zip.file("docProps/core.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${escapeXml(context.name)}</dc:title><dc:creator>ShieldFont Studio</dc:creator><dcterms:created xsi:type="dcterms:W3CDTF">${new Date().toISOString()}</dcterms:created></cp:coreProperties>`);
   for (const item of media) zip.file(`word/${item.path}`, item.bytes);
   return zip.generateAsync({ type: "blob", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", compression: "DEFLATE" });
 }
 
 export async function exportWordDocx(context: ExportContext): Promise<void> {
-  downloadBlob(`${slugify(context.name)}.docx`, await buildWordDocxBlob(context));
+  downloadBlob(`${slugify(context.name)}-portable.docx`, await buildWordDocxBlob(context, "portable"));
+}
+
+export async function exportDecoyUploadKit(context: ExportContext): Promise<void> {
+  if (!context.font?.desktopFamilyName || context.font.extension !== "ttf") {
+    throw new Error("Build the matching desktop TTF before creating a decoy-upload kit.");
+  }
+  const { default: JSZip } = await import("jszip");
+  const slug = slugify(context.name);
+  const docx = await buildWordDocxBlob(context, "upload-decoy");
+  const zip = new JSZip();
+  const installName = `1-INSTALL-LOCALLY-DO-NOT-UPLOAD-${context.font.fileName}`;
+  const docxName = `2-UPLOAD-THIS-${slug}-decoy.docx`;
+  const htmlName = `2-UPLOAD-THIS-${slug}-decoy.html`;
+  const instructions = [
+    "SHIELDFONT DECOY-UPLOAD KIT",
+    "============================",
+    "",
+    "This kit deliberately separates the decoder font from the files you upload.",
+    "Only words you marked in the Studio are encoded; unmarked text stays ordinary.",
+    "",
+    "STEPS",
+    "1. Keep this entire ZIP private and extract it on your own computer.",
+    `2. Install ${installName} in Font Book (macOS) or Fonts (Windows).`,
+    "3. Fully quit and reopen Microsoft Word and/or your browser.",
+    `4. Open ${docxName} or ${htmlName} locally and confirm the marked words render as the human version.`,
+    "5. Upload only the original 2-UPLOAD-THIS file. Do not resave the DOCX first.",
+    "",
+    "NEVER UPLOAD THE ZIP OR TTF. The TTF contains the mapping decoder.",
+    "A Word Save As can embed the locally installed font, so upload the untouched exported DOCX.",
+    "The HTML uses local(...) and contains no font bytes or external font URL.",
+    "PDF is not included: a vision-capable model can read the same human-visible page that you can.",
+    "If you change any word pair or the project name, discard this kit and create a fresh one.",
+    "",
+    "This raises the cost of casual extraction; it does not make content un-scrapeable.",
+    "Masked content is not WCAG conformant.",
+    "",
+  ].join("\n");
+  zip.file("README-FIRST.txt", instructions);
+  zip.file(installName, context.font.bytes);
+  zip.file(docxName, new Uint8Array(await docx.arrayBuffer()));
+  zip.file(htmlName, standaloneHtml(context, "local-only"));
+  downloadBlob(`${slug}-decoy-upload-kit.zip`, await zip.generateAsync({ type: "blob", compression: "DEFLATE" }));
 }
 
 export function exportSvg(context: ExportContext): void {
   const snapshot = richDocumentSnapshot(context.richHtml, context.mapping);
   const metrics = pageMetrics(context.documentSettings);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${metrics.widthPx}" height="${metrics.heightPx}" viewBox="0 0 ${metrics.widthPx} ${metrics.heightPx}"><style>${escapeHtml(documentCss(context, true))}</style><rect width="100%" height="100%" fill="white"/><foreignObject x="${metrics.marginPx}" y="${metrics.marginPx}" width="${metrics.widthPx - metrics.marginPx * 2}" height="${metrics.heightPx - metrics.marginPx * 2}"><div xmlns="http://www.w3.org/1999/xhtml" class="shield-document">${snapshot.encodedHtml}</div></foreignObject></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${metrics.widthPx}" height="${metrics.heightPx}" viewBox="0 0 ${metrics.widthPx} ${metrics.heightPx}"><style>${escapeHtml(documentCss(context, "embedded"))}</style><rect width="100%" height="100%" fill="white"/><foreignObject x="${metrics.marginPx}" y="${metrics.marginPx}" width="${metrics.widthPx - metrics.marginPx * 2}" height="${metrics.heightPx - metrics.marginPx * 2}"><div xmlns="http://www.w3.org/1999/xhtml" class="shield-document">${snapshot.encodedHtml}</div></foreignObject></svg>`;
   downloadText(`${slugify(context.name)}.svg`, svg, "image/svg+xml;charset=utf-8");
 }
 
-function asciiPdfText(value: string): string {
-  return value.replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[—–]/g, "-").replace(/…/g, "...").replace(/[^\x09\x0A\x0D\x20-\x7E]/g, "?");
-}
-
-async function pdfPages(context: ExportContext): Promise<Array<{ canvas: HTMLCanvasElement; encoded: string }>> {
-  const { default: html2canvas } = await import("html2canvas");
-  const settings = context.documentSettings;
-  const metrics = pageMetrics(settings);
-  const host = document.createElement("div");
-  host.style.cssText = "position:fixed;left:-100000px;top:0;background:#d4d3cd;padding:20px;z-index:-1";
-  document.body.appendChild(host);
-  const parsed = new DOMParser().parseFromString(`<body>${sanitizeRichHtml(context.richHtml)}</body>`, "text/html");
-  const pageElements: Array<{ page: HTMLDivElement; content: HTMLDivElement }> = [];
-
-  const addPage = () => {
-    const page = document.createElement("div");
-    page.style.cssText = `box-sizing:border-box;width:${metrics.widthPx}px;height:${metrics.heightPx}px;padding:${metrics.marginPx}px;background:#fff;color:#151713;overflow:hidden`;
-    const content = document.createElement("div");
-    content.className = "pdf-document";
-    content.style.cssText = `height:${metrics.heightPx - metrics.marginPx * 2}px;overflow:hidden;font-family:${settings.bodyFont},Arial,sans-serif;font-size:${settings.bodySize}pt;line-height:${settings.lineHeight};overflow-wrap:anywhere`;
-    page.appendChild(content);
-    host.appendChild(page);
-    pageElements.push({ page, content });
-    return pageElements[pageElements.length - 1]!;
-  };
-
-  let current = addPage();
-  for (const sourceNode of Array.from(parsed.body.childNodes)) {
-    if (sourceNode instanceof HTMLElement && sourceNode.getAttribute("data-page-break") === "true") {
-      if (current.content.childNodes.length) current = addPage();
-      continue;
-    }
-    const node = sourceNode.cloneNode(true);
-    current.content.appendChild(node);
-    if (current.content.scrollHeight > current.content.clientHeight && current.content.childNodes.length > 1) {
-      current.content.removeChild(node);
-      current = addPage();
-      current.content.appendChild(node);
-    }
+async function openPrintDialog(html: string, fontProbe?: string): Promise<void> {
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) {
+    throw new Error("The browser blocked the PDF print window. Allow pop-ups for this Studio and try again.");
   }
 
-  const style = document.createElement("style");
-  style.textContent = `.pdf-document h1,.pdf-document h2,.pdf-document h3{line-height:1.15}.pdf-document p{margin:0 0 .85em}.pdf-document table{width:100%;border-collapse:collapse;margin:1em 0}.pdf-document td,.pdf-document th{border:1px solid #777;padding:8px}.pdf-document img{display:block;max-width:100%;height:auto;margin:1em auto}.pdf-document blockquote{padding-left:1.2em;border-left:3px solid #aaa}.pdf-document [data-shield=true]{background:transparent;border:0}`;
-  host.appendChild(style);
-  await document.fonts.ready;
-  const pages: Array<{ canvas: HTMLCanvasElement; encoded: string }> = [];
-  for (const item of pageElements) {
-    const canvas = await html2canvas(item.page, { scale: 1.5, backgroundColor: "#ffffff", logging: false, useCORS: true });
-    pages.push({ canvas, encoded: richDocumentSnapshot(item.content.innerHTML, context.mapping).encoded });
+  try {
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+
+    const images = Array.from(printWindow.document.images);
+    await Promise.all(images.map((image) => image.complete ? Promise.resolve() : new Promise<void>((resolve) => {
+      image.addEventListener("load", () => resolve(), { once: true });
+      image.addEventListener("error", () => resolve(), { once: true });
+    })));
+    await printWindow.document.fonts.ready;
+    if (fontProbe) {
+      const loadedFaces = await printWindow.document.fonts.load(fontProbe);
+      if (!loadedFaces.length) {
+        throw new Error("The matching font did not load in the PDF print window.");
+      }
+    }
+
+    await new Promise<void>((resolve) => {
+      printWindow.requestAnimationFrame(() => printWindow.requestAnimationFrame(() => resolve()));
+    });
+    printWindow.addEventListener("afterprint", () => printWindow.close(), { once: true });
+    printWindow.focus();
+    printWindow.print();
+  } catch (error) {
+    printWindow.close();
+    throw error;
   }
-  host.remove();
-  return pages;
 }
 
-export async function exportProtectedPdf(context: ExportContext): Promise<void> {
-  const [{ jsPDF }, pages] = await Promise.all([import("jspdf"), pdfPages(context)]);
-  const settings = context.documentSettings;
-  const format = settings.pageSize === "a4" ? "a4" : "letter";
-  const orientation = settings.orientation === "portrait" ? "portrait" : "landscape";
-  const pdf = new jsPDF({ orientation, unit: "mm", format, compress: true });
-  const width = pdf.internal.pageSize.getWidth();
-  const height = pdf.internal.pageSize.getHeight();
-  pages.forEach((page, index) => {
-    if (index > 0) pdf.addPage(format, orientation);
-    pdf.addImage(page.canvas.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, width, height, undefined, "FAST");
-    const lines = pdf.splitTextToSize(asciiPdfText(page.encoded), width - 16) as string[];
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(2);
-    pdf.text(lines.slice(0, 180), 8, 8, { renderingMode: "invisible", lineHeightFactor: 1 });
-  });
-  pdf.setProperties({ title: context.name, subject: "Human-visible raster layer with encoded selectable text", creator: "ShieldFont Studio" });
-  pdf.save(`${slugify(context.name)}.pdf`);
+export async function exportPresentationPdf(context: ExportContext): Promise<void> {
+  if (!context.font) {
+    throw new Error("Attach the exact matching font before printing a human-readable PDF.");
+  }
+
+  // This preserves encoded PDF text where the browser supports it, but the
+  // visible glyphs are deliberately human-readable. OCR and vision models can
+  // therefore read the same words as a person.
+  const shieldFamily = context.font.desktopFamilyName ?? `ShieldFont ${context.name.trim() || "Custom"}`;
+  await openPrintDialog(
+    standaloneHtml(context),
+    `400 ${context.documentSettings.bodySize}pt ${JSON.stringify(shieldFamily)}`,
+  );
+}
+
+export async function exportEncodedOnlyPdf(context: ExportContext): Promise<void> {
+  // There is no mapping font in this print document, so both the text layer and
+  // the visible pixels show the encoded words.
+  await openPrintDialog(standaloneHtml(context, "none"));
 }
 
 export async function exportEpub(context: ExportContext): Promise<void> {
@@ -568,7 +687,7 @@ export async function exportEpub(context: ExportContext): Promise<void> {
   zip.file("OEBPS/content.opf", `<?xml version="1.0" encoding="UTF-8"?><package xmlns="http://www.idpf.org/2007/opf" unique-identifier="book-id" version="3.0"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">${id}</dc:identifier><dc:title>${title}</dc:title><dc:language>en</dc:language><meta property="dcterms:modified">${new Date().toISOString().replace(/\.\d{3}Z$/, "Z")}</meta></metadata><manifest><item id="content" href="content.xhtml" media-type="application/xhtml+xml"/><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="css" href="styles.css" media-type="text/css"/><item id="font" href="${fontFile}" media-type="${context.font.mimeType}"/></manifest><spine><itemref idref="content"/></spine></package>`);
   zip.file("OEBPS/content.xhtml", `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>${title}</title><link rel="stylesheet" type="text/css" href="styles.css"/></head><body><article class="shield-document">${snapshot.encodedHtml}</article></body></html>`);
   zip.file("OEBPS/nav.xhtml", `<?xml version="1.0" encoding="UTF-8"?><html xmlns="http://www.w3.org/1999/xhtml"><head><title>Navigation</title></head><body><nav epub:type="toc" xmlns:epub="http://www.idpf.org/2007/ops"><ol><li><a href="content.xhtml">${title}</a></li></ol></nav></body></html>`);
-  zip.file("OEBPS/styles.css", documentCss(context, false).replace(`./${context.font.fileName}`, fontFile));
+  zip.file("OEBPS/styles.css", documentCss(context, "external").replace(`./${context.font.fileName}`, fontFile));
   zip.file(`OEBPS/${fontFile}`, context.font.bytes);
   downloadBlob(`${slugify(context.name)}.epub`, await zip.generateAsync({ type: "blob", mimeType: "application/epub+zip", compression: "DEFLATE" }));
 }
@@ -584,8 +703,8 @@ async function exportFontKitLegacy(context: ExportContext): Promise<void> {
   zip.file(`private-do-not-publish/${slug}-pairs.csv`, mappingCsv(context));
   zip.file("publish/encoded.txt", context.encoded);
   zip.file("publish/encoded.md", context.encoded);
-  zip.file("publish/styles.css", documentCss(context, false));
-  zip.file("publish/index.html", standaloneHtml(context, false));
+  zip.file("publish/styles.css", documentCss(context, "external"));
+  zip.file("publish/index.html", standaloneHtml(context, "external"));
   if (context.font) zip.file(`publish/${context.font.fileName}`, context.font.bytes);
   downloadBlob(`${slug}-font-kit.zip`, await zip.generateAsync({ type: "blob", compression: "DEFLATE" }));
 }
@@ -620,8 +739,8 @@ export async function exportFontKit(context: ExportContext): Promise<void> {
   zip.file(`private-do-not-publish/${slug}-pairs.csv`, mappingCsv(context));
   zip.file("publish/encoded.txt", context.encoded);
   zip.file("publish/encoded.md", context.encoded);
-  zip.file("publish/styles.css", documentCss(context, false));
-  zip.file("publish/index.html", standaloneHtml(context, false));
+  zip.file("publish/styles.css", documentCss(context, "external"));
+  zip.file("publish/index.html", standaloneHtml(context, "external"));
   if (context.font) zip.file(`publish/${context.font.fileName}`, context.font.bytes);
   downloadBlob(`${slug}-font-kit.zip`, await zip.generateAsync({ type: "blob", compression: "DEFLATE" }));
 }

@@ -9,15 +9,17 @@ import {
   encodedHtmlSnippet,
   exportCss,
   exportCsv,
+  exportDecoyUploadKit,
   exportDesktopFont,
   exportEncodedText,
+  exportEncodedOnlyPdf,
   exportEpub,
   exportFontKit,
   exportHtml,
   exportMapping,
   exportMarkdown,
   exportProject,
-  exportProtectedPdf,
+  exportPresentationPdf,
   exportRtf,
   exportSvg,
   exportWordDocx,
@@ -61,6 +63,9 @@ type AddPairsResult = {
 
 const STORAGE_KEY = "shieldfont-studio-workspace-v1";
 const WORD_PATTERN = /^\p{L}+$/u;
+const DEFAULT_BASE_FONT_URL = "/fonts/arimo-variable-wght.ttf";
+const DEFAULT_BASE_FONT_FILE_NAME = "Arimo-VariableFont_wght.ttf";
+const DEFAULT_BASE_FONT_LABEL = "Included Arimo Regular";
 
 const STARTER_PROJECT: StudioProject = {
   id: "starter-mapping",
@@ -177,6 +182,8 @@ export function MappingStudio() {
   const fontInput = useRef<HTMLInputElement>(null);
   const baseFontInput = useRef<HTMLInputElement>(null);
   const loadedFontFace = useRef<FontFace | null>(null);
+  const fontBuildSequence = useRef(0);
+  const previousFontBuildKey = useRef<string | null>(null);
 
   const project = projects.find((candidate) => candidate.id === currentId) ?? projects[0] ?? STARTER_PROJECT;
   const { issues, validPairs, mapping } = useMemo(() => validatePairs(project.pairs), [project.pairs]);
@@ -207,6 +214,11 @@ export function MappingStudio() {
     mapping,
     font,
   };
+  const fontBuildKey = useMemo(() => JSON.stringify({
+    projectId: project.id,
+    familyName: `ShieldFont ${project.name.trim() || "Custom"}`,
+    mapping: Object.entries(mapping).sort(([left], [right]) => left.localeCompare(right)),
+  }), [mapping, project.id, project.name]);
 
   useEffect(() => {
     try {
@@ -264,6 +276,21 @@ export function MappingStudio() {
       if (loadedFontFace.current) document.fonts.delete(loadedFontFace.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (previousFontBuildKey.current === null) {
+      previousFontBuildKey.current = fontBuildKey;
+      return;
+    }
+    if (previousFontBuildKey.current === fontBuildKey) return;
+    previousFontBuildKey.current = fontBuildKey;
+    fontBuildSequence.current += 1;
+    if (!font || font.buildKey === fontBuildKey) return;
+    if (loadedFontFace.current) document.fonts.delete(loadedFontFace.current);
+    loadedFontFace.current = null;
+    setFont(null);
+    setNotice("The mapping changed. A fresh Arimo font will be built automatically on the next export.");
+  }, [font?.buildKey, fontBuildKey]);
 
   function updateProject(patch: Partial<StudioProject>) {
     setProjects((existing) =>
@@ -447,10 +474,20 @@ export function MappingStudio() {
     }
   }
 
-  async function attachFont(file: File, desktopFamilyName?: string): Promise<AttachedFont | null> {
+  async function attachFont(
+    file: File,
+    desktopFamilyName?: string,
+    buildKey?: string,
+    baseLabel?: string,
+    expectedBuildSequence?: number,
+  ): Promise<AttachedFont | null> {
     const extension = file.name.split(".").pop()?.toLowerCase() ?? "";
     if (extension !== "woff2" && extension !== "ttf") {
       setNotice("Choose a matching .woff2 or .ttf font.");
+      return null;
+    }
+    if (!desktopFamilyName && file.name.toLowerCase() === DEFAULT_BASE_FONT_FILE_NAME.toLowerCase()) {
+      setNotice("That is the raw Arimo base font. Use “Build matching Arimo font” so ShieldFont can add this mapping first.");
       return null;
     }
     try {
@@ -459,6 +496,7 @@ export function MappingStudio() {
       const familyName = `ShieldStudio-${project.id.replace(/[^a-zA-Z0-9]/g, "").slice(-18)}`;
       const face = new FontFace(familyName, buffer);
       await face.load();
+      if (expectedBuildSequence !== undefined && expectedBuildSequence !== fontBuildSequence.current) return null;
       if (loadedFontFace.current) document.fonts.delete(loadedFontFace.current);
       document.fonts.add(face);
       loadedFontFace.current = face;
@@ -471,6 +509,8 @@ export function MappingStudio() {
       const attached: AttachedFont = {
         familyName,
         desktopFamilyName,
+        buildKey,
+        baseLabel,
         fileName: file.name,
         extension,
         mimeType: file.type || (extension === "ttf" ? "font/ttf" : "font/woff2"),
@@ -478,7 +518,9 @@ export function MappingStudio() {
         dataUrl,
       };
       setFont(attached);
-      setNotice("Matching font attached. Compare the rendered preview before exporting.");
+      setNotice(buildKey
+        ? "Matching Arimo font ready. Compare the rendered preview before exporting."
+        : "Matching font attached. Compare the rendered preview before exporting.");
       return attached;
     } catch {
       setNotice("The browser could not load that font file.");
@@ -488,21 +530,28 @@ export function MappingStudio() {
     }
   }
 
-  async function buildDesktopFont(baseFont: File) {
+  async function includedArimoFile(): Promise<File> {
+    const response = await fetch(DEFAULT_BASE_FONT_URL, { cache: "force-cache" });
+    if (!response.ok) throw new Error("The included Arimo base font could not be loaded.");
+    return new File([await response.blob()], DEFAULT_BASE_FONT_FILE_NAME, { type: "font/ttf" });
+  }
+
+  async function buildDesktopFont(baseFont?: File, download = true): Promise<AttachedFont> {
     if (!canExport) {
-      setNotice("Add valid word pairs and source text before building a desktop font.");
-      return;
+      throw new Error("Add valid word pairs and source text before building a desktop font.");
     }
-    if (!baseFont.name.toLowerCase().endsWith(".ttf")) {
-      setNotice("Choose a licensed Regular TrueType (.ttf) base font.");
-      return;
+    const selectedBaseFont = baseFont ?? await includedArimoFile();
+    if (!selectedBaseFont.name.toLowerCase().endsWith(".ttf")) {
+      throw new Error("Choose a licensed Regular TrueType (.ttf) base font.");
     }
     const desktopFamilyName = `ShieldFont ${project.name.trim() || "Custom"}`;
+    const requestSequence = ++fontBuildSequence.current;
+    const requestedBuildKey = fontBuildKey;
     try {
       setBuildingFont(true);
-      setNotice("Building the installable desktop font…");
+      setNotice(baseFont ? "Building from your selected base TTF…" : "Building the matching Arimo font…");
       const form = new FormData();
-      form.set("baseFont", baseFont);
+      form.set("baseFont", selectedBaseFont);
       form.set("mapping", mappingJson(exportContext));
       form.set("familyName", desktopFamilyName);
       const response = await fetch("/api/build-font", { method: "POST", body: form });
@@ -513,20 +562,58 @@ export function MappingStudio() {
       const buffer = await response.arrayBuffer();
       const disposition = response.headers.get("Content-Disposition") ?? "";
       const fileName = disposition.match(/filename="([^"]+)"/)?.[1] ?? `shieldfont-${slugify(project.name)}.ttf`;
+      const responseFamily = response.headers.get("X-ShieldFont-Family");
+      let exactDesktopFamilyName = desktopFamilyName;
+      if (responseFamily) {
+        try {
+          exactDesktopFamilyName = decodeURIComponent(responseFamily);
+        } catch {
+          exactDesktopFamilyName = responseFamily;
+        }
+      }
+      if (requestSequence !== fontBuildSequence.current) {
+        throw new Error("The mapping changed while the font was building. Try the export again to build the current mapping.");
+      }
       const builtFile = new File([buffer], fileName, { type: "font/ttf" });
-      const attached = await attachFont(builtFile, desktopFamilyName);
+      const attached = await attachFont(
+        builtFile,
+        exactDesktopFamilyName,
+        requestedBuildKey,
+        baseFont?.name ?? DEFAULT_BASE_FONT_LABEL,
+        requestSequence,
+      );
       if (!attached) throw new Error("The font was built but the browser could not load it.");
-      exportDesktopFont({ ...exportContext, font: attached });
-      setNotice(`Desktop font built and downloaded as ${fileName}.`);
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "The desktop font could not be built.");
+      if (download) {
+        exportDesktopFont({ ...exportContext, font: attached });
+        setNotice(`Desktop font built and downloaded as ${fileName}.`);
+      } else {
+        setNotice("Matching Arimo font built and attached automatically.");
+      }
+      return attached;
     } finally {
       setBuildingFont(false);
       if (baseFontInput.current) baseFontInput.current.value = "";
     }
   }
 
+  async function ensureMatchingFont(requireDesktop = false): Promise<AttachedFont> {
+    const currentFontIsUsable = font
+      && font.buildKey === fontBuildKey
+      && (!requireDesktop || (font.extension === "ttf" && Boolean(font.desktopFamilyName)));
+    if (currentFontIsUsable) return font;
+    return buildDesktopFont(undefined, false);
+  }
+
+  async function withMatchingFont(
+    action: (context: ExportContext) => void | Promise<void>,
+    requireDesktop = false,
+  ): Promise<void> {
+    const matchingFont = await ensureMatchingFont(requireDesktop);
+    await action({ ...exportContext, font: matchingFont });
+  }
+
   function clearFont() {
+    fontBuildSequence.current += 1;
     if (loadedFontFace.current) document.fonts.delete(loadedFontFace.current);
     loadedFontFace.current = null;
     setFont(null);
@@ -534,6 +621,7 @@ export function MappingStudio() {
   }
 
   function detachFontForProjectChange() {
+    fontBuildSequence.current += 1;
     if (loadedFontFace.current) document.fonts.delete(loadedFontFace.current);
     loadedFontFace.current = null;
     setFont(null);
@@ -689,9 +777,9 @@ export function MappingStudio() {
           <div className="font-card">
             <div className="font-card__title">
               <span className="font-icon" aria-hidden="true">Aa</span>
-              <div><strong>Matching font</strong><small>{font ? font.fileName : "Optional for live rendering"}</small></div>
+              <div><strong>Matching font</strong><small>{font ? font.fileName : "Arimo builds automatically"}</small></div>
             </div>
-            <p>Build an installable desktop TTF from a licensed Regular TTF, or attach a matching font you already created.</p>
+            <p>The included Arimo Regular is the default base. ShieldFont builds a fresh mapping-specific TTF automatically before a font-dependent export.</p>
             <input
               ref={baseFontInput}
               className="visually-hidden"
@@ -699,7 +787,7 @@ export function MappingStudio() {
               accept=".ttf,font/ttf"
               onChange={(event) => {
                 const file = event.target.files?.[0];
-                if (file) void buildDesktopFont(file);
+                if (file) void runExport("Desktop font", async () => { await buildDesktopFont(file); });
               }}
             />
             <input
@@ -717,16 +805,17 @@ export function MappingStudio() {
                 className="font-build"
                 type="button"
                 disabled={buildingFont || !canExport}
-                onClick={() => baseFontInput.current?.click()}
+                onClick={() => void runExport("Desktop font", async () => { await buildDesktopFont(); })}
               >
-                {buildingFont ? "Building desktop TTF…" : "Build + download desktop TTF"}
+                {buildingFont ? "Building matching Arimo TTF…" : "Build + download matching Arimo TTF"}
               </button>
-              <button className="font-upload" type="button" onClick={() => fontInput.current?.click()}>Attach existing font</button>
+              <button className="font-upload" type="button" onClick={() => baseFontInput.current?.click()}>Use another base TTF</button>
+              <button className="font-upload" type="button" onClick={() => fontInput.current?.click()}>Attach matching ShieldFont for preview</button>
             </div>
             {font ? (
               <div className="font-card__attached">
                 <div className="font-card__actions">
-                  <span>{font.extension === "ttf" ? "Desktop TTF ready" : "Web font attached"}</span>
+                  <span>{font.extension === "ttf" ? `Desktop TTF ready${font.baseLabel ? ` · ${font.baseLabel}` : ""}` : "Web font attached"}</span>
                   <div>
                     {font.extension === "ttf" ? <button type="button" onClick={() => void runExport("Desktop font", () => exportDesktopFont(exportContext))}>Download</button> : null}
                     <button type="button" onClick={clearFont}>Remove</button>
@@ -734,11 +823,13 @@ export function MappingStudio() {
                 </div>
                 {font.extension === "ttf" ? (
                   <label className="font-family-field">
-                    <span>Installed family name for Word</span>
+                    <span>Internal font family name for Word{font.buildKey ? " · set by the builder" : ""}</span>
                     <input
                       value={font.desktopFamilyName ?? ""}
                       placeholder={`ShieldFont ${project.name.trim() || "Custom"}`}
+                      readOnly={Boolean(font.buildKey)}
                       onChange={(event) => {
+                        if (font.buildKey) return;
                         const desktopFamilyName = event.target.value.trim();
                         setFont((current) => current ? { ...current, desktopFamilyName: desktopFamilyName || undefined } : current);
                       }}
@@ -750,13 +841,15 @@ export function MappingStudio() {
           </div>
 
           <div className="word-guide">
-            <p className="step">Microsoft Word</p>
+            <p className="step">For a decoy upload</p>
             <ol>
-              <li>Finish formatting and masking in the Studio.</li>
-              <li>Build the desktop <strong>.ttf</strong> and install it with Font Book or Windows Fonts.</li>
-              <li>Export the DOCX and open it in Word; masked runs already use the installed face.</li>
+              <li>Finish the word pairs, formatting, and masking.</li>
+              <li>Open Export and choose <strong>Decoy-upload kit</strong>. The Studio builds the matching Arimo TTF automatically.</li>
+              <li>Unzip it privately, install the <strong>1-INSTALL</strong> TTF, then fully quit and reopen Word or your browser.</li>
+              <li>Upload only an untouched <strong>2-UPLOAD-THIS</strong> DOCX or HTML file. Never upload the ZIP or TTF.</li>
             </ol>
-            <p>Edit the human document here—not in the shielded face inside Word. Unmasked text stays ordinary; masked runs contain the encoded text and render through the custom font.</p>
+            <p>Portable DOCX/HTML carry the decoder font, so render-capable AI can read the human view. A human-readable PDF is also visible to OCR and vision models.</p>
+            <p>Raw Arimo is only a base font. Never attach it as an existing ShieldFont: it has no mapping ligatures and will display the encoded words.</p>
           </div>
         </aside>
 
@@ -823,7 +916,7 @@ export function MappingStudio() {
       <section className="workflow-note">
         <div className="workflow-note__number">04</div>
         <div><p className="eyebrow">Export the document</p><h2>Keep the formatting, encode only the marked words.</h2></div>
-        <p>DOCX preserves editable text and formatting; its masked runs need the installed font. PDF preserves the human view as a raster layer with encoded selectable text beneath it. OCR or font inspection can still recover meaning, so this raises scraping cost rather than making content un-scrapeable.</p>
+        <p>Choose by goal. The decoy-upload kit keeps the decoder out of its DOCX and HTML; install the TTF locally and upload only the untouched document. Portable files carry the decoder. A human-readable PDF is readable to vision models, so the PDF alternative shows decoys visibly.</p>
         <button className="button button--lime" type="button" onClick={() => setExportOpen(true)}>Open export centre</button>
       </section>
 
@@ -844,25 +937,35 @@ export function MappingStudio() {
             </header>
 
             {!canExport ? <div className="export-warning">Fix mapping issues and add source text to enable exports.</div> : null}
-            {!font ? <div className="export-warning export-warning--soft"><strong>No matching font attached.</strong> PDF and data exports still work. HTML, SVG, and EPUB unlock after you attach the font built from this mapping.</div> : null}
+            {!font ? <div className="export-warning export-warning--soft"><strong>No matching font prepared yet.</strong> The first font-dependent export builds and attaches a mapping-specific TTF from the included Arimo Regular automatically.</div> : null}
+            <div className="export-warning export-warning--soft"><strong>Portable means AI-renderable.</strong> An embedded font lets another computer—and a render-first GenAI—recover the human view. Use the decoy-upload kit for HTML or Word uploads. There is no equivalent human-readable PDF mode against OCR/vision.</div>
 
             <div className="export-group">
-              <h3>Desktop and Microsoft Word</h3>
+              <h3>Decoy upload</h3>
               <div className="export-grid">
-                <ExportTile title="Installable desktop TTF" badge="Font Book" detail="Download the matching font for macOS Font Book or Windows Fonts." disabled={!canExport || font?.extension !== "ttf" || Boolean(busyExport)} onClick={() => void runExport("Desktop font", () => exportDesktopFont(exportContext))} />
-                <ExportTile title="Formatted Word DOCX" badge="Recommended" detail="Editable headings, styles, lists, tables, images, page setup, and masked runs." disabled={!canExport || font?.extension !== "ttf" || !font.desktopFamilyName || Boolean(busyExport)} onClick={() => void runExport("Word document", () => exportWordDocx(exportContext))} />
-                <ExportTile title="Plain Word RTF" detail="Compatibility fallback with encoded plain text; use DOCX to preserve formatting." disabled={!canExport || font?.extension !== "ttf" || !font.desktopFamilyName} onClick={() => void runExport("RTF", () => exportRtf(exportContext))} />
-                <ExportTile title="Font build kit" badge="ZIP" detail="Mapping, offline build recipe, backup, font, and publish files." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Font kit", () => exportFontKit(exportContext))} />
+                <ExportTile title="Decoy-upload kit" badge="Recommended for uploads" detail="Local-only TTF plus font-free DOCX and HTML. Install the TTF; upload only a 2-UPLOAD-THIS file." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Decoy-upload kit", () => withMatchingFont((context) => exportDecoyUploadKit(context), true))} />
+                <ExportTile title="Raw encoded text" badge="No human rendering" detail="The strongest upload choice when formatting is unnecessary: decoy text only, with no font or visible human layer." disabled={!canExport} onClick={() => void runExport("Encoded text", () => exportEncodedText(exportContext))} />
               </div>
             </div>
 
             <div className="export-group">
-              <h3>Publish</h3>
+              <h3>Desktop and Microsoft Word</h3>
               <div className="export-grid">
-                <ExportTile title="Formatted PDF" badge="Direct" detail="Human-visible formatted pages with encoded selectable text beneath them." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("PDF", () => exportProtectedPdf(exportContext))} />
-                <ExportTile title="Standalone HTML" badge="Font inside" detail="One portable file containing encoded text and the matching font." disabled={!canExport || !font || Boolean(busyExport)} onClick={() => void runExport("HTML", () => exportHtml(exportContext))} />
-                <ExportTile title="EPUB" detail="Encoded ebook with the matching font embedded." disabled={!canExport || !font || Boolean(busyExport)} onClick={() => void runExport("EPUB", () => exportEpub(exportContext))} />
-                <ExportTile title="SVG" detail="Scalable encoded artwork rendered through the matching font." disabled={!canExport || !font || Boolean(busyExport)} onClick={() => void runExport("SVG", () => exportSvg(exportContext))} />
+                <ExportTile title="Installable desktop TTF" badge="Arimo default" detail="Build and download the mapping-specific desktop font; no source-font picker required." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Desktop font", () => withMatchingFont((context) => exportDesktopFont(context), true))} />
+                <ExportTile title="Portable Word DOCX" badge="Font embedded · AI may read human" detail="Human-readable on other computers. Its embedded mapping font can be rendered or inspected by GenAI." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Portable Word document", () => withMatchingFont((context) => exportWordDocx(context), true))} />
+                <ExportTile title="Plain Word RTF" detail="Encoded plain-text fallback; requires the TTF to be installed on the reader's device." disabled={!canExport || font?.extension !== "ttf" || !font.desktopFamilyName} onClick={() => void runExport("RTF", () => exportRtf(exportContext))} />
+                <ExportTile title="Font build kit" badge="ZIP" detail="Mapping, offline build recipe, backup, matching font, and publish files." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Font kit", () => withMatchingFont((context) => exportFontKit(context), true))} />
+              </div>
+            </div>
+
+            <div className="export-group">
+              <h3>PDF and portable display</h3>
+              <div className="export-grid">
+                <ExportTile title="Presentation PDF" badge="OCR/vision reads human" detail="Human-readable print output. It cannot keep the visible words from a vision-capable GenAI." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Presentation PDF", () => withMatchingFont((context) => exportPresentationPdf(context)))} />
+                <ExportTile title="Encoded-only PDF" badge="Decoys are visible" detail="Prints the encoded words without the mapping font, so text extraction and page vision both receive decoys." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Encoded-only PDF", () => exportEncodedOnlyPdf(exportContext))} />
+                <ExportTile title="Portable standalone HTML" badge="Font inside · AI may read human" detail="One human-readable file with encoded DOM text and the decoder font. Use the decoy-upload kit for model uploads." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("Portable HTML", () => withMatchingFont((context) => exportHtml(context)))} />
+                <ExportTile title="EPUB" detail="Encoded ebook with the automatically prepared matching font embedded." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("EPUB", () => withMatchingFont((context) => exportEpub(context)))} />
+                <ExportTile title="SVG" detail="Scalable encoded artwork rendered through the automatically prepared matching font." disabled={!canExport || Boolean(busyExport)} onClick={() => void runExport("SVG", () => withMatchingFont((context) => exportSvg(context)))} />
               </div>
             </div>
 

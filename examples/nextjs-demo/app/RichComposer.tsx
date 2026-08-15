@@ -50,6 +50,57 @@ function unwrap(element: Element): void {
   element.replaceWith(...Array.from(element.childNodes));
 }
 
+function placeCaretOutsideMask(mask: Element, before: boolean): Range | null {
+  const parent = mask.parentNode;
+  if (!parent) return null;
+  let boundary = before ? mask.previousSibling : mask.nextSibling;
+  let offset: number;
+  if (boundary?.nodeType === Node.TEXT_NODE) {
+    offset = before ? (boundary.textContent?.length ?? 0) : 0;
+  } else {
+    boundary = document.createTextNode("");
+    parent.insertBefore(boundary, before ? mask : mask.nextSibling);
+    offset = 0;
+  }
+
+  const range = document.createRange();
+  range.setStart(boundary, offset);
+  range.collapse(true);
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
+  return range;
+}
+
+type MaskBoundary = { mask: Element; before: boolean };
+
+function moveCaretOutsideMaskAtBoundary(editor: HTMLDivElement): MaskBoundary | null {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return null;
+  const range = selection.getRangeAt(0);
+  if (!range.collapsed || !editor.contains(range.commonAncestorContainer)) return null;
+
+  const anchor = range.startContainer.nodeType === Node.ELEMENT_NODE
+    ? range.startContainer as Element
+    : range.startContainer.parentElement;
+  const mask = anchor?.closest('[data-shield="true"]');
+  if (!mask || !editor.contains(mask)) return null;
+
+  const prefix = document.createRange();
+  prefix.selectNodeContents(mask);
+  try {
+    prefix.setEnd(range.startContainer, range.startOffset);
+  } catch {
+    return null;
+  }
+  const offset = prefix.toString().length;
+  const length = mask.textContent?.length ?? 0;
+  if (offset !== 0 && offset !== length) return null;
+
+  const before = offset === 0;
+  return placeCaretOutsideMask(mask, before) ? { mask, before } : null;
+}
+
 function ToolButton({
   label,
   title,
@@ -89,6 +140,7 @@ export function RichComposer({
   const imageInputRef = useRef<HTMLInputElement>(null);
   const hiddenInputRef = useRef<HTMLTextAreaElement>(null);
   const savedRangeRef = useRef<Range | null>(null);
+  const maskBoundaryRef = useRef<{ boundary: MaskBoundary; text: string; html: string } | null>(null);
   const [maskMenu, setMaskMenu] = useState<MaskMenuState | null>(null);
   const maskMenuOpen = maskMenu !== null;
   const htmlRef = useRef(html);
@@ -142,6 +194,43 @@ export function RichComposer({
     onChange(safeHtml, plainTextFromRichHtml(safeHtml));
   }
 
+  function stageMaskBoundaryInsertion(editor: HTMLDivElement): boolean {
+    const boundary = moveCaretOutsideMaskAtBoundary(editor);
+    maskBoundaryRef.current = boundary ? {
+      boundary,
+      text: boundary.mask.textContent ?? "",
+      html: boundary.mask.innerHTML,
+    } : null;
+    return Boolean(boundary);
+  }
+
+  function repairMaskBoundaryInsertion(editor: HTMLDivElement) {
+    const pending = maskBoundaryRef.current;
+    maskBoundaryRef.current = null;
+    if (!pending || !editor.contains(pending.boundary.mask)) return;
+    const current = pending.boundary.mask.textContent ?? "";
+    if (current === pending.text) return;
+
+    const inserted = pending.boundary.before && current.endsWith(pending.text)
+      ? current.slice(0, current.length - pending.text.length)
+      : !pending.boundary.before && current.startsWith(pending.text)
+        ? current.slice(pending.text.length)
+        : "";
+    if (!inserted) return;
+
+    pending.boundary.mask.innerHTML = pending.html;
+    const textNode = document.createTextNode(inserted);
+    const parent = pending.boundary.mask.parentNode;
+    if (!parent) return;
+    parent.insertBefore(textNode, pending.boundary.before ? pending.boundary.mask : pending.boundary.mask.nextSibling);
+    const caret = document.createRange();
+    caret.setStart(textNode, inserted.length);
+    caret.collapse(true);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(caret);
+  }
+
   function runCommand(command: string, value?: string) {
     editorRef.current?.focus();
     restoreSelection();
@@ -154,7 +243,7 @@ export function RichComposer({
     runCommand("insertHTML", value);
   }
 
-  function protectRange(editor: HTMLDivElement, range: Range): number {
+  function protectRange(editor: HTMLDivElement, range: Range): { wrapped: number; last: HTMLSpanElement | null } {
     const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
     const nodes: Text[] = [];
     while (walker.nextNode()) {
@@ -162,6 +251,7 @@ export function RichComposer({
       if (node.data && range.intersectsNode(node)) nodes.push(node);
     }
     let wrapped = 0;
+    let last: HTMLSpanElement | null = null;
     for (const node of nodes.reverse()) {
       if (node.parentElement?.closest('[data-shield="true"]')) continue;
       const start = node === range.startContainer ? range.startOffset : 0;
@@ -173,9 +263,10 @@ export function RichComposer({
       span.setAttribute("data-shield", "true");
       selected.replaceWith(span);
       span.appendChild(selected);
+      if (!last) last = span;
       wrapped += 1;
     }
-    return wrapped;
+    return { wrapped, last };
   }
 
   function protectSelection() {
@@ -185,7 +276,11 @@ export function RichComposer({
       onNotice("Select the words you want to mask, then choose Mask selection.");
       return;
     }
-    const wrapped = protectRange(editor, range);
+    const { wrapped, last } = protectRange(editor, range);
+    if (last) {
+      const caret = placeCaretOutsideMask(last, false);
+      if (caret) savedRangeRef.current = caret.cloneRange();
+    }
     syncEditor();
     onNotice(wrapped ? "Selection marked for masking." : "That selection was already masked.");
   }
@@ -247,7 +342,7 @@ export function RichComposer({
       return;
     }
 
-    const wrapped = protectRange(editor, range);
+    const { wrapped } = protectRange(editor, range);
     syncEditor();
     window.getSelection()?.removeAllRanges();
     savedRangeRef.current = null;
@@ -455,7 +550,18 @@ export function RichComposer({
           aria-multiline="true"
           aria-label="Document content"
           spellCheck
-          onInput={syncEditor}
+          onInput={(event) => {
+            repairMaskBoundaryInsertion(event.currentTarget);
+            syncEditor();
+          }}
+          onKeyDown={(event) => {
+            if (!event.nativeEvent.isComposing && !event.metaKey && !event.ctrlKey && !event.altKey
+              && (event.key.length === 1 || event.key === "Enter")) {
+              stageMaskBoundaryInsertion(event.currentTarget);
+            }
+            rememberSelection();
+          }}
+          onCompositionStart={(event) => stageMaskBoundaryInsertion(event.currentTarget)}
           onKeyUp={rememberSelection}
           onMouseUp={rememberSelection}
           onContextMenu={openMaskMenu}
@@ -463,6 +569,7 @@ export function RichComposer({
           onBlur={syncEditor}
           onPaste={(event) => {
             event.preventDefault();
+            if (stageMaskBoundaryInsertion(event.currentTarget)) rememberSelection();
             const rich = event.clipboardData.getData("text/html");
             const plain = event.clipboardData.getData("text/plain");
             insertHtml(rich ? sanitizeRichHtml(rich) : plain.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/\n/g, "<br>"));

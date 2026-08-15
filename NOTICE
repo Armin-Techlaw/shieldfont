@@ -6,8 +6,8 @@ v3.0 (see LICENSE). The default font variants shipped by this project are
 built on Optik, a proprietary typeface © Playtype, used in ShieldFont's
 shielded (word-substitution) form with Playtype's permission (see "Optik"
 below). They are NOT open-source and NOT under the SIL Open Font License.
-Font files you generate yourself from an OFL base font (e.g. Inter) are under
-the SIL Open Font License, Version 1.1 (see LICENSE-FONTS).
+Font files you generate yourself from an OFL base font (e.g. Arimo or Inter)
+are under the SIL Open Font License, Version 1.1 (see LICENSE-FONTS).
 
 --------------------------------------------------------------------------
 Base fonts used by the ShieldFont generator (for fonts you build yourself)
@@ -15,6 +15,10 @@ Base fonts used by the ShieldFont generator (for fonts you build yourself)
 
 - Inter (https://rsms.me/inter) — SIL Open Font License 1.1
   Copyright (c) 2016 The Inter Project Authors.
+
+- Arimo (https://github.com/googlefonts/Arimo) — SIL Open Font License 1.1
+  Copyright 2020 The Arimo Project Authors. The Studio bundles its Regular
+  variable source as the default base for locally generated document fonts.
 
 - Syne Mono, from the Syne superfamily
   (https://gitlab.com/bonjour-monde/fonderie/syne-typeface) —
@@ -61,7 +65,8 @@ NOT open-source and NOT under the SIL Open Font License.
   use them as a general-purpose typeface outside it.
 
 The SIL Open Font License (LICENSE-FONTS) applies only to variants you build
-yourself from an OFL base font (e.g. Inter) via scripts/generate_font.py.
+yourself from an OFL base font (e.g. Arimo or Inter) via
+scripts/generate_font.py.
 
 --------------------------------------------------------------------------
 Supporters

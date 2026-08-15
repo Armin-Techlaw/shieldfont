@@ -8,15 +8,13 @@
     "build": "next build",
     "start": "next start",
     "verify": "next build",
-    "copy-fonts": "mkdir -p public/fonts && cp ../../packages/react/fonts/*.woff2 public/fonts/",
+    "copy-fonts": "mkdir -p public/fonts && cp ../../packages/react/fonts/*.woff2 public/fonts/ && cp assets/fonts/Arimo-VariableFont_wght.ttf public/fonts/arimo-variable-wght.ttf",
     "predev": "pnpm run build-packages && pnpm run copy-fonts",
     "prebuild": "pnpm run build-packages && pnpm run copy-fonts",
     "build-packages": "tsc -p ../../packages/core/tsconfig.json --typeRoots ./node_modules/@types && cd ../../packages/core && node ../../scripts/copy-mappings.mjs"
   },
   "dependencies": {
     "@shieldfont/core": "link:../../packages/core",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^4.2.1",
     "jszip": "^3.10.1",
     "next": "^15.0.0",
     "react": "^18.3.0",

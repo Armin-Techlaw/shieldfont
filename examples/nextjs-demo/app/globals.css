@@ -604,7 +604,7 @@ a:focus-visible {
   line-height: 1.55;
 }
 
-.word-guide > p:last-child {
+.word-guide > p:not(.step) {
   margin: 10px 0 0;
   color: #9da098;
   font-size: 9px;

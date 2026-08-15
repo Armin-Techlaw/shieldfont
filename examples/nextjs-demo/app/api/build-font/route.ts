@@ -1,4 +1,5 @@
 import { execFile } from "node:child_process";
+import { createHash } from "node:crypto";
 import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -32,6 +33,12 @@ function safeSlug(value: string): string {
 function cleanFamily(value: string): string {
   const cleaned = value.replace(/[^\p{L}\p{N} ._-]+/gu, " ").replace(/\s+/g, " ").trim();
   return cleaned.slice(0, 72) || "ShieldFont Custom";
+}
+
+function revisionedFamily(value: string, revision: string): string {
+  const base = cleanFamily(value);
+  const suffix = ` ${revision}`;
+  return `${base.slice(0, 72 - suffix.length).trim()}${suffix}`;
 }
 
 function validateMapping(raw: string): Record<string, string> {
@@ -117,14 +124,28 @@ export async function POST(request: Request) {
     if (typeof mappingRaw !== "string") return jsonError("The mapping is missing.", 400);
 
     const mapping = validateMapping(mappingRaw);
-    const familyName = cleanFamily(typeof familyRaw === "string" ? familyRaw : "ShieldFont Custom");
+    const requestedFamily = cleanFamily(typeof familyRaw === "string" ? familyRaw : "ShieldFont Custom");
+    const baseBytes = Buffer.from(await baseFont.arrayBuffer());
+    const canonicalMapping = JSON.stringify(Object.fromEntries(
+      Object.entries(mapping).sort(([left], [right]) => left.localeCompare(right)),
+    ));
+    const revision = createHash("sha256")
+      .update(baseBytes)
+      .update("\0")
+      .update(requestedFamily)
+      .update("\0")
+      .update(canonicalMapping)
+      .digest("hex")
+      .slice(0, 10)
+      .toUpperCase();
+    const familyName = revisionedFamily(requestedFamily, revision);
     const prefix = `shieldfont-${safeSlug(familyName.replace(/^ShieldFont\s+/i, ""))}`;
     const generator = await findGenerator();
     workspace = await mkdtemp(path.join(tmpdir(), "shieldfont-studio-"));
     const basePath = path.join(workspace, "base.ttf");
     const mappingPath = path.join(workspace, "mapping.json");
     const outputDir = path.join(workspace, "output");
-    await writeFile(basePath, Buffer.from(await baseFont.arrayBuffer()));
+    await writeFile(basePath, baseBytes);
     await writeFile(mappingPath, JSON.stringify(mapping));
 
     await runPython([
