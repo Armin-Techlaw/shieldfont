@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { RichComposer } from "./RichComposer";
+import { describePairConflicts } from "./pairConflicts";
 import {
   type AttachedFont,
   type ExportContext,
@@ -351,13 +352,9 @@ export function MappingStudio() {
         return { ok: false, message: `“${system}” → “${human}” already exists. Make that pair two-way to use it in reverse.` };
       }
 
-      const owner = nextPairs.find((pair) => {
-        const left = pair.human.trim().toLocaleLowerCase("en");
-        const right = pair.system.trim().toLocaleLowerCase("en");
-        return left === human || right === human || left === system || right === system;
-      });
-      if (owner) {
-        return { ok: false, message: `“${human}” or “${system}” already belongs to another pair.` };
+      const conflictMessage = describePairConflicts(human, system, nextPairs);
+      if (conflictMessage) {
+        return { ok: false, message: conflictMessage };
       }
 
       nextPairs.push({ id: makeId("pair"), human, system, twoWay: Boolean(draft.twoWay) });
