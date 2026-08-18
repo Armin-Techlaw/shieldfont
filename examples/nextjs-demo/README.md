@@ -10,8 +10,10 @@ A local-first custom-mapping authoring workspace built on `@shieldfont/core`.
 - Compose in a Word-like rich editor with headings, inline styles, colours,
   alignment, lists, indentation, links, tables, images, and page breaks.
 - Select individual words or passages, right-click, type the hidden-layer text,
-  and add the changed pairs while masking only that selection. Unmarked text
-  remains ordinary text in every export.
+  and add the changed pairs. Common words are skipped by default; if the hidden
+  text is longer, masking continues through the next eligible words unless you
+  choose to stay inside the selection. Unmarked text remains ordinary text in
+  every export.
 - Preview the formatted human document and encoded machine view side by side.
 - Import/export mapping JSON and private project backups.
 - Build and attach a mapping-specific desktop TTF automatically from the

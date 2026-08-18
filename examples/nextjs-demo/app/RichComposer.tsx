@@ -30,6 +30,9 @@ type MaskMenuState = {
   y: number;
   source: string;
   hidden: string;
+  hiddenEdited: boolean;
+  includeFrequent: boolean;
+  stayWithinSelection: boolean;
   twoWay: boolean;
   error: string;
 };
@@ -37,13 +40,81 @@ type MaskMenuState = {
 const FONT_SIZES = ["9", "10", "12", "14", "18", "24", "32"];
 const FONT_FAMILIES = ["Arimo", "Tinos", "Arial", "Times New Roman", "Georgia", "Helvetica"];
 const WORDS_PATTERN = /\p{L}+/gu;
+const FREQUENT_WORDS = new Set([
+  "a", "about", "after", "again", "all", "also", "am", "an", "and", "any", "are", "as", "at",
+  "be", "because", "been", "before", "being", "between", "both", "but", "by", "can", "could",
+  "did", "do", "does", "doing", "down", "during", "each", "few", "for", "from", "further", "had",
+  "has", "have", "having", "he", "her", "here", "hers", "herself", "him", "himself", "his", "how",
+  "i", "if", "in", "into", "is", "it", "its", "itself", "just", "me", "more", "most", "my",
+  "myself", "no", "nor", "not", "now", "of", "off", "on", "once", "only", "or", "other", "our",
+  "ours", "ourselves", "out", "over", "own", "same", "she", "should", "so", "some", "such", "than",
+  "that", "the", "their", "theirs", "them", "themselves", "then", "there", "these", "they", "this",
+  "those", "through", "to", "too", "under", "until", "up", "very", "was", "we", "were", "what",
+  "when", "where", "which", "while", "who", "whom", "why", "will", "with", "would", "you", "your",
+  "yours", "yourself", "yourselves",
+]);
+
+type WordTarget = {
+  node: Text;
+  start: number;
+  end: number;
+  word: string;
+};
 
 function wordsIn(value: string): string[] {
   return value.normalize("NFC").match(WORDS_PATTERN) ?? [];
 }
 
+function isFrequentWord(value: string): boolean {
+  return FREQUENT_WORDS.has(value.toLocaleLowerCase("en"));
+}
+
+function maskWordsIn(value: string, includeFrequent: boolean): string[] {
+  const words = wordsIn(value);
+  return includeFrequent ? words : words.filter((word) => !isFrequentWord(word));
+}
+
 function mappedText(value: string, mapping: Record<string, string>): string {
   return encodeSegments(value, mapping).map((segment) => segment.encoded).join("");
+}
+
+function mappedMaskWords(value: string, mapping: Record<string, string>, includeFrequent: boolean): string {
+  return maskWordsIn(value, includeFrequent).map((word) => mappedText(word, mapping)).join(" ");
+}
+
+function collectWordTargets(
+  editor: HTMLDivElement,
+  range: Range,
+  includeFrequent: boolean,
+): { selected: WordTarget[]; following: WordTarget[] } {
+  const selected: WordTarget[] = [];
+  const following: WordTarget[] = [];
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+
+  while (walker.nextNode()) {
+    const node = walker.currentNode as Text;
+    if (!node.data || node.parentElement?.closest('[data-page-break="true"]')) continue;
+    for (const match of node.data.matchAll(WORDS_PATTERN)) {
+      const word = match[0];
+      if (!includeFrequent && isFrequentWord(word)) continue;
+      const start = match.index;
+      const tokenRange = document.createRange();
+      tokenRange.setStart(node, start);
+      tokenRange.setEnd(node, start + word.length);
+      const target = { node, start, end: start + word.length, word };
+      // START_TO_END compares this range's end with the token range's start.
+      const selectionEndsBeforeWord = range.compareBoundaryPoints(Range.START_TO_END, tokenRange) <= 0;
+      if (selectionEndsBeforeWord) {
+        following.push(target);
+        continue;
+      }
+      // END_TO_START compares this range's start with the token range's end.
+      const selectionStartsBeforeWordEnds = range.compareBoundaryPoints(Range.END_TO_START, tokenRange) < 0;
+      if (selectionStartsBeforeWordEnds) selected.push(target);
+    }
+  }
+
+  return { selected, following };
 }
 
 function unwrap(element: Element): void {
@@ -269,6 +340,21 @@ export function RichComposer({
     return { wrapped, last };
   }
 
+  function protectWordTargets(editor: HTMLDivElement, targets: WordTarget[]): number {
+    let wrapped = 0;
+    for (const target of targets.slice().reverse()) {
+      if (!editor.contains(target.node) || target.node.parentElement?.closest('[data-shield="true"]')) continue;
+      const selected = target.node.splitText(target.start);
+      selected.splitText(target.end - target.start);
+      const span = document.createElement("span");
+      span.setAttribute("data-shield", "true");
+      selected.replaceWith(span);
+      span.appendChild(selected);
+      wrapped += 1;
+    }
+    return wrapped;
+  }
+
   function protectSelection() {
     const editor = editorRef.current;
     const range = restoreSelection();
@@ -298,9 +384,12 @@ export function RichComposer({
     savedRangeRef.current = range.cloneRange();
     setMaskMenu({
       x: Math.max(12, Math.min(event.clientX, window.innerWidth - 390)),
-      y: Math.max(12, Math.min(event.clientY, window.innerHeight - 330)),
+      y: Math.max(12, Math.min(event.clientY, window.innerHeight - 430)),
       source,
-      hidden: mappedText(source, mapping),
+      hidden: mappedMaskWords(source, mapping, false),
+      hiddenEdited: false,
+      includeFrequent: false,
+      stayWithinSelection: false,
       twoWay: false,
       error: "",
     });
@@ -316,17 +405,44 @@ export function RichComposer({
       return;
     }
 
-    const sourceWords = wordsIn(maskMenu.source);
+    const { selected, following } = collectWordTargets(editor, range, maskMenu.includeFrequent);
     const hiddenWords = wordsIn(maskMenu.hidden);
-    if (sourceWords.length !== hiddenWords.length) {
+    if (!selected.length) {
       setMaskMenu((current) => current ? {
         ...current,
-        error: `Enter ${sourceWords.length} hidden word${sourceWords.length === 1 ? "" : "s"}; ${hiddenWords.length} found.`,
+        error: "No eligible words are selected. Turn on Include frequent words or select a content word.",
       } : current);
       return;
     }
+    if (!hiddenWords.length) {
+      setMaskMenu((current) => current ? { ...current, error: "Enter at least one hidden word." } : current);
+      return;
+    }
+    if (hiddenWords.length < selected.length) {
+      setMaskMenu((current) => current ? {
+        ...current,
+        error: `Enter at least ${selected.length} hidden word${selected.length === 1 ? "" : "s"}; ${hiddenWords.length} found.`,
+      } : current);
+      return;
+    }
+    const extraCount = hiddenWords.length - selected.length;
+    if (extraCount && maskMenu.stayWithinSelection) {
+      setMaskMenu((current) => current ? {
+        ...current,
+        error: `Stay within selected text is on. Enter exactly ${selected.length} hidden word${selected.length === 1 ? "" : "s"}.`,
+      } : current);
+      return;
+    }
+    if (extraCount > following.length) {
+      setMaskMenu((current) => current ? {
+        ...current,
+        error: `Only ${following.length} additional eligible word${following.length === 1 ? "" : "s"} follow the selection; ${extraCount} needed.`,
+      } : current);
+      return;
+    }
+    const sourceTargets = [...selected, ...following.slice(0, extraCount)];
 
-    const drafts = sourceWords.flatMap((human, index) => {
+    const drafts = sourceTargets.flatMap(({ word: human }, index) => {
       const system = hiddenWords[index]!;
       if (human.toLocaleLowerCase("en") === system.toLocaleLowerCase("en")) return [];
       return [{ human, system, twoWay: maskMenu.twoWay }];
@@ -342,12 +458,15 @@ export function RichComposer({
       return;
     }
 
-    const { wrapped } = protectRange(editor, range);
+    const wrapped = protectWordTargets(editor, sourceTargets);
     syncEditor();
     window.getSelection()?.removeAllRanges();
     savedRangeRef.current = null;
     setMaskMenu(null);
-    onNotice(`${result.message}. ${wrapped ? "Only the selected text was marked for masking." : "The selected text was already marked for masking."}`);
+    const extended = extraCount
+      ? ` Added ${extraCount} eligible word${extraCount === 1 ? "" : "s"} after the selection.`
+      : "";
+    onNotice(`${result.message}. ${wrapped ? `${wrapped} word${wrapped === 1 ? " was" : "s were"} marked for masking.` : "Those words were already marked for masking."}${extended}`);
   }
 
   function unprotectSelection() {
@@ -416,6 +535,14 @@ export function RichComposer({
   function updateSettings(patch: Partial<DocumentSettings>) {
     onSettingsChange({ ...settings, ...patch });
   }
+
+  const selectedEligibleCount = maskMenu
+    ? maskWordsIn(maskMenu.source, maskMenu.includeFrequent).length
+    : 0;
+  const hiddenWordCount = maskMenu ? wordsIn(maskMenu.hidden).length : 0;
+  const extensionPreviewCount = maskMenu && !maskMenu.stayWithinSelection
+    ? Math.max(0, hiddenWordCount - selectedEligibleCount)
+    : 0;
 
   return (
     <div className="rich-composer">
@@ -608,10 +735,47 @@ export function RichComposer({
                 rows={2}
                 value={maskMenu.hidden}
                 spellCheck
-                onChange={(event) => setMaskMenu((current) => current ? { ...current, hidden: event.target.value, error: "" } : current)}
+                onChange={(event) => setMaskMenu((current) => current ? {
+                  ...current,
+                  hidden: event.target.value,
+                  hiddenEdited: true,
+                  error: "",
+                } : current)}
               />
             </label>
-            <p className="mask-menu__hint">Keep the same number of words. Spacing and punctuation stay as selected.</p>
+            <p className="mask-menu__hint">
+              {selectedEligibleCount} eligible selected word{selectedEligibleCount === 1 ? "" : "s"}.
+              {extensionPreviewCount
+                ? ` The next ${extensionPreviewCount} eligible word${extensionPreviewCount === 1 ? "" : "s"} will also be masked.`
+                : " Enter one hidden word for each eligible word."}
+            </p>
+            <label className="mask-menu__toggle">
+              <input
+                type="checkbox"
+                checked={maskMenu.includeFrequent}
+                onChange={(event) => setMaskMenu((current) => current ? {
+                  ...current,
+                  includeFrequent: event.target.checked,
+                  hidden: current.hiddenEdited
+                    ? current.hidden
+                    : mappedMaskWords(current.source, mapping, event.target.checked),
+                  error: "",
+                } : current)}
+              />
+              <span>Include frequent words (and, or, the, etc.)</span>
+            </label>
+            <label className="mask-menu__toggle">
+              <input
+                type="checkbox"
+                checked={maskMenu.stayWithinSelection}
+                onChange={(event) => setMaskMenu((current) => current ? {
+                  ...current,
+                  stayWithinSelection: event.target.checked,
+                  error: "",
+                } : current)}
+              />
+              <span>Do not go beyond selected text</span>
+            </label>
             <label className="mask-menu__toggle">
               <input
                 type="checkbox"
@@ -623,7 +787,7 @@ export function RichComposer({
             {maskMenu.error ? <p className="mask-menu__error" role="alert">{maskMenu.error}</p> : null}
             <footer>
               <button type="button" onClick={() => setMaskMenu(null)}>Cancel</button>
-              <button className="mask-menu__apply" type="submit">Add pairs + mask selection</button>
+              <button className="mask-menu__apply" type="submit">Add pairs + mask words</button>
             </footer>
           </form>
         </div>

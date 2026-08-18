@@ -861,7 +861,7 @@ export function MappingStudio() {
             </div>
             <span className="character-count">{source.length.toLocaleString()} chars</span>
           </div>
-          <p className="panel__help composer-help">Select one or more words, right-click, and enter what the hidden layer should read. The Studio adds the changed pairs and masks only that selection.</p>
+          <p className="panel__help composer-help">Select one or more words, right-click, and enter what the hidden layer should read. Common words are skipped by default, and extra hidden words continue into the text that follows.</p>
           <RichComposer
             documentId={project.id}
             html={richHtml}

@@ -839,6 +839,8 @@ a:focus-visible {
 .mask-menu {
   position: fixed;
   width: min(370px, calc(100vw - 24px));
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
   padding: 16px;
   border: 1px solid var(--ink);
   border-radius: 6px;
@@ -912,6 +914,7 @@ a:focus-visible {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-top: 8px;
   font-size: 11px;
 }
 
